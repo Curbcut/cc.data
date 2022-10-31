@@ -1,14 +1,14 @@
 Package: susdata
-Title: What the Package Does (One Line, Title Case)
+Title: Data for Sus
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    c(person("Sus-MSSI", email = "contact@susmontreal.ca", role = "aut"),
+    person("Maxime", "Bélanger De Blois", email = "maxime.belangerdeblois@mcgill.ca", role = "cre"),
+    person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca", role  = "ctb"))
+Description: The purpose of the susdata package is to prepare and update several national datasets that can be used in Sus instances.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.1
-URL: https://github.com/bdbmax/susdata
-BugReports: https://github.com/bdbmax/susdata/issues
+URL: https://github.com/MSSI-urban/susdata
+BugReports: https://github.com/MSSI-urban/susdata/issues
