@@ -2,9 +2,10 @@
 
 export(census_agg_type)
 export(census_data_raw)
-export(census_drop_parent)
+export(census_drop_parents)
 export(census_empty_geometries)
 export(census_normalize)
+export(census_reduce_years)
 export(census_unit_type)
 export(get_area)
 export(weighted_mean)
