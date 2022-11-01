@@ -11,5 +11,5 @@ You can install the development version of susdata from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("bdbmax/susdata")
+devtools::install_github("MSSI-urban/susdata")
 ```
