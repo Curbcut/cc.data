@@ -4,7 +4,11 @@
 \alias{census_unit_type}
 \title{Get census variables units type}
 \usage{
-census_unit_type(census_vectors, census_scales, census_years)
+census_unit_type(
+  census_vectors = susdata::census_vectors,
+  census_scales = susdata::census_scales,
+  census_years = susdata::census_years
+)
 }
 \arguments{
 \item{census_vectors}{<\code{data.frame}> Should be equal to

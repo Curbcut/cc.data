@@ -4,14 +4,17 @@
 \alias{census_empty_geometries}
 \title{Get empty geometries}
 \usage{
-census_empty_geometries(census_years, census_scales)
+census_empty_geometries(
+  census_scales = susdata::census_scales,
+  census_years = susdata::census_years
+)
 }
 \arguments{
-\item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
-
 \item{census_scales}{<\verb{character vector}> Should be equal to
 \code{\link[susdata]{census_scales}}}
+
+\item{census_years}{<\verb{numeric vector}> Should be equal to
+\code{\link[susdata]{census_years}}}
 }
 \value{
 A named list of \verb{sf data.frame} the same length as census_scales,

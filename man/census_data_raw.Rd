@@ -5,14 +5,14 @@
 \title{Get census vectors values}
 \usage{
 census_data_raw(
-  census_empty_geometries,
-  census_vectors,
-  census_scales,
-  census_years
+  empty_geometries,
+  census_vectors = susdata::census_vectors,
+  census_scales = susdata::census_scales,
+  census_years = susdata::census_years
 )
 }
 \arguments{
-\item{census_empty_geometries}{<\verb{list of sf data.frame}> The output of
+\item{empty_geometries}{<\verb{list of sf data.frame}> The output of
 \code{\link[susdata]{census_empty_geometries}}.}
 
 \item{census_vectors}{<\code{data.frame}> Should be equal to

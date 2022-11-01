@@ -1,6 +1,6 @@
 #' Get census vectors values
 #'
-#' @param census_empty_geometries <`list of sf data.frame`> The output of
+#' @param empty_geometries <`list of sf data.frame`> The output of
 #' \code{\link[susdata]{census_empty_geometries}}.
 #' @param census_vectors <`data.frame`> Should be equal to
 #' \code{\link[susdata]{census_vectors}}
@@ -12,13 +12,15 @@
 #' @return A list of scales and years of census data accompanied with the
 #' parent values.
 #' @export
-census_data_raw <- function(census_empty_geometries, census_vectors,
-                            census_scales, census_years) {
+census_data_raw <- function(empty_geometries,
+                            census_vectors = susdata::census_vectors,
+                            census_scales = susdata::census_scales,
+                            census_years = susdata::census_years) {
   sapply(census_scales, \(scale) {
     sapply(as.character(census_years), \(year) {
 
       # Dataframe
-      empty_geo <- census_empty_geometries[[scale]][[year]]
+      empty_geo <- empty_geometries[[scale]][[year]]
 
       # Relevant named vectors
       vecs <-

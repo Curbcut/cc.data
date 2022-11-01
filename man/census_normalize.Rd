@@ -6,10 +6,11 @@
 \usage{
 census_normalize(
   interpolated,
-  census_vectors,
-  unit_type,
-  census_scales,
-  census_years
+  census_vectors = susdata::census_vectors,
+  census_scales = susdata::census_scales,
+  census_years = susdata::census_years,
+  unit_type = census_unit_type(census_vectors = census_vectors, census_scales =
+    census_scales, census_years = census_years)
 )
 }
 \arguments{
@@ -19,14 +20,14 @@ census_normalize(
 \item{census_vectors}{<\code{data.frame}> Should be equal to
 \code{\link[susdata]{census_vectors}}}
 
-\item{unit_type}{<\code{data.frame}> The output of
-\code{\link[susdata]{census_unit_type}}.}
-
 \item{census_scales}{<\verb{character vector}> Should be equal to
 \code{\link[susdata]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
 \code{\link[susdata]{census_years}}}
+
+\item{unit_type}{<\code{data.frame}> The output of
+\code{\link[susdata]{census_unit_type}}.}
 }
 \value{
 A list of scales and years of census data with variables desired as

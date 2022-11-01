@@ -12,7 +12,9 @@
 #' @return A named list of length two. The first is a vector of character of
 #' additive variables, and the other is average.
 #' @export
-census_agg_type <- function(census_vectors, census_scales, census_years) {
+census_agg_type <- function(census_vectors = susdata::census_vectors,
+                            census_scales = susdata::census_scales,
+                            census_years = susdata::census_years) {
 
   agg_year <-
     # Skip 2001. Some vectors are labelled as averaged but aggregated as

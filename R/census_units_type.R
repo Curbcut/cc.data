@@ -10,7 +10,9 @@
 #' @return A dataframe of two columns. The first column is the var_code, and the
 #' second is the unit.
 #' @export
-census_unit_type <- function(census_vectors, census_scales, census_years) {
+census_unit_type <- function(census_vectors = susdata::census_vectors,
+                             census_scales = susdata::census_scales,
+                             census_years = susdata::census_years) {
 
   units_year <-
     # Skip 2001. Some vectors have `number` units instead of `currency`,

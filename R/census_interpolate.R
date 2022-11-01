@@ -4,6 +4,8 @@
 #' \code{\link[susdata]{census_data_raw}}.
 #' @param agg_type <`named list`> The output of
 #' \code{\link[susdata]{census_agg_type}}.
+#' @param census_vectors <`character vector`> Should be equal to
+#' \code{\link[susdata]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
 #' \code{\link[susdata]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
@@ -11,8 +13,13 @@
 #'
 #' @return A list of scales and years of census data with geometries interpolated
 #' to the current year.
-census_interpolate <- function(data_raw, agg_type, census_scales,
-                               census_years) {
+census_interpolate <- function(data_raw,
+                               census_vectors = susdata::census_vectors,
+                               census_scales = susdata::census_scales,
+                               census_years = susdata::census_years,
+                               agg_type = census_agg_type(census_vectors = census_vectors,
+                                                          census_scales = census_scales,
+                                                          census_years = census_years)) {
   sapply(census_scales, \(scale) {
     # Scale level globals
     max_year <- as.character(max(census_years))

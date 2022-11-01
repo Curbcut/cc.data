@@ -14,8 +14,14 @@
 #' @return A list of scales and years of census data with variables desired as
 #' percentage normalized.
 #' @export
-census_normalize <- function(interpolated, census_vectors, unit_type,
-                             census_scales, census_years) {
+census_normalize <- function(interpolated,
+                             census_vectors = susdata::census_vectors,
+                             census_scales = susdata::census_scales,
+                             census_years = susdata::census_years,
+                             unit_type =
+                               census_unit_type(census_vectors = census_vectors,
+                                                census_scales = census_scales,
+                                                census_years = census_years)) {
 
   vars_pct <- census_vectors$var_code[census_vectors$type == "pct"]
   units <- unit_type[unit_type$var_code %in% vars_pct, ]
@@ -36,6 +42,7 @@ census_normalize <- function(interpolated, census_vectors, unit_type,
           tb[[x]] <- pmin(1, data_no_geo[[x]]/100)
           tb
         }, simplify = FALSE, USE.NAMES = TRUE)
+      pcts <- Reduce(merge, pcts)
 
       # If classed as number in the census
       numb <-
@@ -47,11 +54,16 @@ census_normalize <- function(interpolated, census_vectors, unit_type,
           tb[[x]] <- pmin(1, data_no_geo[[x]]/data_no_geo[[paste0(x, "_parent")]])
           tb
         }, simplify = FALSE, USE.NAMES = TRUE)
+      numb <- Reduce(merge, numb)
 
       # Combine
-      merge(data[, !names(data) %in% c(names(pcts), names(numb))],
-            merge(Reduce(merge, pcts), Reduce(merge, numb))) |>
-        tibble::as_tibble()
+      if (!is.null(pcts) && !is.null(numb)) pcts_numb <- merge(pcts, numb)
+      if (is.null(pcts) && !is.null(numb)) pcts_numb <- numb
+      if (!is.null(pcts) && is.null(numb)) pcts_numb <- pcts
+
+      tibble::as_tibble(merge(data[
+        , !names(data) %in% names(pcts_numb)[names(pcts_numb) != "GeoUID"]],
+        pcts_numb, by = "GeoUID"))
 
     }, simplify = FALSE, USE.NAMES = TRUE)
   }, simplify = FALSE, USE.NAMES = TRUE)

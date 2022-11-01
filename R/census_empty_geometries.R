@@ -8,7 +8,8 @@
 #' @return A named list of `sf data.frame` the same length as census_scales,
 #' with census geometries, containing only ID, population and households.
 #' @export
-census_empty_geometries <- function(census_years, census_scales) {
+census_empty_geometries <- function(census_scales = susdata::census_scales,
+                                    census_years = susdata::census_years) {
 
   # Create vector of dataset code for cancensus
   census_dataset <- paste0("CA", sub("20", "", census_years))
