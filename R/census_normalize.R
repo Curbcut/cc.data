@@ -63,7 +63,8 @@ census_normalize <- function(interpolated,
 
       tibble::as_tibble(merge(data[
         , !names(data) %in% names(pcts_numb)[names(pcts_numb) != "GeoUID"]],
-        pcts_numb, by = "GeoUID"))
+        pcts_numb, by = "GeoUID")) |>
+        sf::st_as_sf()
 
     }, simplify = FALSE, USE.NAMES = TRUE)
   }, simplify = FALSE, USE.NAMES = TRUE)

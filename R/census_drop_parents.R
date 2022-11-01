@@ -8,7 +8,7 @@
 #' @return A list of scales and years of census data with the columns
 #' corresponding to GeoUID, census_vectors$var_code, and geometry.
 #' @export
-census_drop_parent <- function(normalized,
+census_drop_parents <- function(normalized,
                                census_vectors = susdata::census_vectors) {
   sapply(normalized, \(x) {
     sapply(x , \(y) {
