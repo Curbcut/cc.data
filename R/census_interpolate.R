@@ -20,14 +20,17 @@ census_interpolate <- function(data_raw,
                                agg_type = census_agg_type(census_vectors = census_vectors,
                                                           census_scales = census_scales,
                                                           census_years = census_years)) {
-  sapply(census_scales, \(scale) {
+
+  pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
+
+  future.apply::future_sapply(census_scales, \(scale) {
     # Scale level globals
     max_year <- as.character(max(census_years))
     data_scale <- data_raw[[scale]]
     destination <- data_scale[[max_year]][, c("GeoUID", "geometry")]
 
     # Interpolate every year
-    sapply(as.character(census_years), \(year) {
+    future.apply::future_sapply(as.character(census_years), \(year) {
 
       # If max year, don't interpolate
       if (year == max_year) return(data_scale[[year]])
@@ -40,6 +43,7 @@ census_interpolate <- function(data_raw,
       int <- int[sf::st_is(int, "POLYGON") | sf::st_is(int, "MULTIPOLYGON"), ]
 
       int$int_area <- get_area(int)
+      int <- sf::st_drop_geometry(int)
       int$area_prop <- int$int_area / int$area
 
       # Additive values, pre needed for average values
@@ -99,10 +103,18 @@ census_interpolate <- function(data_raw,
       add_vars <- tibble::as_tibble(Reduce(merge, add_vars))
 
       # Merge additive and average variables
-      tibble::as_tibble(merge(merge(add_vars, avg_vars, by = "GeoUID"),
-                              destination[c("GeoUID", "geometry")])) |>
+      out <- tibble::as_tibble(merge(add_vars, avg_vars, by = "GeoUID"))
+
+      # Switch NaN or Inf to NA
+      out[out == "NaN"] <- NA
+      out[out == "Inf"] <- NA
+
+      # Return as sf
+      pb()
+      tibble::as_tibble(merge(out, destination[c("GeoUID", "geometry")])) |>
         sf::st_as_sf()
 
-    }, simplify = FALSE, USE.NAMES = TRUE)
-  }, simplify = FALSE, USE.NAMES = TRUE)
+    }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+  }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+
 }

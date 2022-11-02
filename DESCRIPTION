@@ -10,7 +10,9 @@ Imports:
     cancensus,
     sf,
     tibble,
-    stats
+    stats,
+    future.apply,
+    progressr
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

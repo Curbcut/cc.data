@@ -24,7 +24,6 @@ census_reduce_years <- function(parent_dropped,
       var_codes <- names(data)[names(data) %in% census_vectors$var_code]
       names(data)[names(data) %in% var_codes] <- paste0(var_codes, "_", year)
 
-
       data
 
     }, simplify = FALSE, USE.NAMES = TRUE)

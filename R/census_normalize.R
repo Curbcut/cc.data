@@ -60,7 +60,13 @@ census_normalize <- function(interpolated,
       if (!is.null(pcts) && !is.null(numb)) pcts_numb <- merge(pcts, numb)
       if (is.null(pcts) && !is.null(numb)) pcts_numb <- numb
       if (!is.null(pcts) && is.null(numb)) pcts_numb <- pcts
+      pcts_numb <- tibble::as_tibble(pcts_numb)
 
+      # Switch NaN or Inf to NA
+      pcts_numb[pcts_numb == "NaN"] <- NA
+      pcts_numb[pcts_numb == "Inf"] <- NA
+
+      # Return
       tibble::as_tibble(merge(data[
         , !names(data) %in% names(pcts_numb)[names(pcts_numb) != "GeoUID"]],
         pcts_numb, by = "GeoUID")) |>
