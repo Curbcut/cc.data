@@ -44,12 +44,17 @@ census_data_raw <- function(empty_geometries,
         census_dataset <- paste0("CA", sub("20", "", year))
 
         # Get the variable values
-        dat <- cancensus::get_census(dataset = census_dataset,
+        dat <- tryCatch(cancensus::get_census(dataset = census_dataset,
                                      regions = list(C = "01"),
                                      level = scale,
                                      vectors = unlist(var_codes),
                                      geo_format = NA,
-                                     quiet = TRUE)
+                                     quiet = TRUE,
+                                     api_key = "CensusMapper_bd9c1e55cf9d3d522472e294d64e112e"),
+                        error = function(e) {
+                          stop(paste("Error in census retrieval for:",
+                                     scale, year))
+                        })
         dat <- dat[, c("GeoUID", names(var_codes))]
 
         # Addition additive variables
@@ -109,7 +114,8 @@ census_data_raw <- function(empty_geometries,
                                          level = scale,
                                          vectors = x,
                                          geo_format = NA,
-                                         quiet = TRUE)
+                                         quiet = TRUE,
+                                         api_key = "CensusMapper_bd9c1e55cf9d3d522472e294d64e112e")
             out <- out[c(1, length(out))]
             names(out) <- c("GeoUID", paste0(y, "_parent"))
             out
