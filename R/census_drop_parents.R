@@ -6,7 +6,7 @@
 #' \code{\link[susdata]{census_vectors}}
 #'
 #' @return A list of scales and years of census data with the columns
-#' corresponding to GeoUID, census_vectors$var_code, and geometry.
+#' corresponding to ID, census_vectors$var_code, and geometry.
 #' @export
 census_drop_parents <- function(normalized,
                                census_vectors = susdata::census_vectors) {
@@ -14,7 +14,7 @@ census_drop_parents <- function(normalized,
     sapply(x , \(y) {
       var_codes <- names(y)[names(y) %in% census_vectors$var_code]
 
-      y[, c("GeoUID", var_codes, "geometry")]
+      y[, c("ID", var_codes, "geometry")]
     }, simplify = FALSE, USE.NAMES = TRUE)
   }, simplify = FALSE, USE.NAMES = TRUE)
 }

@@ -15,7 +15,7 @@ census_drop_parents(normalized, census_vectors = susdata::census_vectors)
 }
 \value{
 A list of scales and years of census data with the columns
-corresponding to GeoUID, census_vectors$var_code, and geometry.
+corresponding to ID, census_vectors$var_code, and geometry.
 }
 \description{
 Drop parent variables

@@ -33,8 +33,10 @@ census_reduce_years <- function(parent_dropped,
       c(lapply(years[1:(length(years) - 1)], sf::st_drop_geometry),
         years[length(years)])
 
-    tibble::as_tibble(Reduce(merge, years)) |>
+    merge_keep_all <- function(...) merge(..., all.x = TRUE)
+    tibble::as_tibble(Reduce(merge_keep_all, rev(years))) |>
       sf::st_as_sf()
+
   }, simplify = FALSE, USE.NAMES = TRUE)
 
 }

@@ -22,11 +22,12 @@ census_empty_geometries <- function(census_scales = susdata::census_scales,
 
         # Retrieve
         out <- cancensus::get_census(dataset = year,
-                                     regions = list(C = "01"),
+                                     regions = list(PR = "24"),
                                      level = scale,
                                      geo_format = "sf",
                                      quiet = TRUE)
         out <- out[, c("GeoUID", "geometry")]
+        names(out) <- c("ID", "geometry")
         out <- sf::st_transform(out, 3347)
         pb()
         sf::st_as_sf(tibble::as_tibble(out))

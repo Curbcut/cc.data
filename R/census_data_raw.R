@@ -45,17 +45,17 @@ census_data_raw <- function(empty_geometries,
 
         # Get the variable values
         dat <- tryCatch(cancensus::get_census(dataset = census_dataset,
-                                     regions = list(C = "01"),
+                                     regions = list(PR = "24"),
                                      level = scale,
                                      vectors = unlist(var_codes),
                                      geo_format = NA,
-                                     quiet = TRUE,
-                                     api_key = "CensusMapper_bd9c1e55cf9d3d522472e294d64e112e"),
+                                     quiet = TRUE),
                         error = function(e) {
                           stop(paste("Error in census retrieval for:",
                                      scale, year))
                         })
         dat <- dat[, c("GeoUID", names(var_codes))]
+        names(dat)[1] <- "ID"
 
         # Addition additive variables
         tb <- table(gsub("_[0-9]$", "", names(dat)))
@@ -110,23 +110,23 @@ census_data_raw <- function(empty_geometries,
         pv <-
           mapply(\(x, y) {
             out <- cancensus::get_census(dataset = census_dataset,
-                                         regions = list(C = "01"),
+                                         regions = list(PR = "24"),
                                          level = scale,
                                          vectors = x,
                                          geo_format = NA,
-                                         quiet = TRUE,
-                                         api_key = "CensusMapper_bd9c1e55cf9d3d522472e294d64e112e")
+                                         quiet = TRUE)
             out <- out[c(1, length(out))]
-            names(out) <- c("GeoUID", paste0(y, "_parent"))
+            names(dat)[1] <- "ID"
+            names(out) <- c("ID", paste0(y, "_parent"))
             out
           }, pv_vecs, names(pv_vecs), SIMPLIFY = FALSE)
         # Sum the parents if a vector have multiple parents
         multiple_pv_names <- names(table(names(pv))[table(names(pv)) > 1])
         multiple_pv <- sapply(multiple_pv_names, \(x) {
           to_sum <- pv[names(pv) == x]
-          tb <- to_sum[[1]]["GeoUID"]
+          tb <- to_sum[[1]]["ID"]
           psum <- function(x, y) mapply(sum, x, y, na.rm = TRUE)
-          tb[[x]] <- Reduce(psum, lapply(to_sum, `[[`, 2))
+          tb[[paste0(x, "_parent")]] <- Reduce(psum, lapply(to_sum, `[[`, 2))
           tb
         }, simplify = FALSE, USE.NAMES = TRUE)
         pv <- c(pv[!names(pv) %in% multiple_pv_names], multiple_pv)
@@ -135,7 +135,7 @@ census_data_raw <- function(empty_geometries,
 
         # Bind variables values with parent vectors
         pb()
-        tibble::as_tibble(merge(dat, pv, by = "GeoUID"))
+        tibble::as_tibble(merge(dat, pv, by = "ID"))
 
       }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
     }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
@@ -143,7 +143,7 @@ census_data_raw <- function(empty_geometries,
   # Bind the results to empty geometries
   future.apply::future_mapply(\(data_r, empty_g) {
     future.apply::future_mapply(\(d, e) {
-      sf::st_as_sf(tibble::as_tibble(merge(d, e, by = "GeoUID")))
+      sf::st_as_sf(tibble::as_tibble(merge(d, e, by = "ID")))
     }, data_r, empty_g, SIMPLIFY = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   }, data_raw, empty_geometries, SIMPLIFY = FALSE, USE.NAMES = TRUE,
   future.seed = NULL)

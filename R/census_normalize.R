@@ -38,7 +38,7 @@ census_normalize <- function(interpolated,
 
       pcts <-
         sapply(pcts, \(x) {
-          tb <- data_no_geo["GeoUID"]
+          tb <- data_no_geo["ID"]
           tb[[x]] <- pmin(1, data_no_geo[[x]]/100)
           tb
         }, simplify = FALSE, USE.NAMES = TRUE)
@@ -50,7 +50,7 @@ census_normalize <- function(interpolated,
 
       numb <-
         sapply(numb, \(x) {
-          tb <- data_no_geo["GeoUID"]
+          tb <- data_no_geo["ID"]
           tb[[x]] <- pmin(1, data_no_geo[[x]]/data_no_geo[[paste0(x, "_parent")]])
           tb
         }, simplify = FALSE, USE.NAMES = TRUE)
@@ -68,8 +68,8 @@ census_normalize <- function(interpolated,
 
       # Return
       tibble::as_tibble(merge(data[
-        , !names(data) %in% names(pcts_numb)[names(pcts_numb) != "GeoUID"]],
-        pcts_numb, by = "GeoUID")) |>
+        , !names(data) %in% names(pcts_numb)[names(pcts_numb) != "ID"]],
+        pcts_numb, by = "ID")) |>
         sf::st_as_sf()
 
     }, simplify = FALSE, USE.NAMES = TRUE)
