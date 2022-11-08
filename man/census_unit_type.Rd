@@ -5,20 +5,20 @@
 \title{Get census variables units type}
 \usage{
 census_unit_type(
-  census_vectors = susdata::census_vectors,
-  census_scales = susdata::census_scales,
-  census_years = susdata::census_years
+  census_vectors_table = cc.data::census_vectors_table,
+  census_scales = cc.data::census_scales,
+  census_years = cc.data::census_years
 )
 }
 \arguments{
-\item{census_vectors}{<\code{data.frame}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\item{census_vectors_table}{<\code{data.frame}> Should be equal to
+\code{\link[cc.data]{census_vectors_table}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_scales}}}
+\code{\link[cc.data]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
+\code{\link[cc.data]{census_years}}}
 }
 \value{
 A dataframe of two columns. The first column is the var_code, and the

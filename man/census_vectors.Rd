@@ -3,27 +3,17 @@
 \docType{data}
 \name{census_vectors}
 \alias{census_vectors}
-\title{All census vectors combined}
+\title{All census variable codes in a vector}
 \format{
 \subsection{\code{census_vectors}}{
 
-A data.frame of census variables code
-\describe{
-\item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-\item{type}{See \code{\link[susbuildr]{add_variable}}}
-\item{theme}{See \code{\link[susbuildr]{add_variable}}}
-\item{vec_...}{The \code{cancensus} code for the vector at a particular year}
-\item{parent_vectors}{The \code{cancensus} code for parent vectors}
-\item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-\item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-\item{explanation}{See \code{\link[susbuildr]{add_variable}}}
-}
+A character vector
 }
 }
 \usage{
 census_vectors
 }
 \description{
-The variable code for each year of all the census themes
+All census variable codes in a vector
 }
 \keyword{datasets}

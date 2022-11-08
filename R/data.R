@@ -172,11 +172,11 @@
 #' }
 "census_vectors_education"
 
-#' All census vectors combined
+#' All census vectors tables combined
 #'
 #' The variable code for each year of all the census themes
 #'
-#' @format ## `census_vectors`
+#' @format ## `census_vectors_table`
 #' A data.frame of census variables code
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
@@ -188,6 +188,12 @@
 #'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
 #' }
+"census_vectors_table"
+
+#' All census variable codes in a vector
+#'
+#' @format ## `census_vectors`
+#' A character vector
 "census_vectors"
 
 #' 2016 Dissemination Areas Can-ALE Index

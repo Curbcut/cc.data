@@ -4,8 +4,8 @@
 #' \code{\link[cc.data]{census_data_raw}}.
 #' @param agg_type <`named list`> The output of
 #' \code{\link[cc.data]{census_agg_type}}.
-#' @param census_vectors <`character vector`> Should be equal to
-#' \code{\link[cc.data]{census_vectors}}
+#' @param census_vectors_table <`character vector`> Should be equal to
+#' \code{\link[cc.data]{census_vectors_table}}
 #' @param census_scales <`character vector`> Should be equal to
 #' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
@@ -14,13 +14,14 @@
 #' @return A list of scales and years of census data with geometries interpolated
 #' to the current year.
 census_interpolate <- function(data_raw,
-                               census_vectors = cc.data::census_vectors,
+                               census_vectors_table = cc.data::census_vectors_table,
                                census_scales = cc.data::census_scales,
                                census_years = cc.data::census_years,
-                               agg_type = census_agg_type(census_vectors = census_vectors,
-                                                          census_scales = census_scales,
-                                                          census_years = census_years)) {
-
+                               agg_type = census_agg_type(
+                                 census_vectors_table = census_vectors_table,
+                                 census_scales = census_scales,
+                                 census_years = census_years
+                               )) {
   pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
 
   future.apply::future_sapply(census_scales, \(scale) {
@@ -33,14 +34,17 @@ census_interpolate <- function(data_raw,
         sf::st_make_valid()
 
       # If max year, don't interpolate
-      if (year == max_year) return(data_scale[[year]])
+      if (year == max_year) {
+        return(data_scale[[year]])
+      }
 
       # Interpolate other years
       origin <- sf::st_make_valid(data_scale[[year]])
       origin <- origin[names(origin) != "ID"]
       origin$area <- get_area(origin)
       int <- tryCatch(suppressWarnings(sf::st_intersection(origin, destination)),
-                      error = function(e) print(paste0(scale, year)))
+        error = function(e) print(paste0(scale, year))
+      )
       int <- int[sf::st_is(int, "POLYGON") | sf::st_is(int, "MULTIPOLYGON"), ]
 
       int$int_area <- get_area(int)
@@ -55,11 +59,12 @@ census_interpolate <- function(data_raw,
         out <- tibble::tibble(l = v)
         names(out) <- x
         out
-        }, simplify = FALSE)
+      }, simplify = FALSE)
       add_vars <- Reduce(cbind, add_vars)
 
       add_vars <- tibble::tibble(
-        cbind(int[!names(int) %in% names(add_vars)], add_vars))
+        cbind(int[!names(int) %in% names(add_vars)], add_vars)
+      )
 
       # Average values
       avg <- names(int)[names(int) %in% agg_type$average]
@@ -72,8 +77,10 @@ census_interpolate <- function(data_raw,
             na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)
             if (na_pct >= 0.5) val <- NA_real_
 
-            out <- tibble::tibble(ID = id,
-                                  val = val)
+            out <- tibble::tibble(
+              ID = id,
+              val = val
+            )
             names(out)[2] <- x
             out
           }, simplify = FALSE)
@@ -85,7 +92,6 @@ census_interpolate <- function(data_raw,
       # Finalize additive values
       add_vars <- sapply(add, \(x) {
         ids <- sapply(unique(int$ID), \(id) {
-
           dat <- add_vars[add_vars$ID == id, ]
           val <- sum(dat[[x]], dat$area_prop, na.rm = TRUE)
           val <- round(val / 5) * 5
@@ -93,8 +99,10 @@ census_interpolate <- function(data_raw,
           na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)
           if (na_pct >= 0.5) val <- NA_real_
 
-          out <- tibble::tibble(ID = id,
-                                val = val)
+          out <- tibble::tibble(
+            ID = id,
+            val = val
+          )
           names(out)[2] <- x
           out
         }, simplify = FALSE)
@@ -114,8 +122,6 @@ census_interpolate <- function(data_raw,
       pb()
       tibble::as_tibble(merge(out, destination[c("ID", "geometry")])) |>
         sf::st_as_sf()
-
     }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
-
 }

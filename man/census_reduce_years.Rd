@@ -6,23 +6,23 @@
 \usage{
 census_reduce_years(
   parent_dropped,
-  census_vectors = susdata::census_vectors,
-  census_scales = susdata::census_scales,
-  census_years = susdata::census_years
+  census_vectors_table = cc.data::census_vectors_table,
+  census_scales = cc.data::census_scales,
+  census_years = cc.data::census_years
 )
 }
 \arguments{
 \item{parent_dropped}{<\verb{list of sf data.frame}> The output of
-\code{\link[susdata]{census_drop_parents}}.}
+\code{\link[cc.data]{census_drop_parents}}.}
 
-\item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\item{census_vectors_table}{<\verb{character vector}> Should be equal to
+\code{\link[cc.data]{census_vectors_table}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_scales}}}
+\code{\link[cc.data]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
+\code{\link[cc.data]{census_years}}}
 }
 \value{
 A list of scales with years reduced, and the years appended to all

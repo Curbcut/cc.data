@@ -15,17 +15,19 @@ census_empty_geometries <- function(census_scales = cc.data::census_scales,
   census_dataset <- paste0("CA", sub("20", "", census_years))
 
   # Iterate over all scales to get the empty geometries
-  pb <- progressr::progressor(steps = length(census_scales)*length(census_years))
+  pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
   census_empty_geometries <-
     future.apply::future_sapply(census_scales, \(scale) {
       future.apply::future_sapply(census_dataset, \(year) {
 
         # Retrieve
-        out <- cancensus::get_census(dataset = year,
-                                     regions = list(C = "01"),
-                                     level = scale,
-                                     geo_format = "sf",
-                                     quiet = TRUE)
+        out <- cancensus::get_census(
+          dataset = year,
+          regions = list(C = "01"),
+          level = scale,
+          geo_format = "sf",
+          quiet = TRUE
+        )
         out <- out[, c("GeoUID", "geometry")]
         names(out) <- c("ID", "geometry")
         out <- sf::st_transform(out, 3347)

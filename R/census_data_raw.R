@@ -2,8 +2,8 @@
 #'
 #' @param empty_geometries <`list of sf data.frame`> The output of
 #' \code{\link[cc.data]{census_empty_geometries}}.
-#' @param census_vectors <`data.frame`> Should be equal to
-#' \code{\link[cc.data]{census_vectors}}
+#' @param census_vectors_table <`data.frame`> Should be equal to
+#' \code{\link[cc.data]{census_vectors_table}}
 #' @param census_scales <`character vector`> Should be equal to
 #' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
@@ -13,11 +13,11 @@
 #' parent values.
 #' @export
 census_data_raw <- function(empty_geometries,
-                            census_vectors = cc.data::census_vectors,
+                            census_vectors_table = cc.data::census_vectors_table,
                             census_scales = cc.data::census_scales,
                             census_years = cc.data::census_years) {
 
-  # dat <- census_data[census_data$var_code == census_vectors, ]
+  # dat <- census_data[census_data$var_code == census_vectors_table, ]
 
   pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
 
@@ -27,7 +27,7 @@ census_data_raw <- function(empty_geometries,
 
         # Relevant named vectors
         vecs <-
-          census_vectors[, c("var_code", paste0("vec_", year), "parent_vectors")]
+          census_vectors_table[, c("var_code", paste0("vec_", year), "parent_vectors")]
         vecs <- vecs[!is.na(vecs[[paste0("vec_", year)]]), ]
         var_codes <- vecs[[paste0("vec_", year)]]
         names(var_codes) <- vecs$var_code
@@ -46,7 +46,7 @@ census_data_raw <- function(empty_geometries,
         census_dataset <- paste0("CA", sub("20", "", year))
 
         # Get the variable values
-        dat <-  if (scale == "DA") {
+        dat <- if (scale == "DA") {
           # Troubles with getting DA nation-wide. Get provinces and bind.
           pr_codes <- cancensus::list_census_regions(census_dataset)
           pr_codes <- pr_codes$region[pr_codes$level == "PR"]
@@ -58,7 +58,8 @@ census_data_raw <- function(empty_geometries,
               level = scale,
               vectors = unlist(var_codes),
               geo_format = NA,
-              quiet = TRUE)
+              quiet = TRUE
+            )
           })
           Reduce(rbind, all_pr_vecs)
         } else {
@@ -68,7 +69,8 @@ census_data_raw <- function(empty_geometries,
             level = scale,
             vectors = unlist(var_codes),
             geo_format = NA,
-            quiet = TRUE)
+            quiet = TRUE
+          )
         }
 
         dat <- dat[, c("GeoUID", names(var_codes))]
@@ -96,7 +98,8 @@ census_data_raw <- function(empty_geometries,
 
         pv <- cbind(pv["vector"], parent_vector = pv_vec)
         pv <- merge(tibble::tibble(var_code = names(var_codes), var_codes), pv,
-                    by.x = "var_codes", by.y = "vector")
+          by.x = "var_codes", by.y = "vector"
+        )
         pv$var_code <- gsub("_[0-9]+$", "", pv$var_code)
 
         # Switch parent vectors if need be
@@ -108,8 +111,10 @@ census_data_raw <- function(empty_geometries,
         switch_pv <-
           mapply(\(v, n) {
             v_t <- lapply(v, \(z) {
-              tibble::tibble(var_code = n,
-                             parent_vector = z)
+              tibble::tibble(
+                var_code = n,
+                parent_vector = z
+              )
             })
             Reduce(rbind, v_t)
           }, switch_pv, names(switch_pv), SIMPLIFY = FALSE)
@@ -138,7 +143,8 @@ census_data_raw <- function(empty_geometries,
               level = scale,
               vectors = unique_pv_vecs,
               geo_format = NA,
-              quiet = TRUE)
+              quiet = TRUE
+            )
           })
           Reduce(rbind, all_pr_vecs)
         } else {
@@ -148,7 +154,8 @@ census_data_raw <- function(empty_geometries,
             level = scale,
             vectors = unique_pv_vecs,
             geo_format = NA,
-            quiet = TRUE)
+            quiet = TRUE
+          )
         }
 
         pv <- mapply(\(vec_name, vec) {
@@ -173,7 +180,6 @@ census_data_raw <- function(empty_geometries,
         # Bind variables values with parent vectors
         pb()
         tibble::as_tibble(merge(dat, pv, by = "ID"))
-
       }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
     }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
 
@@ -182,7 +188,8 @@ census_data_raw <- function(empty_geometries,
     future.apply::future_mapply(\(d, e) {
       sf::st_as_sf(tibble::as_tibble(merge(d, e, by = "ID")))
     }, data_r, empty_g, SIMPLIFY = FALSE, USE.NAMES = TRUE, future.seed = NULL)
-  }, data_raw, empty_geometries, SIMPLIFY = FALSE, USE.NAMES = TRUE,
-  future.seed = NULL)
-
+  }, data_raw, empty_geometries,
+  SIMPLIFY = FALSE, USE.NAMES = TRUE,
+  future.seed = NULL
+  )
 }

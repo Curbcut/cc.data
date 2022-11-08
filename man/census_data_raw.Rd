@@ -6,7 +6,7 @@
 \usage{
 census_data_raw(
   empty_geometries,
-  census_vectors = cc.data::census_vectors,
+  census_vectors_table = cc.data::census_vectors_table,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years
 )
@@ -15,8 +15,8 @@ census_data_raw(
 \item{empty_geometries}{<\verb{list of sf data.frame}> The output of
 \code{\link[cc.data]{census_empty_geometries}}.}
 
-\item{census_vectors}{<\code{data.frame}> Should be equal to
-\code{\link[cc.data]{census_vectors}}}
+\item{census_vectors_table}{<\code{data.frame}> Should be equal to
+\code{\link[cc.data]{census_vectors_table}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
 \code{\link[cc.data]{census_scales}}}

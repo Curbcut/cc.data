@@ -10,8 +10,9 @@ census_custom_boundaries(
   census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
-  agg_type = census_agg_type(census_vectors = census_vectors, census_scales =
-    census_scales, census_years = census_years),
+  agg_type = census_agg_type(census_vectors_table =
+    cc.data::census_vectors_table[cc.data::census_vectors_table$var_code \%in\%
+    census_vectors, ], census_scales = census_scales, census_years = census_years),
   crs
 )
 }
@@ -25,9 +26,6 @@ be interpolated. e.g. boroughs in Montreal.}
 are census years. It must be the lower possible scale of the raw data (with parents),
 and so the output of \code{\link[cc.data]{census_data_raw}} \code{[["DA"]]}}
 
-\item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_vectors}}}
-
 \item{census_scales}{<\verb{character vector}> Should be equal to
 \code{\link[cc.data]{census_scales}}}
 
@@ -39,6 +37,9 @@ and so the output of \code{\link[cc.data]{census_data_raw}} \code{[["DA"]]}}
 
 \item{crs}{<\code{numeric}> EPSG coordinate reference system to be assigned, e.g.
 \code{32617} for Toronto.}
+
+\item{census_vectors_table}{<\verb{character vector}> Should be equal to
+\code{\link[cc.data]{census_vectors_table}}}
 }
 \value{
 The same list as what is fed to the \code{destination} argument,
