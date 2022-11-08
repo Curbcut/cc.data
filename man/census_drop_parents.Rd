@@ -4,14 +4,14 @@
 \alias{census_drop_parents}
 \title{Drop parent variables}
 \usage{
-census_drop_parents(normalized, census_vectors = susdata::census_vectors)
+census_drop_parents(normalized, census_vectors = cc.data::census_vectors)
 }
 \arguments{
 \item{normalized}{<\verb{list of sf data.frame}> The output of
-\code{\link[susdata]{census_normalize}}.}
+\code{\link[cc.data]{census_normalize}}.}
 
 \item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\code{\link[cc.data]{census_vectors}}}
 }
 \value{
 A list of scales and years of census data with the columns

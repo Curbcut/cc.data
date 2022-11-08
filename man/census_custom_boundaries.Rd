@@ -7,11 +7,12 @@
 census_custom_boundaries(
   destination,
   data_raw_DA,
-  census_vectors = susdata::census_vectors,
-  census_scales = susdata::census_scales,
-  census_years = susdata::census_years,
+  census_vectors = cc.data::census_vectors,
+  census_scales = cc.data::census_scales,
+  census_years = cc.data::census_years,
   agg_type = census_agg_type(census_vectors = census_vectors, census_scales =
-    census_scales, census_years = census_years)
+    census_scales, census_years = census_years),
+  crs
 )
 }
 \arguments{
@@ -22,19 +23,22 @@ be interpolated. e.g. boroughs in Montreal.}
 
 \item{data_raw_DA}{<\verb{named list}> A named list of sf data.frame where the names
 are census years. It must be the lower possible scale of the raw data (with parents),
-and so the output of \code{\link[susdata]{census_data_raw}} \code{[["DA"]]}}
+and so the output of \code{\link[cc.data]{census_data_raw}} \code{[["DA"]]}}
 
 \item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\code{\link[cc.data]{census_vectors}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_scales}}}
+\code{\link[cc.data]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
+\code{\link[cc.data]{census_years}}}
 
 \item{agg_type}{<\verb{named list}> The output of
-\code{\link[susdata]{census_agg_type}}}
+\code{\link[cc.data]{census_agg_type}}}
+
+\item{crs}{<\code{numeric}> EPSG coordinate reference system to be assigned, e.g.
+\code{32617} for Toronto.}
 }
 \value{
 The same list as what is fed to the \code{destination} argument,

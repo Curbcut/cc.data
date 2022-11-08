@@ -1,21 +1,23 @@
 #' Get census vectors values
 #'
 #' @param empty_geometries <`list of sf data.frame`> The output of
-#' \code{\link[susdata]{census_empty_geometries}}.
+#' \code{\link[cc.data]{census_empty_geometries}}.
 #' @param census_vectors <`data.frame`> Should be equal to
-#' \code{\link[susdata]{census_vectors}}
+#' \code{\link[cc.data]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_scales}}
+#' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[susdata]{census_years}}
+#' \code{\link[cc.data]{census_years}}
 #'
 #' @return A list of scales and years of census data accompanied with the
 #' parent values.
 #' @export
 census_data_raw <- function(empty_geometries,
-                            census_vectors = susdata::census_vectors,
-                            census_scales = susdata::census_scales,
-                            census_years = susdata::census_years) {
+                            census_vectors = cc.data::census_vectors,
+                            census_scales = cc.data::census_scales,
+                            census_years = cc.data::census_years) {
+
+  # dat <- census_data[census_data$var_code == census_vectors, ]
 
   pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
 
@@ -44,16 +46,31 @@ census_data_raw <- function(empty_geometries,
         census_dataset <- paste0("CA", sub("20", "", year))
 
         # Get the variable values
-        dat <- tryCatch(cancensus::get_census(dataset = census_dataset,
-                                     regions = list(PR = "24"),
-                                     level = scale,
-                                     vectors = unlist(var_codes),
-                                     geo_format = NA,
-                                     quiet = TRUE),
-                        error = function(e) {
-                          stop(paste("Error in census retrieval for:",
-                                     scale, year))
-                        })
+        dat <-  if (scale == "DA") {
+          # Troubles with getting DA nation-wide. Get provinces and bind.
+          pr_codes <- cancensus::list_census_regions(census_dataset)
+          pr_codes <- pr_codes$region[pr_codes$level == "PR"]
+          pr_codes <- lapply(pr_codes, \(x) list(PR = x))
+          all_pr_vecs <- lapply(pr_codes, \(reg) {
+            cancensus::get_census(
+              dataset = census_dataset,
+              regions = reg,
+              level = scale,
+              vectors = unlist(var_codes),
+              geo_format = NA,
+              quiet = TRUE)
+          })
+          Reduce(rbind, all_pr_vecs)
+        } else {
+          cancensus::get_census(
+            dataset = census_dataset,
+            regions = list(C = "01"),
+            level = scale,
+            vectors = unlist(var_codes),
+            geo_format = NA,
+            quiet = TRUE)
+        }
+
         dat <- dat[, c("GeoUID", names(var_codes))]
         names(dat)[1] <- "ID"
 
@@ -106,20 +123,40 @@ census_data_raw <- function(empty_geometries,
         pv_vecs <- pv$parent_vector
         names(pv_vecs) <- pv$var_code
 
-        # Retrieve the values of parent vectors
-        pv <-
-          mapply(\(x, y) {
-            out <- cancensus::get_census(dataset = census_dataset,
-                                         regions = list(PR = "24"),
-                                         level = scale,
-                                         vectors = x,
-                                         geo_format = NA,
-                                         quiet = TRUE)
-            out <- out[c(1, length(out))]
-            names(dat)[1] <- "ID"
-            names(out) <- c("ID", paste0(y, "_parent"))
-            out
-          }, pv_vecs, names(pv_vecs), SIMPLIFY = FALSE)
+        unique_pv_vecs <- unique(pv_vecs)
+        names(unique_pv_vecs) <- unique_pv_vecs
+
+        # Unique retrieval for parents
+        parents_ret <- if (scale == "DA") {
+          pr_codes <- cancensus::list_census_regions(census_dataset)
+          pr_codes <- pr_codes$region[pr_codes$level == "PR"]
+          pr_codes <- lapply(pr_codes, \(x) list(PR = x))
+          all_pr_vecs <- lapply(pr_codes, \(reg) {
+            cancensus::get_census(
+              dataset = census_dataset,
+              regions = reg,
+              level = scale,
+              vectors = unique_pv_vecs,
+              geo_format = NA,
+              quiet = TRUE)
+          })
+          Reduce(rbind, all_pr_vecs)
+        } else {
+          cancensus::get_census(
+            dataset = census_dataset,
+            regions = list(C = "01"),
+            level = scale,
+            vectors = unique_pv_vecs,
+            geo_format = NA,
+            quiet = TRUE)
+        }
+
+        pv <- mapply(\(vec_name, vec) {
+          out <- parents_ret[, c("GeoUID", vec)]
+          names(out) <- c("ID", paste0(vec_name, "_parent"))
+          out
+        }, names(pv_vecs), pv_vecs, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+
         # Sum the parents if a vector have multiple parents
         multiple_pv_names <- names(table(names(pv))[table(names(pv)) > 1])
         multiple_pv <- sapply(multiple_pv_names, \(x) {

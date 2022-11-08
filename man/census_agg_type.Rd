@@ -5,20 +5,20 @@
 \title{Get census variables aggregation type}
 \usage{
 census_agg_type(
-  census_vectors = susdata::census_vectors,
-  census_scales = susdata::census_scales,
-  census_years = susdata::census_years
+  census_vectors = cc.data::census_vectors,
+  census_scales = cc.data::census_scales,
+  census_years = cc.data::census_years
 )
 }
 \arguments{
 \item{census_vectors}{<\code{data.frame}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\code{\link[cc.data]{census_vectors}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_scales}}}
+\code{\link[cc.data]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
+\code{\link[cc.data]{census_years}}}
 }
 \value{
 A named list of length two. The first is a vector of character of

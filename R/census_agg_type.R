@@ -3,18 +3,18 @@
 #' Get the aggregation type which will be used for interpolation.
 #'
 #' @param census_vectors <`data.frame`> Should be equal to
-#' \code{\link[susdata]{census_vectors}}
+#' \code{\link[cc.data]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_scales}}
+#' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[susdata]{census_years}}
+#' \code{\link[cc.data]{census_years}}
 #'
 #' @return A named list of length two. The first is a vector of character of
 #' additive variables, and the other is average.
 #' @export
-census_agg_type <- function(census_vectors = susdata::census_vectors,
-                            census_scales = susdata::census_scales,
-                            census_years = susdata::census_years) {
+census_agg_type <- function(census_vectors = cc.data::census_vectors,
+                            census_scales = cc.data::census_scales,
+                            census_years = cc.data::census_years) {
 
   agg_year <-
     # Skip 2001. Some vectors are labelled as averaged but aggregated as

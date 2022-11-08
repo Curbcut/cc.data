@@ -1,15 +1,15 @@
 #' Get empty geometries
 #'
 #' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[susdata]{census_years}}
+#' \code{\link[cc.data]{census_years}}
 #' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_scales}}
+#' \code{\link[cc.data]{census_scales}}
 #'
 #' @return A named list of `sf data.frame` the same length as census_scales,
 #' with census geometries, containing only ID, population and households.
 #' @export
-census_empty_geometries <- function(census_scales = susdata::census_scales,
-                                    census_years = susdata::census_years) {
+census_empty_geometries <- function(census_scales = cc.data::census_scales,
+                                    census_years = cc.data::census_years) {
 
   # Create vector of dataset code for cancensus
   census_dataset <- paste0("CA", sub("20", "", census_years))
@@ -22,7 +22,7 @@ census_empty_geometries <- function(census_scales = susdata::census_scales,
 
         # Retrieve
         out <- cancensus::get_census(dataset = year,
-                                     regions = list(PR = "24"),
+                                     regions = list(C = "01"),
                                      level = scale,
                                      geo_format = "sf",
                                      quiet = TRUE)

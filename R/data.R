@@ -19,6 +19,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -36,6 +37,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -53,6 +55,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -70,6 +73,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -87,6 +91,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -104,6 +109,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -121,6 +127,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -138,6 +145,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -155,6 +163,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
@@ -172,6 +181,7 @@
 #' \describe{
 #'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
 #'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}

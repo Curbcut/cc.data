@@ -6,28 +6,28 @@
 \usage{
 census_interpolate(
   data_raw,
-  census_vectors = susdata::census_vectors,
-  census_scales = susdata::census_scales,
-  census_years = susdata::census_years,
+  census_vectors = cc.data::census_vectors,
+  census_scales = cc.data::census_scales,
+  census_years = cc.data::census_years,
   agg_type = census_agg_type(census_vectors = census_vectors, census_scales =
     census_scales, census_years = census_years)
 )
 }
 \arguments{
 \item{data_raw}{<\verb{list of sf data.frame}> The output of
-\code{\link[susdata]{census_data_raw}}.}
+\code{\link[cc.data]{census_data_raw}}.}
 
 \item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\code{\link[cc.data]{census_vectors}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_scales}}}
+\code{\link[cc.data]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
+\code{\link[cc.data]{census_years}}}
 
 \item{agg_type}{<\verb{named list}> The output of
-\code{\link[susdata]{census_agg_type}}.}
+\code{\link[cc.data]{census_agg_type}}.}
 }
 \value{
 A list of scales and years of census data with geometries interpolated

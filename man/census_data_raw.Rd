@@ -6,23 +6,23 @@
 \usage{
 census_data_raw(
   empty_geometries,
-  census_vectors = susdata::census_vectors,
-  census_scales = susdata::census_scales,
-  census_years = susdata::census_years
+  census_vectors = cc.data::census_vectors,
+  census_scales = cc.data::census_scales,
+  census_years = cc.data::census_years
 )
 }
 \arguments{
 \item{empty_geometries}{<\verb{list of sf data.frame}> The output of
-\code{\link[susdata]{census_empty_geometries}}.}
+\code{\link[cc.data]{census_empty_geometries}}.}
 
 \item{census_vectors}{<\code{data.frame}> Should be equal to
-\code{\link[susdata]{census_vectors}}}
+\code{\link[cc.data]{census_vectors}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[susdata]{census_scales}}}
+\code{\link[cc.data]{census_scales}}}
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[susdata]{census_years}}}
+\code{\link[cc.data]{census_years}}}
 }
 \value{
 A list of scales and years of census data accompanied with the

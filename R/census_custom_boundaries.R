@@ -6,26 +6,29 @@
 #' be interpolated. e.g. boroughs in Montreal.
 #' @param data_raw_DA <`named list`> A named list of sf data.frame where the names
 #' are census years. It must be the lower possible scale of the raw data (with parents),
-#' and so the output of \code{\link[susdata]{census_data_raw}} \code{[["DA"]]}
+#' and so the output of \code{\link[cc.data]{census_data_raw}} \code{[["DA"]]}
 #' @param census_vectors <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_vectors}}
+#' \code{\link[cc.data]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_scales}}
+#' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[susdata]{census_years}}
+#' \code{\link[cc.data]{census_years}}
 #' @param agg_type <`named list`> The output of
-#' \code{\link[susdata]{census_agg_type}}
+#' \code{\link[cc.data]{census_agg_type}}
+#' @param crs <`numeric`> EPSG coordinate reference system to be assigned, e.g.
+#' \code{32617} for Toronto.
 #'
 #' @return The same list as what is fed to the `destination` argument,
 #' with all processed census data appended.
 #' @export
 census_custom_boundaries <- function(destination, data_raw_DA,
-                                     census_vectors = susdata::census_vectors,
-                                     census_scales = susdata::census_scales,
-                                     census_years = susdata::census_years,
+                                     census_vectors = cc.data::census_vectors,
+                                     census_scales = cc.data::census_scales,
+                                     census_years = cc.data::census_years,
                                      agg_type = census_agg_type(census_vectors = census_vectors,
                                                                 census_scales = census_scales,
-                                                                census_years = census_years)) {
+                                                                census_years = census_years),
+                                     crs) {
 
   pb <- progressr::progressor(steps = length(destination) * length(census_years))
 
@@ -35,10 +38,11 @@ census_custom_boundaries <- function(destination, data_raw_DA,
     future.apply::future_sapply(as.character(census_years), \(year) {
 
       # Transform to census projection
-      dest <- sf::st_transform(dest, 3347)
+      dest <- sf::st_transform(dest, crs)
 
       # Interpolate other years
       origin <- data_raw_DA[[year]]
+      origin <- sf::st_transform(origin, crs)
       origin <- origin[names(origin) != "ID"]
       origin$area <- get_area(origin)
       int <- suppressWarnings(sf::st_intersection(origin, dest))

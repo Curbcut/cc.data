@@ -1,22 +1,22 @@
 #' Interpolate all census years to the current year's geography
 #'
 #' @param data_raw <`list of sf data.frame`> The output of
-#' \code{\link[susdata]{census_data_raw}}.
+#' \code{\link[cc.data]{census_data_raw}}.
 #' @param agg_type <`named list`> The output of
-#' \code{\link[susdata]{census_agg_type}}.
+#' \code{\link[cc.data]{census_agg_type}}.
 #' @param census_vectors <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_vectors}}
+#' \code{\link[cc.data]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[susdata]{census_scales}}
+#' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[susdata]{census_years}}
+#' \code{\link[cc.data]{census_years}}
 #'
 #' @return A list of scales and years of census data with geometries interpolated
 #' to the current year.
 census_interpolate <- function(data_raw,
-                               census_vectors = susdata::census_vectors,
-                               census_scales = susdata::census_scales,
-                               census_years = susdata::census_years,
+                               census_vectors = cc.data::census_vectors,
+                               census_scales = cc.data::census_scales,
+                               census_years = cc.data::census_years,
                                agg_type = census_agg_type(census_vectors = census_vectors,
                                                           census_scales = census_scales,
                                                           census_years = census_years)) {
@@ -29,16 +29,18 @@ census_interpolate <- function(data_raw,
       # Scale level globals
       max_year <- as.character(max(census_years))
       data_scale <- data_raw[[scale]]
-      destination <- data_scale[[max_year]][, c("ID", "geometry")]
+      destination <- data_scale[[max_year]][, c("ID", "geometry")] |>
+        sf::st_make_valid()
 
       # If max year, don't interpolate
       if (year == max_year) return(data_scale[[year]])
 
       # Interpolate other years
-      origin <- data_scale[[year]]
+      origin <- sf::st_make_valid(data_scale[[year]])
       origin <- origin[names(origin) != "ID"]
       origin$area <- get_area(origin)
-      int <- suppressWarnings(sf::st_intersection(origin, destination))
+      int <- tryCatch(suppressWarnings(sf::st_intersection(origin, destination)),
+                      error = function(e) print(paste0(scale, year)))
       int <- int[sf::st_is(int, "POLYGON") | sf::st_is(int, "MULTIPOLYGON"), ]
 
       int$int_area <- get_area(int)
