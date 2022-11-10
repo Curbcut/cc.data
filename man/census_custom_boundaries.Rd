@@ -6,13 +6,13 @@
 \usage{
 census_custom_boundaries(
   destination,
+  DA_IDs,
   census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
   agg_type = census_agg_type(census_vectors_table =
     cc.data::census_vectors_table[cc.data::census_vectors_table$var_code \%in\%
     census_vectors, ], census_scales = census_scales, census_years = census_years),
-  DA_IDs,
   crs
 )
 }
@@ -21,6 +21,10 @@ census_custom_boundaries(
 the name of a scale which can be found in the census, e.g. \code{CSD}, \code{CT}, \code{DA}.
 Each contains an sf data.frame of non-census boundaries, for which data must
 be interpolated. e.g. boroughs in Montreal.}
+
+\item{DA_IDs}{<\verb{named list}> <\verb{character vector}> All the current census'
+DA IDs present in the region. Only those will be extracted from the database
+to do interpolation.}
 
 \item{census_vectors}{<\verb{character vector}> Should be equal to
 \code{\link[cc.data]{census_vectors}}, or a subset of the character vector to
@@ -35,16 +39,8 @@ only filter the wanted variables.}
 \item{agg_type}{<\verb{named list}> The output of
 \code{\link[cc.data]{census_agg_type}}}
 
-\item{DA_IDs}{<\verb{named list}> <\verb{character vector}> All the current census'
-DA IDs present in the region. Only those will be extracted from the database
-to do interpolation.}
-
 \item{crs}{<\code{numeric}> EPSG coordinate reference system to be assigned, e.g.
 \code{32617} for Toronto.}
-
-\item{data_raw_DA}{<\verb{named list}> A named list of sf data.frame where the names
-are census years. It must be the lower possible scale of the raw data (with parents),
-and so the output of \code{\link[cc.data]{census_data_raw}} \code{[["DA"]]}}
 }
 \value{
 The same list as what is fed to the \code{destination} argument,

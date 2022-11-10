@@ -49,12 +49,20 @@ db_write_processed_data <- function(conn, processed_census_data) {
       tb <- processed_census_data[[scale]]
       if ("sf" %in% class(tb)) tb <- sf::st_drop_geometry(tb)
 
+      # Write the table
       DBI::dbWriteTable(conn, tb_name, tb, overwrite = TRUE)
+
+      # Create an index on ID for faster retrieval
+      # Modify the column first so that it's character type
+      max_cell_size <- max(nchar(tb$ID))
+      DBI::dbExecute(conn, paste("ALTER TABLE", tb_name, "MODIFY COLUMN",
+                                 "ID", "VARCHAR(", max_cell_size, ")"))
+      # Index the ID column
+      index_name <- paste0("ID_index_", tb_name)
+      DBI::dbExecute(conn, paste("CREATE INDEX", index_name,
+                                 "ON", tb_name, "(ID)"))
     })
 
-  if (sum(out) != length(processed_census_data))
-    stop(paste0("The sum of tables successfully written to the database is ",
-                "not equal to the length of `processed_census_data`."))
   return(message(paste0("`", sum(out), "` tables added successfully.")))
 }
 
@@ -168,8 +176,19 @@ db_write_raw_data <- function(conn, DA_data_raw) {
     #     DBI::dbWriteTable(conn, new_tb_name, tb, overwrite = TRUE)
     #   })
     # } else {
-      DBI::dbWriteTable(conn, tb_name, df_no_geo, overwrite = TRUE)
+    DBI::dbWriteTable(conn, tb_name, df_no_geo, overwrite = TRUE)
     # }
+
+    # Create an index on ID for faster retrieval
+    # Modify the column first so that it's character type
+    max_cell_size <- max(nchar(df_no_geo$ID))
+    DBI::dbExecute(conn, paste("ALTER TABLE", tb_name, "MODIFY COLUMN",
+                               "ID", "VARCHAR(", max_cell_size, ")"))
+    # Index the ID column
+    index_name <- paste0("ID_index_", tb_name)
+    DBI::dbExecute(conn, paste("CREATE INDEX", index_name,
+                               "ON", tb_name, "(ID)"))
+
   }, DA_data_raw, names(DA_data_raw))
 
   return(message("Success"))
