@@ -196,6 +196,27 @@
 #' A character vector
 "census_vectors"
 
+#' DA ID years dictionary
+#'
+#' Dictionary to map all IDs of the most recent census to the DA IDs of the
+#' previous censuses.
+#'
+#' @format ## `census_DA_years_dict`
+#' A data.frame of the same number of columns as there are years available in
+#' the census
+#' \describe{
+#'   \item{ID_20xx}{All DA IDs of the most recent census}
+#'   \item{ID_...}{List of that year's DA IDs for which the DA ID of the most
+#'   recent census years intersects.}
+#' }
+"census_DA_years_dict"
+
+#' All census ID of each scale, from the latest census
+#'
+#' @format ## `census_all_ids`
+#' A named list the same length as the length of `cc.data::census_scales`
+"census_all_ids"
+
 #' 2016 Dissemination Areas Can-ALE Index
 #'
 #' Canadian Active Living Environments Database.

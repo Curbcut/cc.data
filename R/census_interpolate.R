@@ -30,7 +30,7 @@ census_interpolate <- function(data_raw,
       # Scale level globals
       max_year <- as.character(max(census_years))
       data_scale <- data_raw[[scale]]
-      destination <- data_scale[[max_year]][, c("ID", "geometry")] |>
+      all_dest <- data_scale[[max_year]][, c("ID", "geometry")] |>
         sf::st_make_valid()
 
       # If max year, don't interpolate
@@ -38,13 +38,25 @@ census_interpolate <- function(data_raw,
         return(data_scale[[year]])
       }
 
+      # IDs that needing interpolation
+      y_df <- data_scale[[year]]
+      needing_inter <- sapply(all_dest$ID, \(id) {
+        if (!id %in% y_df$ID) return(FALSE)
+        dest_id <- all_dest$geometry[all_dest$ID == id]
+        or_id <- y_df$geometry[y_df$ID == id]
+
+        get_area(sf::st_intersection(dest_id, or_id)) / get_area(dest_id) > 0.95
+      })
+      needing_inter <- names(needing_inter)[which(needing_inter == F)]
+
+      # Update destination to only include the ones that need interpolation
+      destination <- all_dest[all_dest$ID %in% needing_inter, ]
+
       # Interpolate other years
-      origin <- sf::st_make_valid(data_scale[[year]])
+      origin <- sf::st_make_valid(data_raw[["DA"]][[year]])
       origin <- origin[names(origin) != "ID"]
       origin$area <- get_area(origin)
-      int <- tryCatch(suppressWarnings(sf::st_intersection(origin, destination)),
-        error = function(e) print(paste0(scale, year))
-      )
+      int <- suppressWarnings(sf::st_intersection(origin, destination))
       int <- int[sf::st_is(int, "POLYGON") | sf::st_is(int, "MULTIPOLYGON"), ]
 
       int$int_area <- get_area(int)
@@ -118,9 +130,13 @@ census_interpolate <- function(data_raw,
       out[out == "NaN"] <- NA
       out[out == "Inf"] <- NA
 
+      # Bind the correct year's data with the interpolated data
+      out <- rbind(sf::st_drop_geometry(y_df[!y_df$ID %in% needing_inter, ]),
+                   out)
+
       # Return as sf
       pb()
-      tibble::as_tibble(merge(out, destination[c("ID", "geometry")])) |>
+      tibble::as_tibble(merge(out, all_dest[c("ID", "geometry")])) |>
         sf::st_as_sf()
     }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)

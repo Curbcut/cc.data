@@ -48,7 +48,7 @@ census_data_raw <- function(empty_geometries,
         # Get the variable values
         dat <- if (scale == "DA") {
           # Troubles with getting DA nation-wide. Get provinces and bind.
-          pr_codes <- cancensus::list_census_regions(census_dataset)
+          pr_codes <- cancensus::list_census_regions(census_dataset, quiet = TRUE)
           pr_codes <- pr_codes$region[pr_codes$level == "PR"]
           pr_codes <- lapply(pr_codes, \(x) list(PR = x))
           all_pr_vecs <- lapply(pr_codes, \(reg) {
@@ -133,7 +133,7 @@ census_data_raw <- function(empty_geometries,
 
         # Unique retrieval for parents
         parents_ret <- if (scale == "DA") {
-          pr_codes <- cancensus::list_census_regions(census_dataset)
+          pr_codes <- cancensus::list_census_regions(census_dataset, quiet = TRUE)
           pr_codes <- pr_codes$region[pr_codes$level == "PR"]
           pr_codes <- lapply(pr_codes, \(x) list(PR = x))
           all_pr_vecs <- lapply(pr_codes, \(reg) {

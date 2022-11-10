@@ -12,7 +12,11 @@ Imports:
     tibble,
     stats,
     future.apply,
-    progressr
+    progressr,
+    DBI,
+    RMySQL,
+    wkb,
+    data.table
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

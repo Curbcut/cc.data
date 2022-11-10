@@ -23,7 +23,7 @@
 #' with all processed census data appended.
 #' @export
 census_custom_boundaries <-
-  function(destination, data_raw_DA,
+  function(destination,
            census_vectors = cc.data::census_vectors,
            census_scales = cc.data::census_scales,
            census_years = cc.data::census_years,
