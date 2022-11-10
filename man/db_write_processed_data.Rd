@@ -8,7 +8,7 @@ db_write_processed_data(conn, processed_census_data)
 }
 \arguments{
 \item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_admin_connect}}.}
+\code{\link[cc.data]{db_connect}}.}
 
 \item{processed_census_data}{<\verb{named list}> The finalized process data
 normally coming out of the final processing function:

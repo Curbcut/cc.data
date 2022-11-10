@@ -5,7 +5,10 @@
 #' @return returns an S4 object that inherits from \code{\link[DBI]{DBIConnection-class}}.
 #' This object is used to communicate with the database engine.
 #' @export
-db_admin_connect <- function() {
+db_connect <- function() {
+  if (Sys.getenv("CURBCUT_DB_USER") == "")
+    stop(paste0("You do not have a Curbcut database user access."))
+
   DBI::dbConnect(
     drv = RMySQL::MySQL(),
     username = Sys.getenv("CURBCUT_DB_USER"),
@@ -15,10 +18,20 @@ db_admin_connect <- function() {
     dbname = "ccdb")
 }
 
+#' Disconnect from the AWS MySQL database
+#'
+#' @param conn A \code{\link[DBI]{DBIConnection-class}} object, as returned by
+#' \code{\link[cc.data]{db_connect}}.
+#' @return A message out of \code{\link[DBI]{dbDisconnect}}
+#' @export
+db_disconnect <- function(conn) {
+  DBI::dbDisconnect(conn)
+}
+
 #' Write the list of processed census data to the MySQL database
 #'
 #' @param conn A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-#' \code{\link[cc.data]{db_admin_connect}}.
+#' \code{\link[cc.data]{db_connect}}.
 #' @param processed_census_data <`named list`> The finalized process data
 #' normally coming out of the final processing function:
 #' \code{\link[cc.data]{census_reduce_years}}
@@ -48,7 +61,7 @@ db_write_processed_data <- function(conn, processed_census_data) {
 #' Write the list of scales and years of raw census data to the MySQL database
 #'
 #' @param conn A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-#' \code{\link[cc.data]{db_admin_connect}}.
+#' \code{\link[cc.data]{db_connect}}.
 #' @param DA_data_raw <`list of sf data.frame`> The DA output of
 #' \code{\link[cc.data]{census_data_raw}}. The DA output of the raw data retrieval.
 #'
@@ -167,7 +180,7 @@ db_write_raw_data <- function(conn, DA_data_raw) {
 #' Read a table in the database by filtering the ID column.
 #'
 #' @param conn A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-#' \code{\link[cc.data]{db_admin_connect}}.
+#' \code{\link[cc.data]{db_connect}}.
 #' @param table <`character`> The table name in the MySQL database. To list all
 #' tables, use \code{\link[DBI]{dbListTables}}.
 #' @param columns <`character vector`> A character vector of all columns to
@@ -212,7 +225,7 @@ db_read_data <- function(conn, table, columns = "*", IDs) {
 #' Create a read only user to the AWS MySQL database
 #'
 #' @param conn A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-#' \code{\link[cc.data]{db_admin_connect}}.
+#' \code{\link[cc.data]{db_connect}}.
 #' @param user <`character`> User identifier for the new user
 #' @param password <`character`> Password identifier for the new user
 #' @param admin <`logical`> If the user created should be granted all powers
@@ -240,7 +253,7 @@ db_create_user <- function(conn, user, password, admin = FALSE) {
 #' Delete a user that has access to the AWS MySQL database
 #'
 #' @param conn A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-#' \code{\link[cc.data]{db_admin_connect}}.
+#' \code{\link[cc.data]{db_connect}}.
 #' @param user <`character`> User identifier for the user to remove
 #'
 #' @return Returns an error or a success message. User's access are then removed,

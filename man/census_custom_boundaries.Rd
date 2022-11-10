@@ -12,6 +12,7 @@ census_custom_boundaries(
   agg_type = census_agg_type(census_vectors_table =
     cc.data::census_vectors_table[cc.data::census_vectors_table$var_code \%in\%
     census_vectors, ], census_scales = census_scales, census_years = census_years),
+  DA_IDs,
   crs
 )
 }
@@ -33,6 +34,10 @@ only filter the wanted variables.}
 
 \item{agg_type}{<\verb{named list}> The output of
 \code{\link[cc.data]{census_agg_type}}}
+
+\item{DA_IDs}{<\verb{named list}> <\verb{character vector}> All the current census'
+DA IDs present in the region. Only those will be extracted from the database
+to do interpolation.}
 
 \item{crs}{<\code{numeric}> EPSG coordinate reference system to be assigned, e.g.
 \code{32617} for Toronto.}

@@ -8,7 +8,7 @@ db_write_raw_data(conn, DA_data_raw)
 }
 \arguments{
 \item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_admin_connect}}.}
+\code{\link[cc.data]{db_connect}}.}
 
 \item{DA_data_raw}{<\verb{list of sf data.frame}> The DA output of
 \code{\link[cc.data]{census_data_raw}}. The DA output of the raw data retrieval.}

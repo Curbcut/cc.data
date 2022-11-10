@@ -8,7 +8,7 @@ db_create_user(conn, user, password, admin = FALSE)
 }
 \arguments{
 \item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_admin_connect}}.}
+\code{\link[cc.data]{db_connect}}.}
 
 \item{user}{<\code{character}> User identifier for the new user}
 

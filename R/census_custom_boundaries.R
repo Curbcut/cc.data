@@ -4,9 +4,9 @@
 #' the name of a scale which can be found in the census, e.g. `CSD`, `CT`, `DA`.
 #' Each contains an sf data.frame of non-census boundaries, for which data must
 #' be interpolated. e.g. boroughs in Montreal.
-#' @param data_raw_DA <`named list`> A named list of sf data.frame where the names
-#' are census years. It must be the lower possible scale of the raw data (with parents),
-#' and so the output of \code{\link[cc.data]{census_data_raw}} \code{[["DA"]]}
+#' @param DA_IDs <`named list`> <`character vector`> All the current census'
+#' DA IDs present in the region. Only those will be extracted from the database
+#' to do interpolation.
 #' @param census_vectors <`character vector`> Should be equal to
 #' \code{\link[cc.data]{census_vectors}}, or a subset of the character vector to
 #' only filter the wanted variables.
@@ -23,7 +23,7 @@
 #' with all processed census data appended.
 #' @export
 census_custom_boundaries <-
-  function(destination,
+  function(destination, DA_IDs,
            census_vectors = cc.data::census_vectors,
            census_scales = cc.data::census_scales,
            census_years = cc.data::census_years,
@@ -56,8 +56,23 @@ census_custom_boundaries <-
         # Transform to census projection
         dest <- sf::st_transform(dest, crs)
 
+        # Get origin's DA data from the database
+        ids_retrieve_from_db <-
+        cc.data::census_DA_years_dict[[paste0("ID_", year)]][
+          cc.data::census_DA_years_dict[[1]] %in% DA_IDs]
+        ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
+
+        # Open a DB connection and get the necessary data
+        conn <- db_connect()
+        origin <- tryCatch(db_read_data(conn, table = paste0("raw_DA_", year),
+                                        IDs = ids_retrieve_from_db),
+                           error = function(e) {
+                             DBI::dbDisconnect(conn)
+                             stop(e)
+                           })
+        DBI::dbDisconnect(conn)
+
         # Interpolate other years
-        origin <- data_raw_DA[[year]]
         origin <- sf::st_transform(origin, crs)
         origin <- origin[names(origin) != "ID"]
         origin$area <- get_area(origin)

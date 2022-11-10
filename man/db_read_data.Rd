@@ -8,7 +8,7 @@ db_read_data(conn, table, columns = "*", IDs)
 }
 \arguments{
 \item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_admin_connect}}.}
+\code{\link[cc.data]{db_connect}}.}
 
 \item{table}{<\code{character}> The table name in the MySQL database. To list all
 tables, use \code{\link[DBI]{dbListTables}}.}
