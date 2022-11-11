@@ -4,20 +4,17 @@
 \alias{db_write_processed_data}
 \title{Write the list of processed census data to the MySQL database}
 \usage{
-db_write_processed_data(conn, processed_census_data)
+db_write_processed_data(processed_census_data)
 }
 \arguments{
-\item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_connect}}.}
-
 \item{processed_census_data}{<\verb{named list}> The finalized process data
 normally coming out of the final processing function:
 \code{\link[cc.data]{census_reduce_years}}}
 }
 \value{
-Returns an error or a success message. All tables in the list fed to
-\code{processed_census_data} are written to the MySQL database with the spatial
-features dropped.
+Returns an error or nothing if ran successfully. All tables in the
+list fed to \code{processed_census_data} are written to the MySQL database with
+the spatial features dropped.
 }
 \description{
 Write the list of processed census data to the MySQL database

@@ -4,17 +4,14 @@
 \alias{db_write_raw_data}
 \title{Write the list of scales and years of raw census data to the MySQL database}
 \usage{
-db_write_raw_data(conn, DA_data_raw)
+db_write_raw_data(DA_data_raw)
 }
 \arguments{
-\item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_connect}}.}
-
 \item{DA_data_raw}{<\verb{list of sf data.frame}> The DA output of
 \code{\link[cc.data]{census_data_raw}}. The DA output of the raw data retrieval.}
 }
 \value{
-Returns an error or a success message. All DA tables in the list fed
+Returns an error or nothing if ran successfully. All DA tables in the list fed
 to \code{DA_data_raw} are written to the MySQL database with the spatial
 features transformed to binary then hexadecimal encoded character. If the
 character is too large for the MySQL cell limit, the geometry is split in

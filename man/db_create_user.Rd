@@ -4,12 +4,9 @@
 \alias{db_create_user}
 \title{Create a read only user to the AWS MySQL database}
 \usage{
-db_create_user(conn, user, password, admin = FALSE)
+db_create_user(user, password, admin = FALSE)
 }
 \arguments{
-\item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_connect}}.}
-
 \item{user}{<\code{character}> User identifier for the new user}
 
 \item{password}{<\code{character}> Password identifier for the new user}
@@ -18,8 +15,8 @@ db_create_user(conn, user, password, admin = FALSE)
 on the MySQL db. If FALSE, read only permissions are attributed.}
 }
 \value{
-Returns an error or a success message. User is then created and
-has SELECT and SHOW VIEW privileges only.
+Returns an error or nothing if ran successfully. User is then created and
+has SELECT and SHOW VIEW privileges only if \code{admin} is set to FALSE (default).
 }
 \description{
 Create a read only user to the AWS MySQL database

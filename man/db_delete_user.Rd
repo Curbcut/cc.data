@@ -4,17 +4,14 @@
 \alias{db_delete_user}
 \title{Delete a user that has access to the AWS MySQL database}
 \usage{
-db_delete_user(conn, user)
+db_delete_user(user)
 }
 \arguments{
-\item{conn}{A \code{\link[DBI]{DBIConnection-class}} object, as returned by
-\code{\link[cc.data]{db_connect}}.}
-
 \item{user}{<\code{character}> User identifier for the user to remove}
 }
 \value{
-Returns an error or a success message. User's access are then removed,
-the user is deleted.
+Returns an error or nothing if ran successfully. User's access are
+then removed and the user is deleted.
 }
 \description{
 Delete a user that has access to the AWS MySQL database
