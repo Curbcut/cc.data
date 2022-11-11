@@ -17,7 +17,8 @@ for type \code{execute} and \code{get}, but a data.frame for type \code{write}.}
 cases, won't be used.}
 }
 \value{
-An error or nothing if ran successfully.
+An error, a data.frame if \code{type} is get, or nothing if other types ran
+successfully.
 }
 \description{
 Execute, write or get queries with connection and disconnection included, to

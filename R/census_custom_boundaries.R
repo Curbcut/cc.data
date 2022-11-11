@@ -63,14 +63,10 @@ census_custom_boundaries <-
         ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
 
         # Open a DB connection and get the necessary data
-        conn <- db_connect()
-        origin <- tryCatch(db_read_data(conn, table = paste0("raw_DA_", year),
-                                        IDs = ids_retrieve_from_db),
-                           error = function(e) {
-                             DBI::dbDisconnect(conn)
-                             stop(e)
-                           })
-        DBI::dbDisconnect(conn)
+        origin <- db_read_data(table = paste0("raw_DA_", year),
+                               columns = c(census_vectors,
+                                           paste0(census_vectors, "_parent")),
+                               IDs = ids_retrieve_from_db)
 
         # Interpolate other years
         origin <- sf::st_transform(origin, crs)

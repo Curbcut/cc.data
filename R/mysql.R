@@ -31,7 +31,8 @@ db_connect <- function() {
 #' @param name <`character`> The table name, mandatory for type `write`. In other
 #' cases, won't be used.
 #'
-#' @return An error or nothing if ran successfully.
+#' @return An error, a data.frame if `type` is get, or nothing if other types ran
+#' successfully.
 #' @export
 db_query <- function(type, statement, name = NULL) {
 
@@ -55,7 +56,7 @@ db_query <- function(type, statement, name = NULL) {
       names(call)[names(call) == "statement"] <- "value"
     }
 
-    do.call(eval(parse(text = call_fun)), call)
+    out <- do.call(eval(parse(text = call_fun)), call)
   }, error = function(e) {
     db_disconnect(conn)
     stop(e)
@@ -65,7 +66,7 @@ db_query <- function(type, statement, name = NULL) {
   db_disconnect(conn)
 
   # Return
-  return(invisible(NULL))
+  return(if (type == "get") out else invisible(NULL))
 }
 
 #' Disconnect from the AWS MySQL database
@@ -258,13 +259,23 @@ db_read_data <- function(table, columns = "*", IDs) {
   IDs_condition <- paste0("ID = ", IDs)
 
   # If not retrieve all columns, make sure to retrieve IDs
-  if (columns != "*") columns <- c("ID", columns, "geometry_*")
+  if (length(columns) != 1 && all(columns != "*")) {
+
+    all_cols <- db_query(type = "get", statement = sprintf("SELECT COLUMN_NAME
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE table_name = '%s'", table))$COLUMN_NAME
+
+    geo_cols <- all_cols[grepl("geometry_", all_cols)]
+    columns <- columns[columns %in% all_cols]
+
+    columns <- c("ID", columns, geo_cols)
+    }
 
   query <- paste("SELECT", paste0(columns, collapse = ", "), "FROM",
                  table, "WHERE",
                  paste0(IDs_condition, collapse = " OR "))
 
-  df <- db_query(type = "execute", statement = query)
+  df <- db_query(type = "get", statement = query)
   df <- df[, names(df) != "row_names"]
   df <- tibble::as_tibble(df)
 
@@ -285,7 +296,7 @@ db_read_data <- function(table, columns = "*", IDs) {
           sf::st_as_sfc(crs = 3347)
       })
 
-    df <- sf::st_as_sf(df, crs = 3347)
+    df <- sf::st_as_sf(tibble::as_tibble(df), crs = 3347)
   }
 
   return(df)
