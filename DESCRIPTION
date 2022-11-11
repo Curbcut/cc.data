@@ -17,6 +17,8 @@ Imports:
     RMySQL,
     wkb,
     data.table
+Suggests:
+    aws.s3
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

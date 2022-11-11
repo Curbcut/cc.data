@@ -6,8 +6,9 @@
 #' This object is used to communicate with the database engine.
 #' @export
 db_connect <- function() {
-  if (Sys.getenv("CURBCUT_DB_USER") == "")
+  if (Sys.getenv("CURBCUT_DB_USER") == "") {
     stop(paste0("You do not have a Curbcut database user access."))
+  }
 
   DBI::dbConnect(
     drv = RMySQL::MySQL(),
@@ -15,7 +16,8 @@ db_connect <- function() {
     password = Sys.getenv("CURBCUT_DB_PASSWORD"),
     host = "ccdb-instance-1.cplnwzthenux.us-east-1.rds.amazonaws.com",
     port = 3306,
-    dbname = "ccdb")
+    dbname = "ccdb"
+  )
 }
 
 #' Execute, write or get queries from the MySQL database
@@ -40,27 +42,38 @@ db_query <- function(type, statement, name = NULL) {
   conn <- db_connect()
 
   # Englobe the call into a tryCatch to disconnect if it fails
-  tryCatch({
-    call_fun <- (\(x) if (x == "execute") return("DBI::dbExecute") else
-      if (x == "write") return("DBI::dbWriteTable") else
-        if (x == "get") return("DBI::dbGetQuery") else
-          return(stop("Argument `type` unrecognized.")))(type)
+  tryCatch(
+    {
+      call_fun <- (\(x) if (x == "execute") {
+        return("DBI::dbExecute")
+      } else
+      if (x == "write") {
+        return("DBI::dbWriteTable")
+      } else
+      if (x == "get") {
+        return("DBI::dbGetQuery")
+      } else {
+        return(stop("Argument `type` unrecognized."))
+      })(type)
 
-    if (type == "write" && is.null(name))
-      stop("A name must be given to the data.frame")
+      if (type == "write" && is.null(name)) {
+        stop("A name must be given to the data.frame")
+      }
 
-    call <- list(conn = conn, statement = statement)
+      call <- list(conn = conn, statement = statement)
 
-    if (type == "write") {
-      call <- c(call, list(name = name, overwrite = TRUE))
-      names(call)[names(call) == "statement"] <- "value"
+      if (type == "write") {
+        call <- c(call, list(name = name, overwrite = TRUE))
+        names(call)[names(call) == "statement"] <- "value"
+      }
+
+      out <- do.call(eval(parse(text = call_fun)), call)
+    },
+    error = function(e) {
+      db_disconnect(conn)
+      stop(e)
     }
-
-    out <- do.call(eval(parse(text = call_fun)), call)
-  }, error = function(e) {
-    db_disconnect(conn)
-    stop(e)
-  })
+  )
 
   # Disconnect
   db_disconnect(conn)
@@ -90,7 +103,6 @@ db_disconnect <- function(conn) {
 #' the spatial features dropped.
 #' @export
 db_write_processed_data <- function(processed_census_data) {
-
   out <-
     sapply(names(processed_census_data), \(scale) {
       tb_name <- paste("processed", scale, sep = "_")
@@ -104,14 +116,22 @@ db_write_processed_data <- function(processed_census_data) {
       # Create an index on ID for faster retrieval
       # Modify the column first so that it's character type
       max_cell_size <- max(nchar(tb$ID))
-      db_query(type = "execute",
-               statement = paste("ALTER TABLE", tb_name, "MODIFY COLUMN",
-                                 "ID", "VARCHAR(", max_cell_size, ")"))
+      db_query(
+        type = "execute",
+        statement = paste(
+          "ALTER TABLE", tb_name, "MODIFY COLUMN",
+          "ID", "VARCHAR(", max_cell_size, ")"
+        )
+      )
       # Index the ID column
       index_name <- paste0("ID_index_", tb_name)
-      db_query(type = "execute",
-               statement = paste("CREATE INDEX", index_name,
-                                 "ON", tb_name, "(ID)"))
+      db_query(
+        type = "execute",
+        statement = paste(
+          "CREATE INDEX", index_name,
+          "ON", tb_name, "(ID)"
+        )
+      )
     })
 
   return(invisible(NULL))
@@ -142,8 +162,9 @@ db_write_raw_data <- function(DA_data_raw) {
   # `DBI::dbGetQuery(conn, "set innodb_strict_mode = 0;")`
   innodb_strict_mode <-
     db_query(type = "get", "show variables like '%strict%'")$Value
-  if (innodb_strict_mode == "ON")
+  if (innodb_strict_mode == "ON") {
     db_query(type = "execute", "set innodb_strict_mode = 0;")
+  }
 
   # Progress bar
   pb <- progressr::progressor(steps = length(DA_data_raw))
@@ -154,7 +175,8 @@ db_write_raw_data <- function(DA_data_raw) {
       dataset = cc.data::census_years[length(cc.data::census_years)],
       regions = list(PR = x),
       geo_format = "sf",
-      quiet = TRUE)
+      quiet = TRUE
+    )
   })) |> sf::st_as_sf()
   terr <- sf::st_union(terr)
   terr <- sf::st_transform(terr, 3347)
@@ -179,10 +201,12 @@ db_write_raw_data <- function(DA_data_raw) {
         hex <- sf::st_as_binary(df$geometry[x], hex = TRUE)
         if (nchar(hex) > 60000) {
           split_every <- 60000
-          start <- 0:(ceiling(nchar(hex)/split_every) - 1) * split_every + 1
-          end <- 1:(ceiling(nchar(hex)/split_every)) * split_every
-          hex <- mapply(\(st, en) substr(x = hex, start = st, stop = en),
-                        start, end)
+          start <- 0:(ceiling(nchar(hex) / split_every) - 1) * split_every + 1
+          end <- 1:(ceiling(nchar(hex) / split_every)) * split_every
+          hex <- mapply(
+            \(st, en) substr(x = hex, start = st, stop = en),
+            start, end
+          )
           hex <- Reduce(c, hex)
         }
 
@@ -199,7 +223,9 @@ db_write_raw_data <- function(DA_data_raw) {
     hexes_split <-
       sapply(possible_geometries, \(geom) {
         sapply(hexes, \(hex) {
-          if (!geom %in% names(hex)) return("")
+          if (!geom %in% names(hex)) {
+            return("")
+          }
           return(hex[[geom]])
         })
       }, simplify = FALSE, USE.NAMES = TRUE)
@@ -231,13 +257,16 @@ db_write_raw_data <- function(DA_data_raw) {
     # Create an index on ID for faster retrieval
     # Modify the column first so that it's character type
     max_cell_size <- max(nchar(df_no_geo$ID))
-    db_query(type = "execute", paste("ALTER TABLE", tb_name, "MODIFY COLUMN",
-                                     "ID", "VARCHAR(", max_cell_size, ")"))
+    db_query(type = "execute", paste(
+      "ALTER TABLE", tb_name, "MODIFY COLUMN",
+      "ID", "VARCHAR(", max_cell_size, ")"
+    ))
     # Index the ID column
     index_name <- paste0("ID_index_", tb_name)
-    db_query(type = "execute", paste("CREATE INDEX", index_name,
-                                     "ON", tb_name, "(ID)"))
-
+    db_query(type = "execute", paste(
+      "CREATE INDEX", index_name,
+      "ON", tb_name, "(ID)"
+    ))
   }, DA_data_raw, names(DA_data_raw))
 
   return(invisible(NULL))
@@ -260,7 +289,6 @@ db_read_data <- function(table, columns = "*", IDs) {
 
   # If not retrieve all columns, make sure to retrieve IDs
   if (length(columns) != 1 && all(columns != "*")) {
-
     all_cols <- db_query(type = "get", statement = sprintf("SELECT COLUMN_NAME
           FROM INFORMATION_SCHEMA.COLUMNS
           WHERE table_name = '%s'", table))$COLUMN_NAME
@@ -269,11 +297,13 @@ db_read_data <- function(table, columns = "*", IDs) {
     columns <- columns[columns %in% all_cols]
 
     columns <- c("ID", columns, geo_cols)
-    }
+  }
 
-  query <- paste("SELECT", paste0(columns, collapse = ", "), "FROM",
-                 table, "WHERE",
-                 paste0(IDs_condition, collapse = " OR "))
+  query <- paste(
+    "SELECT", paste0(columns, collapse = ", "), "FROM",
+    table, "WHERE",
+    paste0(IDs_condition, collapse = " OR ")
+  )
 
   df <- db_query(type = "get", statement = query)
   df <- df[, names(df) != "row_names"]
@@ -314,14 +344,18 @@ db_read_data <- function(table, columns = "*", IDs) {
 #' @export
 db_create_user <- function(user, password, admin = FALSE) {
   create <-
-    db_query(type = "execute", sprintf("CREATE USER %s IDENTIFIED BY '%s';",
-                                       user, password))
+    db_query(type = "execute", sprintf(
+      "CREATE USER %s IDENTIFIED BY '%s';",
+      user, password
+    ))
 
   rights <- if (admin) "ALL PRIVILEGES" else "SELECT, SHOW VIEW"
 
   grant <-
-    db_query(type = "execute", sprintf("GRANT %s ON ccdb.* TO %s@'%%';",
-                                       rights, user))
+    db_query(type = "execute", sprintf(
+      "GRANT %s ON ccdb.* TO %s@'%%';",
+      rights, user
+    ))
   flush <-
     db_query(type = "execute", "FLUSH PRIVILEGES;")
 
@@ -340,5 +374,3 @@ db_delete_user <- function(user) {
 
   return(invisible(NULL))
 }
-
-

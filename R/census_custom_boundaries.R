@@ -58,15 +58,20 @@ census_custom_boundaries <-
 
         # Get origin's DA data from the database
         ids_retrieve_from_db <-
-        cc.data::census_DA_years_dict[[paste0("ID_", year)]][
-          cc.data::census_DA_years_dict[[1]] %in% DA_IDs]
+          cc.data::census_DA_years_dict[[paste0("ID_", year)]][
+            cc.data::census_DA_years_dict[[1]] %in% DA_IDs
+          ]
         ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
 
         # Open a DB connection and get the necessary data
-        origin <- db_read_data(table = paste0("raw_DA_", year),
-                               columns = c(census_vectors,
-                                           paste0(census_vectors, "_parent")),
-                               IDs = ids_retrieve_from_db)
+        origin <- db_read_data(
+          table = paste0("raw_DA_", year),
+          columns = c(
+            census_vectors,
+            paste0(census_vectors, "_parent")
+          ),
+          IDs = ids_retrieve_from_db
+        )
 
         # Interpolate other years
         origin <- sf::st_transform(origin, crs)

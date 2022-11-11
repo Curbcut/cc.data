@@ -32,11 +32,9 @@ census_build_DA_years_dictionary <- function(DA_data_raw,
     out[[paste0("ID_", x)]] <- ite
 
     out
-
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   # Merge the outputs
   Reduce(\(x, y) base::merge(x, y, by = "ID_2016", all.x = TRUE), dict_tibbles) |>
     tibble::as_tibble()
-
 }

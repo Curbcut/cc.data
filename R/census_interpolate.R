@@ -41,7 +41,9 @@ census_interpolate <- function(data_raw,
       # IDs that needing interpolation
       y_df <- data_scale[[year]]
       needing_inter <- sapply(all_dest$ID, \(id) {
-        if (!id %in% y_df$ID) return(FALSE)
+        if (!id %in% y_df$ID) {
+          return(FALSE)
+        }
         dest_id <- all_dest$geometry[all_dest$ID == id]
         or_id <- y_df$geometry[y_df$ID == id]
 
@@ -131,8 +133,10 @@ census_interpolate <- function(data_raw,
       out[out == "Inf"] <- NA
 
       # Bind the correct year's data with the interpolated data
-      out <- rbind(sf::st_drop_geometry(y_df[!y_df$ID %in% needing_inter, ]),
-                   out)
+      out <- rbind(
+        sf::st_drop_geometry(y_df[!y_df$ID %in% needing_inter, ]),
+        out
+      )
 
       # Return as sf
       pb()
