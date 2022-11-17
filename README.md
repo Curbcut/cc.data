@@ -127,9 +127,9 @@ the number of census years.
 ``` r
 # Tweak futures
 future::plan(list(future::tweak(future::multisession,
-                                workers = length(susdata::census_scales)),
+                                workers = length(cc.data::census_scales)),
                   future::tweak(future::multisession,
-                                workers = length(susdata::census_years))))
+                                workers = length(cc.data::census_years))))
 ```
 
 ##### Census data building and processing workflow
