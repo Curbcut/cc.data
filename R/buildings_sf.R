@@ -173,7 +173,8 @@ buildings_sf <- function(DA_processed_table, dest_folder, OSM_cache = TRUE) {
 
     # Save iteration in the destination folder --------------------------------
 
-    qs::qsave(building, file = paste0(dest_folder, "/", ms_key, ".qs"))
+    if (!grepl("/$", dest_folder)) dest_folder <- paste0(dest_folder, "/")
+    qs::qsave(building, file = paste0(dest_folder, ms_key, ".qs"))
     pb()
 
   }, future.seed = NULL) |> invisible()

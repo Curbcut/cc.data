@@ -151,7 +151,7 @@ processed_census <- census_reduce_years(parent_dropped)
     the `cancensus` package using the variable codes from the
     `census_vectors_table`, as well as the parent variables;
 3.  Interpolate all data of all all years to the most recent census
-    year.
+    year.;
 4.  Normalize data depending if it is classed as a number or a
     percentage, using the parent variable;
 5.  Drop the parent variables;
@@ -175,3 +175,59 @@ of `census_reduce_years()`.
 db_write_processed_data(processed_census)
 db_write_raw_data(DA_data_raw = data_raw$DA)
 ```
+
+## Build and process buildings across the country
+
+##### Usage
+
+Most of the operations for the building dataset are performed
+iteratively on each province. It is very spatial feature heavy and can
+hog a lot of memory. Each worker of the future backend will use between
+16 to 20 gb of memory.
+
+##### Download and combine buildings datasets
+
+Our building dataset is built using both OpenStreetMap and the
+[Microsoft’s Canadian Building
+Footprints](https://github.com/microsoft/CanadianBuildingFootprints) for
+places where OSM doesn’t have great coverage. To free up memory between
+operations, the following functions write the building dataset for each
+province to a destination folder.
+
+``` r
+buildings_folder <- "buildings/"
+
+buildings_sf(DA_processed_table = processed_census$DA,
+             dest_folder = buildings_folder,
+             OSM_cache = TRUE)
+```
+
+##### Reverse geocode
+
+The reverse geocoding can be sped up by building our own docker
+container of [Nominatim](https://nominatim.org/), which, when mounted
+using a [.pbf](http://download.geofabrik.de/north-america/canada.html)
+(OpenStreetMap) file, can be used to find the nearest address of a
+latitude and longitude coordinate. This option is more than 100x faster
+than querying external servers to reverse geocode a large dataset like
+all the buildings in the country. The following will download and mount
+the docker image:
+
+``` r
+rev_geocode_local_nominatim()
+```
+
+Using a combination of the [National Open Database of
+Addresses](https://www.statcan.gc.ca/en/lode/databases/oda) and the
+local instance of Nominatim, we reverse geocode all the buildings in the
+country.
+
+``` r
+rev_geo <- rev_geocode_sf(prov_folder = buildings_folder)
+```
+
+##### Buildings upload to Amazon Aurora Serverless - MySQL
+
+To allow subsets of our building dataset to be downloaded using
+dissemination area IDs, we store the processed building dataset in the
+MySQL database.

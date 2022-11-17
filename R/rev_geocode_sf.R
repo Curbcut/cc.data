@@ -15,6 +15,8 @@
 #' @export
 rev_geocode_sf <- function(prov_folder, nb_batches = 100, nb_sf_process = 400) {
 
+  if (!grepl("/$", prov_folder)) prov_folder <- paste0(prov_folder, "/")
+
   # Download each province and match with National Open Database of  --------
   pb <- progressr::progressor(steps = nrow(cc.data::buildings_osm_ms_keys))
   provs <-
