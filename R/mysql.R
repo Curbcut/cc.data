@@ -41,7 +41,7 @@ db_query <- function(type, statement, name = NULL) {
   # Connect to database
   conn <- db_connect()
 
-  # Englobe the call into a tryCatch to disconnect if it fails
+  # Include the call into a tryCatch to disconnect if it fails
   tryCatch(
     {
       call_fun <- (\(x) if (x == "execute") {

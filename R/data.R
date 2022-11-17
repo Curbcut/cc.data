@@ -7,7 +7,7 @@
 #' All available census scales
 #'
 #' @format ## `census_scales`
-#' A character (year) vector
+#' A character (scales) vector
 "census_scales"
 
 #' Housing census vectors
@@ -245,3 +245,15 @@
 #' }
 #' @source <https://canue.ca/wp-content/uploads/2022/04/CAN-BICS_UserGuide_format.docx>
 "canbics_data"
+
+#' Links and key from where to download the buildings dataset
+#'
+#' @format ## `buildings_osm_ms_keys`
+#' A data frame of 2 columns and the same number of 13 rows
+#' \describe{
+#'   \item{osm_link }{The link from where to download buildings data from OSM}
+#'   \item{canbics_2021}{The province key from which to download MS building data}
+#'   \item{addresses}{The download link to get the province's database of addresses}
+#' }
+#' @source <https://github.com/microsoft/CanadianBuildingFootprints>
+"buildings_osm_ms_keys"

@@ -10,13 +10,21 @@ Imports:
     cancensus,
     sf,
     tibble,
+    utils,
     stats,
     future.apply,
     progressr,
     DBI,
     RMySQL,
     wkb,
-    data.table
+    data.table,
+    osmextract,
+    geojsonsf,
+    httr,
+    jsonlite,
+    nngeo,
+    qs,
+    stringr
 Suggests:
     aws.s3
 License: MIT + file LICENSE

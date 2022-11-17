@@ -7,7 +7,7 @@
 \format{
 \subsection{\code{census_scales}}{
 
-A character (year) vector
+A character (scales) vector
 }
 }
 \usage{

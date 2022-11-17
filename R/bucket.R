@@ -64,7 +64,7 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
       )
       close.connection(f)
 
-      !all(existing_char == new_char)
+      !identical(existing_char, new_char)
     } else {
       TRUE
     }
@@ -77,7 +77,7 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
         key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
         secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
         file = file_path,
-        object = file_path,
+        object = object_name,
         bucket = bucket
       ) |> suppressMessages()
     }

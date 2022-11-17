@@ -8,5 +8,6 @@ names(canbics_data) <- c("DA_ID", "canbics_2021")
 class(canbics_data$DA_ID) <- "character"
 
 canbics_data <- unique(canbics_data)
+canbics_data <- canbics_data[canbics_data$canbics_2021 != -9999.00, ]
 
 usethis::use_data(canbics_data, overwrite = TRUE)
