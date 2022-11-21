@@ -4,11 +4,12 @@
 \alias{db_query}
 \title{Execute, write or get queries from the MySQL database}
 \usage{
-db_query(type, statement, name = NULL)
+db_query(type, statement, name = NULL, values = NULL)
 }
 \arguments{
-\item{type}{<\code{character}> One of \code{execute}, \code{write} or \code{get}. They correspond
-to \code{DBI::dbExecute}, \code{DBI::dbWriteTable} and \code{DBI::dbGetQuery}.}
+\item{type}{<\code{character}> One of \code{execute}, \code{write}, \code{get}, \code{remove} or \code{append}.
+They correspond to \code{DBI::dbExecute}, \code{DBI::dbWriteTable}, \code{DBI::dbGetQuery},
+\code{DBI::dbRemoveTable} and \code{DBI::sqlAppendTable}.}
 
 \item{statement}{<\code{character} or \code{data.frame}> A character string containing SQL
 for type \code{execute} and \code{get}, but a data.frame for type \code{write}.}

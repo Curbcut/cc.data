@@ -35,11 +35,11 @@ buildings_sf <- function(DA_processed_table, dest_folder, OSM_cache = TRUE) {
 
   # Process for each province -----------------------------------------------
 
-  pb <- progressr::progressor(steps = nrow(buildings_osm_ms_keys))
+  pb <- progressr::progressor(steps = nrow(cc.data::buildings_osm_ms_keys))
 
-  future.apply::future_lapply(seq_len(nrow(buildings_osm_ms_keys)), \(table_n) {
-    osm_pbf <- buildings_osm_ms_keys$osm_link[table_n]
-    ms_key <- buildings_osm_ms_keys$ms_code[table_n]
+  future.apply::future_lapply(seq_len(nrow(cc.data::buildings_osm_ms_keys)), \(table_n) {
+    osm_pbf <- cc.data::buildings_osm_ms_keys$osm_link[table_n]
+    ms_key <- cc.data::buildings_osm_ms_keys$ms_code[table_n]
 
 
     # Download OSM pbf (buildings) --------------------------------------------
@@ -149,11 +149,11 @@ buildings_sf <- function(DA_processed_table, dest_folder, OSM_cache = TRUE) {
     # Add DA ID ---------------------------------------------------------------
 
     DA_table <- DA_processed_table[, "ID"]
-    names(DA_table)[1] <- "DAUID"
+    names(DA_table)[1] <- "DA_ID"
 
     building_centroids <- suppressWarnings(sf::st_centroid(building))
     da_joined <- sf::st_join(building_centroids, DA_table)
-    da_joined <- sf::st_drop_geometry(da_joined[, c("ID", "DAUID")])
+    da_joined <- sf::st_drop_geometry(da_joined[, c("ID", "DA_ID")])
     building <- merge(building, da_joined, by = "ID")
 
 
@@ -161,7 +161,7 @@ buildings_sf <- function(DA_processed_table, dest_folder, OSM_cache = TRUE) {
 
     building$name <- NA_character_
     building <- building[, c(
-      "ID", "name", "DAUID", "osm_ID", "geometry"
+      "ID", "name", "DA_ID", "osm_ID", "geometry"
     )]
     building <- sf::st_cast(building, "MULTIPOLYGON")
     building <- sf::st_make_valid(building)

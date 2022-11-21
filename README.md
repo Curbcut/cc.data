@@ -220,14 +220,21 @@ rev_geocode_local_nominatim()
 Using a combination of the [National Open Database of
 Addresses](https://www.statcan.gc.ca/en/lode/databases/oda) and the
 local instance of Nominatim, we reverse geocode all the buildings in the
-country.
+country. This takes an even harder toll on memory usage, as the local
+Nominatim instance also uses a lot of computational power to serve the
+reverse geocoding.
 
 ``` r
-rev_geo <- rev_geocode_sf(prov_folder = buildings_folder)
+buildings_rev_geo <- rev_geocode_sf(prov_folder = buildings_folder)
 ```
 
 ##### Buildings upload to Amazon Aurora Serverless - MySQL
 
-To allow subsets of our building dataset to be downloaded using
-dissemination area IDs, we store the processed building dataset in the
-MySQL database.
+The processed building dataset is stored in the MySQL database using
+this following piece which stores the table `buildings` with a
+`buildings_DA_dict` table. The latter will be used to download subsets
+of our building dataset to be downloaded using dissemination area IDs.
+
+``` r
+db_write_long_table(df = buildings_rev_geo, tb_name = "buildings")
+```

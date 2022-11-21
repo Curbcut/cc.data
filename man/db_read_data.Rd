@@ -4,7 +4,7 @@
 \alias{db_read_data}
 \title{Read a table in the MySQL database}
 \usage{
-db_read_data(table, columns = "*", IDs)
+db_read_data(table, columns = "*", column_to_select = "ID", IDs)
 }
 \arguments{
 \item{table}{<\code{character}> The table name in the MySQL database. To list all
@@ -12,6 +12,9 @@ tables, use \code{\link[DBI]{dbListTables}}.}
 
 \item{columns}{<\verb{character vector}> A character vector of all columns to
 retrieve. By default, all columns (\code{*}).}
+
+\item{column_to_select}{<\verb{character vector}> To column from which the \code{IDs}
+should be selected. Defaults to \code{ID}.}
 
 \item{IDs}{<\verb{character vector}> A character vector of all IDs to retrieve.}
 }

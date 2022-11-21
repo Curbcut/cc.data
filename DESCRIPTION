@@ -2,22 +2,22 @@ Package: cc.data
 Title: Data for Curbcut
 Version: 0.0.0.9000
 Authors@R: 
-    c(person("Curbcut-MSSI", email = "contact@susmontreal.ca", role = "aut"),
+    c(person("Curbcut-MSSI", email = "contact@curbcut.ca", role = "aut"),
     person("Maxime", "Bélanger De Blois", email = "maxime.belangerdeblois@mcgill.ca", role = "cre"),
     person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca", role  = "ctb"))
-Description: The purpose of the susdata package is to prepare and update several national datasets that can be used in Sus instances.
+Description: The purpose of the susdata package is to prepare and update several national datasets that can be used in Curbcut instances.
 Imports: 
     cancensus,
     sf,
     tibble,
     utils,
     stats,
+    data.table,
     future.apply,
     progressr,
     DBI,
     RMySQL,
     wkb,
-    data.table,
     osmextract,
     geojsonsf,
     httr,
