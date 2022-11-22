@@ -37,7 +37,7 @@ db_connect <- function() {
 #' @return An error, a data.frame if `type` is get, or nothing if other types ran
 #' successfully.
 #' @export
-db_query <- function(type, statement, name = NULL, values = NULL) {
+db_query <- function(type, statement, name = NULL) {
 
   # Connect to database
   conn <- db_connect()
@@ -69,15 +69,15 @@ db_query <- function(type, statement, name = NULL, values = NULL) {
 
       call <- list(conn = conn, statement = statement)
 
-      if (type %in% c("write", "append")) {
+      if (type %in% "write") {
         call <- c(call, list(name = name))
         names(call)[names(call) == "statement"] <- "value"
       }
 
       if (type == "append") {
-        names(call)[names(call) == "name"] <- "table"
-        names(call)[names(call) == "value"] <- "values"
         names(call)[names(call) == "conn"] <- "con"
+        names(call)[names(call) == "name"] <- "table"
+        names(call)[names(call) == "statement"] <- "values"
       }
 
       if (type == "remove") {
@@ -361,16 +361,16 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs) {
 
   # Split in multiple smaller calls
   rows_calls <- 100
-  IDs <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
-  while (length(IDs) > 2500) {
+  ids <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
+  while (length(ids) > 2500) {
     rows_calls <- rows_calls * 1.2
-    IDs <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
+    ids <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
   }
-  IDs <- unname(unlist(IDs, recursive = FALSE))
+
 
   # Construct the calls
-  IDs <- lapply(IDs, \(x) paste0(column_to_select, " = '", x, "'"))
-  query <- lapply(IDs, \(x) paste(
+  ids <- lapply(ids, \(x) paste0(column_to_select, " = '", x, "'"))
+  query <- lapply(ids, \(x) paste(
     "(SELECT * FROM ", table, " WHERE", paste0(x, collapse = " OR "), ")"
   ))
   query <- paste0(query, collapse = " UNION ALL ")
@@ -380,9 +380,18 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs) {
   df <- df[, names(df) != "row_names"]
   df <- tibble::as_tibble(df)
 
+  # Convert each column to their right class
+  df <- lapply(names(df), \(col) {
+    out <- tibble::tibble(.rows = nrow(df))
+    out[[col]] <- if (grepl("ID$", col)) as.character(df[[col]]) else
+      utils::type.convert(df[[col]], as.is = TRUE)
+    out
+  })
+  df <- tibble::as_tibble(Reduce(cbind, df))
+
   # If it is geometry, convert it to sf
   if (sum(grepl("geometry", names(df))) > 0) {
-    dfs <- split(df, 1:100)
+    dfs <- suppressWarnings(split(df, 1:100))
 
     pb <- progressr::progressor(steps = length(dfs))
     dfs <- future.apply::future_lapply(dfs, \(df) {

@@ -4,10 +4,13 @@
 \alias{rev_geocode_localhost}
 \title{Reverse geocode using a local Nominatim instance (docker)}
 \usage{
-rev_geocode_localhost(point_sf)
+rev_geocode_localhost(point_sf, street = FALSE)
 }
 \arguments{
 \item{point_sf}{< \code{sfc_POINT}> Point sf, e.g. a centroid of a building}
+
+\item{street}{< \code{logical}> Is it to reverse geocode streets (No city name
+appended)}
 }
 \value{
 The address retrieved from the local Nominatim instance

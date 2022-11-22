@@ -4,7 +4,7 @@
 \alias{db_query}
 \title{Execute, write or get queries from the MySQL database}
 \usage{
-db_query(type, statement, name = NULL, values = NULL)
+db_query(type, statement, name = NULL)
 }
 \arguments{
 \item{type}{<\code{character}> One of \code{execute}, \code{write}, \code{get}, \code{remove} or \code{append}.

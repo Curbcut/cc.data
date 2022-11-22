@@ -144,10 +144,12 @@ rev_geocode_OSM <- function(point_sf) {
 #' Reverse geocode using a local Nominatim instance (docker)
 #'
 #' @param point_sf < `sfc_POINT`> Point sf, e.g. a centroid of a building
+#' @param street < `logical`> Is it to reverse geocode streets (No city name
+#' appended)
 #'
 #' @return The address retrieved from the local Nominatim instance
 #' @export
-rev_geocode_localhost <- function(point_sf) {
+rev_geocode_localhost <- function(point_sf, street = FALSE) {
 
   coords <- sf::st_coordinates(point_sf)
 
@@ -211,6 +213,8 @@ rev_geocode_localhost <- function(point_sf) {
     })()
 
   if (is.null(name)) return(NA_character_)
+
+  if (street) name <- gsub(",.*", "", name)
 
   return(name)
 }
