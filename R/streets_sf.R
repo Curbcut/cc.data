@@ -112,6 +112,36 @@ streets_sf <- function(DA_processed_table, nb_batches = 500) {
   da_joined <- sf::st_drop_geometry(da_joined[, c("OBJECTID", "DA_ID")])
   streets <- merge(streets, da_joined, by = "OBJECTID")
 
+
+  # Add DB ID for faster travel time matrice building -----------------------
+
+  census_dataset <- gsub("^20", "CA",
+                         cc.data::census_years[length(cc.data::census_years)])
+  pr_codes <- cancensus::list_census_regions(census_dataset, quiet = TRUE)
+  pr_codes <- pr_codes$region[pr_codes$level == "PR"]
+  pr_codes <- lapply(pr_codes, \(x) list(PR = x))
+  all_pr_vecs <- future.apply::future_lapply(pr_codes, \(reg) {
+    cancensus::get_census(
+      dataset = census_dataset,
+      regions = reg,
+      level = "DB",
+      geo_format = "sf",
+      quiet = TRUE
+    )
+  }, future.seed = NULL)
+  DB <- lapply(all_pr_vecs, \(x) {
+    names(x)[names(x) == "GeoUID"] <- "DB_ID"
+    x <- x[, c("DB_ID", "geometry")]
+    x
+  })
+  DB <- data.table::rbindlist(DB)
+  DB <- sf::st_as_sf(tibble::as_tibble(DB))
+  DB <- sf::st_transform(DB, 3347)
+
+  db_joined <- sf::st_join(streets_centroids, DB)
+  db_joined <- sf::st_drop_geometry(db_joined[, c("OBJECTID", "DB_ID")])
+  streets <- merge(streets, db_joined, by = "OBJECTID")
+
   streets <- streets[order(streets$DA_ID), ]
   streets$ID <- paste0("s", seq_len(nrow(streets)))
   rownames(streets) <- NULL
@@ -119,7 +149,7 @@ streets_sf <- function(DA_processed_table, nb_batches = 500) {
 
   # Consolidate and clean output --------------------------------------------
 
-  streets <- streets[, c("ID", "name", "DA_ID", "geometry")]
+  streets <- streets[, c("ID", "name", "DA_ID", "DB_ID", "geometry")]
   streets <- sf::st_cast(streets, "LINESTRING")
   streets <- sf::st_make_valid(streets)
   streets <- streets[!sf::st_is_empty(streets$geometry), ]

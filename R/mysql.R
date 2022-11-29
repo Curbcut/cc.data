@@ -42,6 +42,26 @@ db_query <- function(type, statement, name = NULL) {
   # Connect to database
   conn <- db_connect()
 
+  if (type %in% c("write", "execute")) {
+    # The following is a SESSION variable, and so it must be enable/disable
+    # for every connection.
+    # The innodb_strict_mode setting affects the handling of syntax errors
+    # for CREATE TABLE, ALTER TABLE and CREATE INDEX statements.
+    # innodb_strict_mode also enables a record size check, so that an
+    # INSERT or UPDATE never fails due to the record being too large for
+    # the selected page size.
+    #
+    # By default, the option is ON:
+    # `DBI::dbGetQuery(conn, "show variables like '%strict%'")`
+    # Set it to OFF:
+    # `DBI::dbGetQuery(conn, "set innodb_strict_mode = 0;")`
+    innodb_strict_mode <-
+      DBI::dbGetQuery(conn, "show variables like '%strict%'")$Value
+    if (innodb_strict_mode == "ON") {
+      DBI::dbExecute(conn, "set innodb_strict_mode = 0;")
+    }
+  }
+
   # Include the call into a tryCatch to disconnect if it fails
   tryCatch(
     {
@@ -75,8 +95,8 @@ db_query <- function(type, statement, name = NULL) {
       }
 
       if (type == "append") {
+        call <- c(call, list(table = name))
         names(call)[names(call) == "conn"] <- "con"
-        names(call)[names(call) == "name"] <- "table"
         names(call)[names(call) == "statement"] <- "values"
       }
 
@@ -134,45 +154,35 @@ db_write_table <- function(df, tb_name, primary_key, index = TRUE,
     # Get a df without geometry column
     df_no_geo <- sf::st_drop_geometry(df)
 
-    # Get the geometry has hex for better storage. The maximum size of a cell
+    # Get the geometry as hex for better storage. The maximum size of a cell
     # is around 65k characters, so split for as many columns as needed.
-    # Split for parallel operation
-    df_list <- split(df, 1:10) |> suppressWarnings()
-    df_geo <- lapply(df_list, `[[`, "geometry")
 
-    pb <- progressr::progressor(steps = length(df_geo))
     hexes <-
-      lapply(df_geo, \(df_ge) {
-        pb()
-        out <- lapply(seq_len(length(df_ge)), \(x) {
-          hex <- sf::st_as_binary(df$geometry[x], hex = TRUE)
-          if (nchar(hex) > 60000) {
-            split_every <- 60000
-            start <- 0:(ceiling(nchar(hex) / split_every) - 1) * split_every + 1
-            end <- 1:(ceiling(nchar(hex) / split_every)) * split_every
-            hex <- mapply(
-              \(st, en) substr(x = hex, start = st, stop = en),
-              start, end
-            )
-            hex <- Reduce(c, hex)
-          }
+      lapply(seq_len(nrow(df_no_geo)), \(x) {
+        hex <- sf::st_as_binary(df$geometry[x], hex = TRUE)
+        if (nchar(hex) > 60000) {
+          split_every <- 60000
+          start <- 0:(ceiling(nchar(hex) / split_every) - 1) * split_every + 1
+          end <- 1:(ceiling(nchar(hex) / split_every)) * split_every
+          hex <- mapply(
+            \(st, en) substr(x = hex, start = st, stop = en),
+            start, end
+          )
+        }
 
-          nb <- seq_len(length(hex))
-          names(hex) <- paste0("geometry_", nb)
-          hex
-        })
+        nb <- seq_len(length(hex))
+        names(hex) <- paste0("geometry_", nb)
+        hex
       })
-
-    hexes2 <- unname(unlist(hexes, recursive = FALSE))
 
     # How many geometry columns are needed
     possible_geometries <-
-      paste0("geometry_", seq_len(max(sapply(hexes2, length))))
+      paste0("geometry_", seq_len(max(sapply(hexes, length))))
 
     # Get each column values in order. If empty, empty string.
     hexes_split <-
       sapply(possible_geometries, \(geom) {
-        sapply(hexes2, \(hex) {
+        sapply(hexes, \(hex) {
           if (!geom %in% names(hex)) {
             return("")
           }
@@ -214,6 +224,7 @@ db_write_table <- function(df, tb_name, primary_key, index = TRUE,
     # Append the table's data by waves of 25k rows
     waves <- split(df_no_geo, 1:ceiling(nrow(df_no_geo) / rows_per_append_wave)) |>
       suppressWarnings()
+
     pb <- progressr::progressor(steps = length(waves))
     lapply(waves, \(x) {
       code <- db_query(type = "append", statement = x, name = tb_name)
@@ -244,23 +255,41 @@ db_write_table <- function(df, tb_name, primary_key, index = TRUE,
 
 #' Write the list of processed census data to the MySQL database
 #'
-#' @param processed_census_data <`named list`> The finalized process data
+#' @param processed_census <`named list`> The finalized process data
 #' normally coming out of the final processing function:
 #' \code{\link[cc.data]{census_reduce_years}}
 #'
 #' @return Returns an error or nothing if ran successfully. All tables in the
-#' list fed to `processed_census_data` are written to the MySQL database with
+#' list fed to `processed_census` are written to the MySQL database with
 #' the spatial features dropped.
 #' @export
-db_write_processed_data <- function(processed_census_data) {
+db_write_processed_data <- function(processed_census) {
+
+  # Territories sf to filter out from the db
+  terr <- data.table::rbindlist(lapply(c(60, 61, 62), \(x) {
+    cancensus::get_census(
+      dataset = cc.data::census_years[length(cc.data::census_years)],
+      regions = list(PR = x),
+      geo_format = "sf",
+      quiet = TRUE
+    )
+  })) |> sf::st_as_sf()
+  terr <- sf::st_union(terr)
+  terr <- sf::st_transform(terr, 3347)
+
   out <-
-    sapply(names(processed_census_data), \(scale) {
+    sapply(names(processed_census), \(scale) {
       tb_name <- paste("processed", scale, sep = "_")
 
-      tb <- processed_census_data[[scale]]
+      tb <- processed_census[[scale]]
+
+      # Cut the Canada's three territories. They are huge DAs, leading to hundreds
+      # of geometry columns in the database. Filter out to respect the MySQL cell
+      # limit.
+      tb_centroids <- suppressWarnings(sf::st_point_on_surface(tb))
+      tb <- tb[!as.vector(sf::st_intersects(tb_centroids, terr, sparse = FALSE)), ]
 
       db_write_table(df = tb, tb_name = tb_name, primary_key = "ID")
-
     })
 
   return(invisible(NULL))
@@ -278,22 +307,6 @@ db_write_processed_data <- function(processed_census_data) {
 #' multiple columns, e.g. geometry_1, geometry_2, etc.
 #' @export
 db_write_raw_data <- function(DA_data_raw) {
-
-  # The innodb_strict_mode setting affects the handling of syntax errors
-  # for CREATE TABLE, ALTER TABLE and CREATE INDEX statements.
-  # innodb_strict_mode also enables a record size check, so that an
-  # INSERT or UPDATE never fails due to the record being too large for
-  # the selected page size.
-  #
-  # By default, the option is ON:
-  # `DBI::dbGetQuery(conn, "show variables like '%strict%'")`
-  # Set it to OFF:
-  # `DBI::dbGetQuery(conn, "set innodb_strict_mode = 0;")`
-  innodb_strict_mode <-
-    db_query(type = "get", "show variables like '%strict%'")$Value
-  if (innodb_strict_mode == "ON") {
-    db_query(type = "execute", "set innodb_strict_mode = 0;")
-  }
 
   # Progress bar
   pb <- progressr::progressor(steps = length(DA_data_raw))
@@ -399,6 +412,7 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs) {
 
       df$geometry <-
         lapply(seq_len(nrow(df)), \(x) {
+          df[, geo_columns][is.na(df[, geo_columns])] <- ""
           paste0(df[x, geo_columns], collapse = "")
         })
 
@@ -527,8 +541,13 @@ db_create_user <- function(user, password, admin = FALSE) {
       "GRANT %s ON ccdb.* TO %s@'%%';",
       rights, user
     ))
-  flush <-
-    db_query(type = "execute", "FLUSH PRIVILEGES;")
+  if (admin) {
+    db_query(type = "execute", sprintf(
+      "GRANT `rds_superuser_role`@`%%` TO `%s`@`%%`",
+      user
+    ))
+  }
+  flush <- db_query(type = "execute", "FLUSH PRIVILEGES;")
 
   return(invisible(NULL))
 }
