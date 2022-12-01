@@ -151,7 +151,7 @@ census_custom_boundaries <-
         out[out == "NaN"] <- NA
         out[out == "Inf"] <- NA
 
-        # Return as sf
+        # Return as non-projected sf
         pb()
         tibble::as_tibble(merge(dest["ID"], out)) |>
           sf::st_as_sf()

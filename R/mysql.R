@@ -135,9 +135,11 @@ db_disconnect <- function(conn) {
 #' the MySQL
 #' @param tb_name <`character`> The name of the table in the MySQL database
 #' @param primary_key <`character`> A column of the table to be written that should
-#' be indexed (the column that will be used to subset and extract data).
-#' @param index <`logical`> Should there be an index for faster retrieval? In
-#' that case, the `primary_key` needs to be unique.
+#' be the pimary key for faster retrieval. The ID in that column needs to be
+#' unique.
+#' @param index <`character`> A column of the table to be written that should
+#' be indexed for faster retrieval. No need for the values of the column to be
+#' unique.
 #' @param rows_per_append_wave <`numeric`> Number of rows to each for each waves
 #' of append. The thiner the dataframe is, the more many rows can be appended
 #' at a time. For census data with lots of columns and geometry columns, as
@@ -147,7 +149,7 @@ db_disconnect <- function(conn) {
 #'
 #' @return Returns an error or nothing if ran successfully.
 #' @export
-db_write_table <- function(df, tb_name, primary_key, index = TRUE,
+db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
                            rows_per_append_wave = 1000) {
 
   if ("sf" %in% class(df)) {
@@ -202,7 +204,7 @@ db_write_table <- function(df, tb_name, primary_key, index = TRUE,
   # Remove if existing table
   db_query("remove", tb_name)
 
-  if (isTRUE(index)) {
+  if (!is.null(primary_key)) {
     # Create the table with the primary key for faster retrieval
     cols <-
       paste0(paste(
@@ -231,24 +233,25 @@ db_write_table <- function(df, tb_name, primary_key, index = TRUE,
       db_query(type = "execute", code)
       pb()
     })
-
-    # Create an index on ID for faster retrieval
-    # Modify the column first so that it's character type
-    max_cell_size <- max(nchar(df_no_geo[[primary_key]]))
-    db_query(type = "execute", paste(
-      "ALTER TABLE", tb_name, "MODIFY COLUMN",
-      primary_key, "VARCHAR(", max_cell_size, ")"
-    ))
-    # Index the ID column
-    index_name <- paste0("ID_index_", tb_name)
-    db_query(type = "execute", paste(
-      "CREATE INDEX", index_name,
-      "ON", tb_name, "(", primary_key, ")"
-    ))
   } else {
     db_query(type = "write", statement = df_no_geo, name = tb_name)
   }
 
+  if (!is.null(index)) {
+  # Create an index on ID for faster retrieval
+  # Modify the column first so that it's character type
+  max_cell_size <- max(nchar(df_no_geo[[index]]))
+  db_query(type = "execute", paste(
+    "ALTER TABLE", tb_name, "MODIFY COLUMN",
+    index, "VARCHAR(", max_cell_size, ")"
+  ))
+  # Index the ID column
+  index_name <- paste0("ID_index_", tb_name)
+  db_query(type = "execute", paste(
+    "CREATE INDEX", index_name,
+    "ON", tb_name, "(", index, ")"
+  ))
+  }
 
   return(invisible(NULL))
 }
@@ -355,10 +358,13 @@ db_write_raw_data <- function(DA_data_raw) {
 #' @param column_to_select <`character vector`> To column from which the `IDs`
 #' should be selected. Defaults to `ID`.
 #' @param IDs <`character vector`> A character vector of all IDs to retrieve.
+#' @param crs <`numeric`> EPSG coordinate reference system for which the data
+#' should be transformed.
 #'
 #' @return A tibble or an sf tibble depending if geometry is available.
 #' @export
-db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs) {
+db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
+                         crs = 3347) {
 
   # If not retrieve all columns, make sure to retrieve IDs
   if (length(columns) != 1 && all(columns != "*")) {
@@ -430,6 +436,7 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs) {
 
     df <- data.table::rbindlist(dfs)
     df <- sf::st_as_sf(tibble::as_tibble(df), crs = 3347)
+    df <- sf::st_transform(df, crs)
 
   }
 

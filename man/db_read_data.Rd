@@ -4,7 +4,7 @@
 \alias{db_read_data}
 \title{Read a table in the MySQL database}
 \usage{
-db_read_data(table, columns = "*", column_to_select = "ID", IDs)
+db_read_data(table, columns = "*", column_to_select = "ID", IDs, crs = 3347)
 }
 \arguments{
 \item{table}{<\code{character}> The table name in the MySQL database. To list all
@@ -17,6 +17,9 @@ retrieve. By default, all columns (\code{*}).}
 should be selected. Defaults to \code{ID}.}
 
 \item{IDs}{<\verb{character vector}> A character vector of all IDs to retrieve.}
+
+\item{crs}{<\code{numeric}> EPSG coordinate reference system for which the data
+should be transformed.}
 }
 \value{
 A tibble or an sf tibble depending if geometry is available.

@@ -508,7 +508,7 @@ census_vectors_family <-
   tibble::tibble(
     var_code = "family_children",
     type = list("pct"),
-    theme = "Family",
+    theme = "Household",
     vec_2016 = list("v_CA16_507"),
     vec_2011 = list(c("v_CA11F_129", "v_CA11F_119", "v_CA11F_125")),
     vec_2006 = list(c("v_CA06_65", "v_CA06_59", "v_CA06_69")),
@@ -525,7 +525,7 @@ census_vectors_family <-
   tibble::add_row(
     var_code = "family_one_person",
     type = list("pct"),
-    theme = "Family",
+    theme = "Household",
     vec_2016 = list("v_CA16_510"),
     vec_2011 = list("v_CA11F_157"),
     vec_2006 = list("v_CA06_89"),

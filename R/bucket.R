@@ -142,3 +142,28 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
 
   return(invisible(NULL))
 }
+
+#' Read single object from AWS bucket
+#'
+#' @param object <`character`> Name of the file with extension to retrieve.
+#' @param objectext <`character`> Extension of the file to retrieve, e.g. `.csv`
+#' or `.qs`.
+#' @param bucket <`character`> The name of the bucket from which to download
+#' the object.
+#' @param method <`function`> A function used to read the object, e.g. if a `.csv`
+#' then the method would be `utils::read.csv` or if a `.qs` would be `qs::qread`
+#'
+#' @return Returns the object read from the AWS bucket, and read using the
+#' supplied `method`.
+#' @export
+bucket_read_object <- function(object, objectext, bucket, method) {
+  tmp <- tempfile(fileext = objectext)
+  aws.s3::save_object(region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+                      key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+                      secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+                      object = object,
+                      bucket = bucket,
+                      file = tmp,
+                      overwrite = TRUE)
+  do.call(method, list(tmp))
+}

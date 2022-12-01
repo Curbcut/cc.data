@@ -7,8 +7,8 @@
 db_write_table(
   df,
   tb_name,
-  primary_key,
-  index = TRUE,
+  primary_key = NULL,
+  index = NULL,
   rows_per_append_wave = 1000
 )
 }
@@ -19,10 +19,12 @@ the MySQL}
 \item{tb_name}{<\code{character}> The name of the table in the MySQL database}
 
 \item{primary_key}{<\code{character}> A column of the table to be written that should
-be indexed (the column that will be used to subset and extract data).}
+be the pimary key for faster retrieval. The ID in that column needs to be
+unique.}
 
-\item{index}{<\code{logical}> Should there be an index for faster retrieval? In
-that case, the \code{primary_key} needs to be unique.}
+\item{index}{<\code{character}> A column of the table to be written that should
+be indexed for faster retrieval. No need for the values of the column to be
+unique.}
 
 \item{rows_per_append_wave}{<\code{numeric}> Number of rows to each for each waves
 of append. The thiner the dataframe is, the more many rows can be appended
