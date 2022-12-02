@@ -5,7 +5,7 @@ Authors@R:
     c(person("Curbcut-MSSI", email = "contact@curbcut.ca", role = "aut"),
     person("Maxime", "Bélanger De Blois", email = "maxime.belangerdeblois@mcgill.ca", role = "cre"),
     person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca", role  = "ctb"))
-Description: The purpose of the susdata package is to prepare and update several national datasets that can be used in Curbcut instances.
+Description: The purpose of the cc.data package is to prepare and update several national datasets that can be used in Curbcut instances.
 Imports: 
     cancensus,
     sf,

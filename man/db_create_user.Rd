@@ -2,19 +2,7 @@
 % Please edit documentation in R/mysql.R
 \name{db_create_user}
 \alias{db_create_user}
-\title{#' Write long table to the MySQL database
-#'
-#' @param df <\code{data.frame}> A data.frame or an sf data.frame containing a large
-#' number of rows, big enough that it will need its own DA dictionary.
-#' @param tb_name <\code{character}> The name of the table to be in the database,
-#' e.g. \code{buildings} or \code{street}.
-#'
-#' @return Returns an error or nothing if ran successfully. The \code{df} is saved
-#' and the name of the table corresponds to \code{tb_name} in the database. And there
-#' is another \code{tb_name_DA_dict} table which is DA dictionary. All ID of \code{df} are
-#' regrouped per DA ID in a JSON column.
-#' @export
-db_write_long_table <- function(df, tb_name) {}
+\title{Create a read only user to the AWS MySQL database}
 \usage{
 db_create_user(user, password, admin = FALSE)
 }
@@ -31,73 +19,5 @@ Returns an error or nothing if ran successfully. User is then created and
 has SELECT and SHOW VIEW privileges only if \code{admin} is set to FALSE (default).
 }
 \description{
-if (!"DA_ID" \%in\% names(df))
-stop(paste0("There must be a \code{DA_ID} column for referent in the \code{df} ",
-"table to write a long table in the db."))
+Create a read only user to the AWS MySQL database
 }
-\section{Write normal df table}{
-db_write_table(df = df, tb_name = tb_name, index = "ID",
-rows_per_append_wave = 50000)
-}
-
-\section{Create a dictionary from which to retrieve all df ID from DA IDs}{
-df <- sf::st_drop_geometry(df)
-dict <- split(df$ID, df$DA_ID)
-
-tb <- lapply(seq_along(dict), \(x) {
-y <- dict[\link{x}]
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{if (length(y) > 2000) \{
-
-  y <- suppressWarnings(split(y, 1:ceiling(length(y)/2000)))
-
-  out <- lapply(y, \\(z) \{
-    tibble::tibble(DA_ID = names(dict[x]),
-                   IDs = jsonlite::toJSON(z))
-  \})
-
-  tibble::as_tibble(data.table::rbindlist(out))
-
-\} else \{
-  tibble::tibble(DA_ID = names(dict[x]),
-                 IDs = jsonlite::toJSON(y))
-\}
-}\if{html}{\out{</div>}}
-
-})
-
-out <- data.table::rbindlist(tb)
-out <- tibble::as_tibble(out)
-
-db_write_table(df = out,
-tb_name = paste0(tb_name, "_DA_dict"),
-index = FALSE)
-
-}
-
-#' Read long table from the MySQL database
-#'
-#' Read data from a long table. The table must have been previously created
-#' using \code{\link[cc.data]{db_write_long_table}}
-#'
-#' @param table <\code{character}> The table name in the MySQL database. To list all
-#' tables, use \code{\link[DBI]{dbListTables}}.
-#' @param DA_ID <\verb{vector of character}> DA IDs from which to retrieve all their
-#' spatial features from the \code{table}.
-#'
-#' @return A tibble or an sf tibble depending if geometry is available.
-#' @export
-db_read_long_table <- function(table, DA_ID) {
-}
-
-\section{Read from DA dictionary}{
-ids <- db_read_data(table = paste0(table, "_DA_dict"),
-column_to_select = "DA_ID",
-IDs = DA_ID)
-ids <- unlist(sapply(ids$IDs, jsonlite::fromJSON, USE.NAMES = FALSE))
-}
-
-\section{Read from the database}{
-
-}
-

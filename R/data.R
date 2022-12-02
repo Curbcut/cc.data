@@ -17,14 +17,14 @@
 #' @format ## `census_vectors_housing`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_housing"
 
@@ -35,14 +35,14 @@
 #' @format ## `census_vectors_income`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_income"
 
@@ -53,14 +53,14 @@
 #' @format ## `census_vectors_identity`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_identity"
 
@@ -71,14 +71,14 @@
 #' @format ## `census_vectors_transport`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_transport"
 
@@ -89,14 +89,14 @@
 #' @format ## `census_vectors_employment`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_employment"
 
@@ -107,14 +107,14 @@
 #' @format ## `census_vectors_family`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_family"
 
@@ -125,14 +125,14 @@
 #' @format ## `census_vectors_language`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_language"
 
@@ -143,14 +143,14 @@
 #' @format ## `census_vectors_age`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_age"
 
@@ -161,14 +161,14 @@
 #' @format ## `census_vectors_education`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_education"
 
@@ -179,14 +179,14 @@
 #' @format ## `census_vectors_table`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{type}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[susbuildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[susbuildr]{add_variable}}}
+#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #' }
 "census_vectors_table"
 
@@ -195,6 +195,22 @@
 #' @format ## `census_vectors`
 #' A character vector
 "census_vectors"
+
+#' All census vectors details used for data export on Curbcut
+#'
+#' @format ## `census_vectors_details`
+#' A data.frame the same number of rows as there are Curbcut
+#' \code{\link[cc.data]{census_vectors}}
+#' \describe{
+#'   \item{var_code}{The code used to refer to the variables}
+#'   \item{vec}{The `cancensus` code for the vector}
+#'   \item{vec_label}{The name of the variable}
+#'   \item{parent_vec}{The `cancensus` code for the parent vector}
+#'   \item{aggregation}{Indicating whether the value is additive or a
+#'   transformation}
+#'   \item{parent_vec_label}{The name of the parent variable}
+#' }
+"census_vectors_details"
 
 #' DA ID years dictionary
 #'
