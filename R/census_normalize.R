@@ -52,6 +52,8 @@ census_normalize <- function(interpolated,
         sapply(numb, \(x) {
           tb <- data_no_geo["ID"]
           tb[[x]] <- pmin(1, data_no_geo[[x]] / data_no_geo[[paste0(x, "_parent")]])
+          # # If divided by zero and resulting to NaN, change it to 0
+          # tb[[x]][tb[[x]] == "NaN"] <- 0
           tb
         }, simplify = FALSE, USE.NAMES = TRUE)
       numb <- Reduce(merge, numb)

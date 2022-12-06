@@ -153,20 +153,23 @@ census_custom_boundaries <-
 
         # Return as non-projected sf
         pb()
-        tibble::as_tibble(merge(dest["ID"], out)) |>
+        tibble::as_tibble(merge(dest["ID"], out, all = TRUE)) |>
           sf::st_as_sf()
       }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
     }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
 
-    normalized <- census_normalize(interpolated,
+    normalized <- census_normalize(
+      interpolated = interpolated,
       census_scales = names(interpolated),
-      census_vectors_table = census_vecs
+      census_vectors_table = census_vecs,
+      census_years = census_years
     )
     parent_dropped <- census_drop_parents(normalized,
       census_vectors_table = census_vecs
     )
     census_reduce_years(parent_dropped,
       census_scales = names(interpolated),
-      census_vectors_table = census_vecs
+      census_vectors_table = census_vecs,
+      census_years = census_years
     )
   }

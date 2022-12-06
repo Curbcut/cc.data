@@ -376,6 +376,7 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
     columns <- columns[columns %in% all_cols]
 
     columns <- c("ID", columns, geo_cols)
+    columns <- paste0(columns, collapse = ", ")
   }
 
   # Split in multiple smaller calls
@@ -390,7 +391,7 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
   # Construct the calls
   ids <- lapply(ids, \(x) paste0(column_to_select, " = '", x, "'"))
   query <- lapply(ids, \(x) paste(
-    "(SELECT * FROM ", table, " WHERE", paste0(x, collapse = " OR "), ")"
+    "(SELECT ", columns, " FROM ", table, " WHERE", paste0(x, collapse = " OR "), ")"
   ))
   query <- paste0(query, collapse = " UNION ALL ")
 
