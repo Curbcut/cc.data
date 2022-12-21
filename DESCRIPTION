@@ -25,14 +25,14 @@ Imports:
     nngeo,
     qs,
     stringr,
-    rvest
+    rvest,
+    osmextract
 Suggests:
-    aws.s3,
-    r5r
+    aws.s3
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3
 URL: https://github.com/MSSI-urban/cc.data
 BugReports: https://github.com/MSSI-urban/cc.data/issues
 Depends: 

@@ -1,5 +1,10 @@
 #' Build streets country-wide
 #'
+#' This function uses the \code{\link[cc.data]{rev_geocode_localhost}} function,
+#' which means a local version of Nominatim must have been already set up and
+#' needs to be running on port 8080. You can do so using
+#' \code{\link[cc.data]{rev_geocode_local_nominatim}}.
+#'
 #' @param DA_processed_table <`sf data.frame`> A \code{DA} sf data.frame from
 #' which the DA ID will be attached to every single building.
 #' @param nb_batches <`numeric`> In how many batches should the sf that
@@ -96,7 +101,7 @@ streets_sf <- function(DA_processed_table, nb_batches = 500) {
     }, USE.NAMES = FALSE)
 
     pb()
-    bat[, c("OBJECTID", "name", "geometry")]
+    bat[, c("OBJECTID", "name", "RANK", "geometry")]
   }, future.seed = NULL)
 
   streets <- data.table::rbindlist(streets)
@@ -149,7 +154,10 @@ streets_sf <- function(DA_processed_table, nb_batches = 500) {
 
   # Consolidate and clean output --------------------------------------------
 
-  streets <- streets[, c("ID", "name", "DA_ID", "DB_ID", "geometry")]
+  streets <- streets[, c("ID", "name", "DA_ID", "DB_ID", "OBJECTID", "RANK",
+                         "geometry")]
+  names(streets)[names(streets) == "OBJECTID"] <- "object_id"
+  names(streets)[names(streets) == "RANK"] <- "rank"
   streets <- sf::st_cast(streets, "LINESTRING")
   streets <- sf::st_make_valid(streets)
   streets <- streets[!sf::st_is_empty(streets$geometry), ]

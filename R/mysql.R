@@ -240,7 +240,7 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
   if (!is.null(index)) {
   # Create an index on ID for faster retrieval
   # Modify the column first so that it's character type
-  max_cell_size <- max(nchar(df_no_geo[[index]]))
+  max_cell_size <- max(nchar(df_no_geo[[index]]), na.rm = TRUE)
   db_query(type = "execute", paste(
     "ALTER TABLE", tb_name, "MODIFY COLUMN",
     index, "VARCHAR(", max_cell_size, ")"

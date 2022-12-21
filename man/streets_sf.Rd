@@ -18,5 +18,8 @@ To be gentle on memory.}
 A street segment sf dataframe reverse geocoded.
 }
 \description{
-Build streets country-wide
+This function uses the \code{\link[cc.data]{rev_geocode_localhost}} function,
+which means a local version of Nominatim must have been already set up and
+needs to be running on port 8080. You can do so using
+\code{\link[cc.data]{rev_geocode_local_nominatim}}.
 }
