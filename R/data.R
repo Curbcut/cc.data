@@ -244,3 +244,21 @@
 #' }
 #' @source <https://github.com/microsoft/CanadianBuildingFootprints>
 "buildings_osm_ms_keys"
+
+#' Dictionary for pre-processed accessibility variables
+#'
+#' Computed using the \code{\link[cc.data]{accessibility_DA_location}} function.
+#' Industry name and explanation comes from the SIC code attached to every
+#' point.
+#'
+#' @format ## `accessibility_point_dict`
+#' A data frame of 3 columns
+#' \describe{
+#'   \item{var_code}{The code used to refer to the variables}
+#'   \item{industry}{Name of the industry attached to the variable code}
+#'   \item{exp}{Explanation of the industry attached to the variable code}
+#' }
+#' @source Underlying data coming from DMTI. Industry name and explanation
+#' retrieved using SIC codes come from
+#' <https://www.naics.com/sic-industry-description>
+"accessibility_point_dict"

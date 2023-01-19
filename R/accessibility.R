@@ -181,7 +181,7 @@ accessibility_DA_location <- function(DA_table) {
         }, simplify = FALSE, USE.NAMES = TRUE)
 
         total <- x[c("DA_ID", "count")]
-        total <- aggregate(total$count, by = list(DA_ID = total$DA_ID), sum) |>
+        total <- stats::aggregate(total$count, by = list(DA_ID = total$DA_ID), sum) |>
           tibble::as_tibble()
         names(total)[2] <- "count"
 

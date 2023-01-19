@@ -230,11 +230,164 @@ buildings_rev_geo <- rev_geocode_sf(prov_folder = buildings_folder)
 
 ##### Buildings upload to Amazon Aurora Serverless - MySQL
 
-The processed building dataset is stored in the MySQL database using
-this following piece which stores the table `buildings` with a
-`buildings_DA_dict` table. The latter will be used to download subsets
-of our building dataset to be downloaded using dissemination area IDs.
+The processed building dataset is stored in the MySQL database with the
+`buildings` name, the index being the dissemination areas identifier. As
+the table is huge, we append data by waves of 50k buildings (last
+argument).
 
 ``` r
-db_write_long_table(df = buildings_rev_geo, tb_name = "buildings")
+db_write_table(df = rev_geo, 
+               tb_name = "buildings", 
+               index = "DA_ID",
+               rows_per_append_wave = 50000)
+```
+
+## Build and process streets across the country
+
+The function creating the streets downloads the most updated road
+network from the [Canadian’s government
+website](https://www12.statcan.gc.ca/census-recensement/2021/geo/sip-pis/rnf-frr/index-eng.cfm).
+It’s then cleaned and street names are standardised. In the case a
+street name can’t be put together, we use the Nominatim local instance
+created at the buildings step.
+
+``` r
+streets <- streets_sf(DA_processed_table = processed_census$DA)
+db_write_table(df = streets, 
+               tb_name = "streets", 
+               index = "DA_ID",
+               rows_per_append_wave = 25000)
+```
+
+## Postal codes
+
+A `csv` containing country-wide postal codes is available in the
+Curbcut’s S3 buckets. The following simply imports it, converts it all
+to spatial features, and attach a dissemination area identifier. It’s
+saved in the MySQL database with an DA ID index, so that only the postal
+code of a particular territory under study can be imported.
+
+``` r
+postal_codes <- postal_codes_process(processed_census$DA)
+db_write_table(df = postal_codes, tb_name = "postal_codes", index = "DA_ID",
+               rows_per_append_wave = 50000)
+```
+
+## Travel time matrices
+
+The travel time matrices are calculated using two different techniques
+depending on the mode. Walking, biking and driving are calculated using
+a local docker container of the modern C++ routing engine
+[OSRM](https://project-osrm.org/). The transit travel time matrices are
+calculated using a mix of OSRM and of General Transit Feed Specification
+(GTFS) files. They can all be solved with any backend supported by
+future (parallelization).
+
+#### Foot, bicycle, car
+
+We start by getting centroids of every dissemination areas and
+specifying where the routing data will be downloaded and saved to.
+Inside this folder, we create folders for foot, bike and car.
+
+``` r
+DA_table <- processed_census$DA["ID"]
+DA_table <- suppressWarnings(sf::st_transform(DA_table, 3347))
+DA_table <- suppressWarnings(sf::st_centroid(DA_table))
+DA_table <- suppressWarnings(sf::st_transform(DA_table, 4326))
+
+dest_folder <- "routing/"
+dir.create(dest_folder)
+foot_folder <- paste0(dest_folder, "foot")
+bike_folder <- paste0(dest_folder, "bike")
+car_folder <- paste0(dest_folder, "car")
+dir.create(foot_folder)
+dir.create(bike_folder)
+dir.create(car_folder)
+```
+
+##### Foot
+
+For every mode, we will have to create a docker local OSRM instance. For
+further information, read the [Project-OSRM/osrm-backend
+documentation](https://github.com/Project-OSRM/osrm-backend). The
+following code set it up by downloading `pbf` files and opening a
+command-line terminal (only works on Windows right now).
+
+``` r
+tt_local_osrm(dest_folder = foot_folder, mode = "foot")
+```
+
+Once the docker container is properly set up, we calculate travel time
+matrices from every DA to every DA inside a 10km radius (as the maximum
+limit one could possibly walk in an hour). The routing can be calculated
+in parallel and, for each pairs of dissemination areas, makes a call to
+the local OSRM container. The output is a named list of dataframes of 2
+columns: every dataframe is a DA, and the first column is all the other
+DAs it can reach in an hour. The second column is the time in second it
+takes to reach the DA by walk. We then save each individual dataframe in
+their own dataframe in the MySQL database.
+
+``` r
+foot <- tt_calculate(DA_table_centroids = DA_table, max_dist = 10000)
+db_write_ttm(ttm = foot, mode = "foot")
+```
+
+To keep it clean, we can proceed by removing it from the active docker
+containers. I suggest not to do so for the walking mode, as it will be
+re-used when calculating travel times for transit.
+
+``` r
+shell(paste0('docker rm --force foot_osrm'))
+```
+
+##### Bicycle and car
+
+The exact same process is done for the bike and car mode. We modify the
+mode and update the maximum distance for which DAs inside x radius of a
+DA should be calculated a travel time.
+
+``` r
+# Bike
+tt_local_osrm(dest_folder = bicycle_folder, mode = "bicycle")
+bicycle <- tt_calculate(DA_table_centroids = DA_table, max_dist = 30000,
+                        routing_server = routing_server)
+db_write_ttm(ttm = bicycle, mode = "bicycle")
+shell(paste0('docker rm --force bicycle_osrm'))
+
+# Car
+tt_local_osrm(dest_folder = car_folder, mode = "car")
+car <- tt_calculate(DA_table_centroids = DA_table, max_dist = 120000,
+                    routing_server = routing_server)
+db_write_ttm(ttm = car, mode = "car")
+shell(paste0('docker rm --force car_osrm'))
+```
+
+#### Transit
+
+TKTKTKTKTKTK TRANSIT
+
+## Additional datasets
+
+The following are simple one variable dataset used in any version of
+Curbcut. Their code takes a `csv` file living on a S3 bucket, clean it,
+and save it to the MySQL database.
+
+### Can-ALE
+
+``` r
+canale <- canale_process()
+db_write_table(df = canale, 
+               tb_name = "canale", 
+               primary_key = "DA_ID",
+               index = "DA_ID")
+```
+
+### Can-BICS
+
+``` r
+canbics <- canbics_process()
+db_write_table(df = canbics, 
+               tb_name = "canbics", 
+               primary_key = "DA_ID",
+               index = "DA_ID")
 ```

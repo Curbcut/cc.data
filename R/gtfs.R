@@ -240,8 +240,8 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
 
   pb <- progressr::progressor(steps = length(DA_ids))
   DA_stops <- future.apply::future_sapply(DA_ids, \(ID) {
-    requireNamespace("sp")#library(sp)
-    requireNamespace("sf")#library(sf)
+    requireNamespace("sp")
+    requireNamespace("sf")
     this_DA <- DA_table_sp[DA_table_sp@data$ID == ID, ]
     stops <- all_stops_sf[
       as.vector(rgeos::gIntersects(this_DA, all_stops_sf_sp, byid = TRUE)), ]

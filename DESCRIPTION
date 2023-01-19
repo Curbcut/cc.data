@@ -26,7 +26,8 @@ Imports:
     qs,
     stringr,
     rvest,
-    methods
+    methods,
+    sp
 Suggests:
     aws.s3,
     gtfsrouter,

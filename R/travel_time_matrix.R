@@ -43,7 +43,7 @@ tt_local_osrm <- function(dest_folder, mode = "car",
 
   # Container name
   cont_name <- paste0(mode, '_osrm')
-  shell(paste0('docker rm --force ', cont_name))
+  # shell(paste0('docker rm --force ', cont_name))
 
   # Create the docker image
   local_osrm <-
@@ -71,7 +71,7 @@ tt_local_osrm <- function(dest_folder, mode = "car",
     if (length(z) < 1) Sys.sleep(10) else docker_initiated <- TRUE
   }
 
-  shell(paste0("docker start ", mode, "_osrm"))
+  shell(paste0("docker run ", mode, "_osrm"))
 
 }
 
