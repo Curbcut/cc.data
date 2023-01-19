@@ -143,6 +143,32 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
   return(invisible(NULL))
 }
 
+#' List bucket contents
+#'
+#' @param bucket <`character`> The name of the bucket from which to download
+#' the object.
+#'
+#' @return Returns a df of objects in the bucket
+#' @export
+bucket_list_content <- function(bucket) {
+
+  if (!requireNamespace("aws.s3", quietly = TRUE)) {
+    stop(
+      "Package \"aws.s3\" must be installed to use this function.",
+      call. = FALSE
+    )
+  }
+
+  if (Sys.getenv("CURBCUT_BUCKET_ACCESS_ID") == "") {
+    stop(paste0("You do not have a Curbcut database user access."))
+  }
+
+  aws.s3::get_bucket_df(region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+                        key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+                        secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+                        bucket = bucket)
+}
+
 #' Read single object from AWS bucket
 #'
 #' @param object <`character`> Name of the file with extension to retrieve.
@@ -157,6 +183,18 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
 #' supplied `method`.
 #' @export
 bucket_read_object <- function(object, objectext, bucket, method) {
+
+  if (!requireNamespace("aws.s3", quietly = TRUE)) {
+    stop(
+      "Package \"aws.s3\" must be installed to use this function.",
+      call. = FALSE
+    )
+  }
+
+  if (Sys.getenv("CURBCUT_BUCKET_ACCESS_ID") == "") {
+    stop(paste0("You do not have a Curbcut database user access."))
+  }
+
   tmp <- tempfile(fileext = objectext)
   aws.s3::save_object(region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
                       key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),

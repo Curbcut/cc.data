@@ -4,7 +4,7 @@
 #' @export
 canbics_process <- function() {
 
-  # Read postal codes from bucket -------------------------------------------
+  # Read CANBICS from bucket ------------------------------------------------
 
   canbics_data <- bucket_read_object(object = "canbics_2021.csv",
                                     bucket = "curbcut.rawdata",

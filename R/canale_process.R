@@ -4,7 +4,7 @@
 #' @export
 canale_process <- function() {
 
-  # Read postal codes from bucket -------------------------------------------
+  # Read CANALE from bucket -------------------------------------------------
 
   canale_data <- bucket_read_object(object = "canale_2016.csv",
                                     bucket = "curbcut.rawdata",

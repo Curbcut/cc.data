@@ -26,9 +26,12 @@ Imports:
     qs,
     stringr,
     rvest,
-    osmextract
+    methods
 Suggests:
-    aws.s3
+    aws.s3,
+    gtfsrouter,
+    gtfstools,
+    rgeos
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

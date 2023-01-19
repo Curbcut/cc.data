@@ -20,6 +20,32 @@ db_connect <- function() {
   )
 }
 
+#' List all tables in the MySQL database
+#'
+#' Connects to the database, lists all tables in it, and then disconnects.
+#'
+#' @return A character vector of table names.
+#' @export
+db_list_tables <- function() {
+
+  # Connect to the database
+  conn <- db_connect()
+
+  tryCatch({out <- DBI::dbListTables(conn)},
+           error = function(e) {
+             db_disconnect(conn)
+             stop(e)
+           }
+  )
+
+  # Disconnect
+  db_disconnect(conn)
+
+  # Return
+  return(out)
+
+}
+
 #' Execute, write or get queries from the MySQL database
 #'
 #' Execute, write or get queries with connection and disconnection included, to
@@ -346,6 +372,73 @@ db_write_raw_data <- function(DA_data_raw) {
 
   return(invisible(NULL))
 }
+
+#' Write travel time matrix to the MySQL database
+#'
+#' @param ttm <`named list`> The travel time matrices in a list. The output
+#' of \code{\link[cc.data]{tt_calculate}}.
+#' @param mode <`character`> Mode to write in the title of each written dataframes,
+#' e.g. `foot`, `bicycle`, `car`, `transit_pwd`, ...
+#'
+#' @return Returns nothing if successful. Every dataframe in the `ttm` list are
+#' saved as a dataframe, with names such as `ttm_car_35210809`.
+#' @export
+db_write_ttm <- function(ttm, mode) {
+
+  # Progress bar
+  pb <- progressr::progressor(steps = length(ttm))
+
+  # Write to db
+  sapply(ttm, \(tt) {
+
+    # Put together the table name
+    DA_ID <- names(tt)[2]
+    tb_name <- paste("ttm", mode, DA_ID, sep = "_")
+
+    # Write
+    db_write_table(df = tt, tb_name = tb_name)
+
+    # Advance the progress bar
+    pb()
+
+  })
+
+  return(invisible(NULL))
+
+}
+
+#' Read and return a travel time matrix from a database
+#'
+#' @param mode <`character`> The mode of transportation (e.g. "car", "bicycle",
+#' "foot", "transit_pwd", ...)
+#' @param DA_ID <`character`> A vector of DA IDs to retrieve data for
+#'
+#' @return A data frame containing the travel time matrix
+#' @export
+db_read_ttm <- function(mode, DA_ID) {
+
+  ttm_mode <- paste("ttm", mode, sep = "_")
+
+  pb <- progressr::progressor(steps = length(DA_ID))
+
+  ttms <- future.apply::future_sapply(DA_ID, \(ID) {
+    # Build the name of the dataframe to retrieve
+    ttm_mode_id <- paste(ttm_mode, ID, sep = "_")
+
+    # Get
+    out <-
+      db_query(type = "get", statement = paste("SELECT * FROM", ttm_mode_id))
+    pb()
+
+    # Return
+    out[, names(out) != "row_names"]
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  # Return a traveltime-matrix style data.frame
+  return(ttms)
+
+}
+
 
 #' Read a table in the MySQL database
 #'

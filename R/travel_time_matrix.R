@@ -28,7 +28,10 @@ tt_local_osrm <- function(dest_folder, mode = "car",
   if (!grepl("/$", dest_folder)) dest_folder <- paste0(dest_folder, "/")
 
   if (length(shell(paste0("docker ps -aq -f name=^", mode, "_osrm$"),
-                   intern = TRUE)) > 0) return(message("Container already exists"))
+                   intern = TRUE)) > 0) {
+    shell(paste0("docker start ", mode, "_osrm"))
+    return(message("Container already exists. It's been started."))
+  }
 
   # Download Canada osm pbf
   osm_link <- osmextract::oe_download(
