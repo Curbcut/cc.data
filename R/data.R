@@ -262,3 +262,9 @@
 #' retrieved using SIC codes come from
 #' <https://www.naics.com/sic-industry-description>
 "accessibility_point_dict"
+
+#' All pre-processed accessibility themes
+#'
+#' @format ## `accessibility_themes`
+#' A character vector
+"accessibility_themes"

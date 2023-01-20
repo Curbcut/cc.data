@@ -18,7 +18,7 @@ accessibility_DA_location <- function(DA_table) {
     content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
     csv_file <- content[grepl("\\.csv", content)]
     utils::unzip(file, files = csv_file, exdir = tempdir())
-    utils::read.csv(paste0(tempdir(), "\\", csv_file))
+    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file)))
   }
 
   content <- sapply(bucket_list_content("curbcut.amenities")$Key, \(x) {
@@ -81,7 +81,7 @@ accessibility_DA_location <- function(DA_table) {
   progressr::with_progress({
     pb <- progressr::progressor(steps = length(content_sf_))
     point_data <- future.apply::future_lapply(content_sf_, \(x) {
-      requireNamespace("sf")
+      requireNamespace("sf", quietly = TRUE)
 
       if (!"sic_1" %in% names(x)) return({
         x$industry <- NA
@@ -277,11 +277,23 @@ accessibility_DA_location <- function(DA_table) {
 
   # Return tables and dictionaries ------------------------------------------
 
+  dict <- Reduce(rbind, sic_def)[c("var_code", "industry", "exp")]
+  dict$theme <- stringr::str_extract(dict$var_code, "^.*?(?=_)")
+  themes <- unique(dict$theme)
+
   return(list(data = tibble::as_tibble(out_df),
-              dict = Reduce(rbind, sic_def)[c("var_code", "industry", "exp")]))
+              dict = dict,
+              themes = themes))
 
 }
 
+#' List pre-processed accessibility themes
+#'
+#' @return Returns a character vector of pre-processed accessibility themes
+#' @export
+list_accessibility_themes <- function() {
+  cc.data::accessibility_themes
+}
 
 
 

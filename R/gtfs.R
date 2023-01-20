@@ -240,8 +240,8 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
 
   pb <- progressr::progressor(steps = length(DA_ids))
   DA_stops <- future.apply::future_sapply(DA_ids, \(ID) {
-    requireNamespace("sp")
-    requireNamespace("sf")
+    requireNamespace("sp", quietly = TRUE)
+    requireNamespace("sf", quietly = TRUE)
     this_DA <- DA_table_sp[DA_table_sp@data$ID == ID, ]
     stops <- all_stops_sf[
       as.vector(rgeos::gIntersects(this_DA, all_stops_sf_sp, byid = TRUE)), ]
@@ -250,7 +250,7 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
 
     list(DA = DA_table_centroid[DA_table_centroid$ID == ID, ],
          stops = stops)
-  }, simplify = FALSE, USE.NAMES = TRUE)
+  }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   })
   DA_stops <- DA_stops[!sapply(DA_stops, is.null)]
 
@@ -291,7 +291,7 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
     pb()
     # Return the walking times
     return(transit_stops)
-  })
+  }, future.seed = NULL)
   })
 
 
@@ -353,7 +353,7 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
     traveltimes <- future.apply::future_lapply(traveltimes, \(x) {
       pb()
       x[x$duration > 0, ]
-    })
+    }, future.seed = NULL)
   })
 
   # Randomize the placement of every DA. Heavy DAs (in CMAs) are all next to
@@ -402,7 +402,7 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
       out <- tibble::tibble(DA_ID = names(min_to_dests))
       out[[origin_ID]] <- unlist(min_to_dests)
       return(out)
-    }, simplify = FALSE, USE.NAMES = TRUE)
+    }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   })
 
   # Rename each list with the DA ID
