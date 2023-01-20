@@ -18,7 +18,7 @@ should be selected. Defaults to \code{ID}.}
 
 \item{IDs}{<\verb{character vector}> A character vector of all IDs to retrieve.}
 
-\item{crs}{<\code{numeric}> EPSG coordinate reference system for which the data
+\item{crs}{<\code{numeric}> EPSG coordinate reference system to which the data
 should be transformed.}
 }
 \value{

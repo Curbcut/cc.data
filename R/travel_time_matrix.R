@@ -161,9 +161,7 @@ tt_calculate <- function(DA_table_centroids, max_dist = 120000,
 
   # Return
   out <- out[!sapply(out, \(x) nrow(x) == 0)]
-  out
-  # merge_ <- function(x, y) merge(x, y, all = TRUE, by = "DA_ID")
-  # Reduce(merge_, z)
+  return(out)
 
 }
 

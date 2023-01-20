@@ -147,20 +147,23 @@ gtfs_get_traveltimes <- function(gtfs,
   pb <- progressr::progressor(steps = length(unique(gtfs$stops$stop_id)))
   traveltimes <-
     future.apply::future_sapply(unique(gtfs$stops$stop_id), \(x) {
-      pb()
-      gtfsrouter::gtfs_traveltimes(
+      out <- gtfsrouter::gtfs_traveltimes(
         gtfs = gtfs,
         from = x,
         from_is_id = TRUE,
         day = day,
         start_time_limits = start_time_limits,
         max_traveltime = max_traveltime)
+      pb()
+      return(out)
     }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
 
-  # Subset only relevant columns
+  # Subset only relevant columns and filter out negative durations in
+  # traveltimes (bug most possibly from gtfsrouter::gtfs_traveltimes)
   traveltimes <- lapply(traveltimes, \(x) {
     if (is.data.frame(x) && nrow(x) > 0)
-      return(tibble::as_tibble(x[, c("start_time", "duration", "stop_id")]))
+      return(tibble::as_tibble(x[
+        x$duration > 0, c("start_time", "duration", "stop_id")]))
     return(NULL)
   })
 
@@ -171,9 +174,11 @@ gtfs_get_traveltimes <- function(gtfs,
   return(traveltimes)
 }
 
-#' Get traveltime transit matrix
+#' Preparation to get traveltime transit matrix
 #'
-#' This function calculates travel times from a set of origin points to a set of
+#' PART 1 OF 2 FOR TRAVEL TIME MATRICE CALCULATIONS. PART 2:
+#' \code{\link[cc.data]{gtfs_traveltime_matrix_final}}
+#' The two functions calculate travel times from a set of origin points to a set of
 #' destination points using transit. It takes in a GTFS list, a traveltimes list,
 #' and a table of origin/destination points (referred to as DA_table) and returns
 #' a named list which, for every DA, lists every reachable DA and the travel time.
@@ -195,25 +200,20 @@ gtfs_get_traveltimes <- function(gtfs,
 #' use for calculating walking times. Default is local machine using OSRM:
 #' "http://localhost:5000/". See \code{\link[cc.data]{tt_local_osrm}})
 #'
-#' @return A named list containing the travel times from each origin point to
+#' @return Final part \code{\link[cc.data]{gtfs_traveltime_matrix_final}}: A
+#' named list containing the travel times from each origin point to
 #' each destination point (both are IDs of `DA_table`).
 #' @export
-gtfs_traveltime_matrix <- function(gtfs, traveltimes,
-                                   DA_table,
-                                   maximum_walk_dist = 800,
-                                   routing_server = "http://localhost:5000/") {
+gtfs_traveltime_matrix_prep <- function(gtfs, traveltimes,
+                                        DA_table,
+                                        maximum_walk_dist = 800,
+                                        routing_server = "http://localhost:5000/") {
 
   if (!requireNamespace("rgeos", quietly = TRUE)) {
     stop(
       "Package \"rgeos\" must be installed to use this function.",
       call. = FALSE
     )
-  }
-
-  if (getOption("future.globals.maxSize") < 50e+10) {
-    stop(paste0("The total size of the globals that will be exported for ",
-         "future expression is very large. Set the option 'future.globals.maxSize' ",
-         "to a very high number like 50e+10."))
   }
 
   # Make it a buffer instead of a centroid
@@ -294,6 +294,52 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
   }, future.seed = NULL)
   })
 
+  # Randomize the placement of every DA. Heavy DAs (in CMAs) are all next to
+  # eachother in `DA_stops`, e.g. Toronto DAs are next to each others. It leads
+  # to some workers having a smaller overall load, finishing much earlier.
+  DA_stops <- sample(DA_stops)
+
+  # Return
+  return(DA_table_centroid_sp = DA_table_centroid_sp,
+         DA_stops = DA_stops,
+         DA_stops_walk = DA_stops_walk,
+         traveltimes = traveltimes)
+
+}
+
+#' Get traveltime transit matrix
+#'
+#' PART 2 OF 2 FOR TRAVEL TIME MATRICE CALCULATIONS. PART 1:
+#' \code{\link[cc.data]{gtfs_traveltime_matrix_prep}}
+#' The two functions calculate travel times from a set of origin points to a set of
+#' destination points using transit. It takes in a GTFS list, a traveltimes list,
+#' and a table of origin/destination points (referred to as DA_table) and returns
+#' a named list which, for every DA, lists every reachable DA and the travel time.
+#' The user can also specify a maximum walk distance (default is 800 meters) and a
+#' routing server for walking time from the origin/destination point to the transit
+#' stops (default is on local machine using OSRM: "http://localhost:5000/". See
+#' \code{\link[cc.data]{tt_local_osrm}}).
+#'
+#' @param prep_output <`list`> Output of
+#' \code{\link[cc.data]{gtfs_traveltime_matrix_prep}}
+#'
+#' @return A named list containing the travel times from each origin point to
+#' each destination point (both are IDs of `DA_table`).
+#' @export
+gtfs_traveltime_matrix_final <- function(prep_output) {
+
+  if (!requireNamespace("rgeos", quietly = TRUE)) {
+    stop(
+      "Package \"rgeos\" must be installed to use this function.",
+      call. = FALSE
+    )
+  }
+
+  # Assign the prep output to object
+  DA_table_centroid_sp <- prep_output$DA_table_centroid_sp
+  DA_stops <- prep_output$DA_stops
+  DA_stops_walk <- prep_output$DA_stops_walk
+  traveltimes <- prep_output$traveltimes
 
   # Minimal function over which to iterate to get minimal travel time
   # for a pair of points
@@ -345,64 +391,48 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
   # Grab all DAs with stops
   DA_with_stops <- names(DA_stops)
 
-  # Filter out negative durations in traveltimes (bug most possibly from
-  # gtfsrouter::gtfs_traveltimes)
-  traveltimes <- sample(traveltimes)
-  progressr::with_progress({
-    pb <- progressr::progressor(steps = length(traveltimes))
-    traveltimes <- future.apply::future_lapply(traveltimes, \(x) {
-      pb()
-      x[x$duration > 0, ]
-    }, future.seed = NULL)
-  })
-
-  # Randomize the placement of every DA. Heavy DAs (in CMAs) are all next to
-  # eachother in `DA_stops`, e.g. Toronto DAs are next to each others. It leads
-  # to some workers having a smaller overall load, finishing much earlier.
-  DA_stops <- sample(DA_stops)
-
   # Calculate the matrix
   progressr::with_progress({
-  pb <- progressr::progressor(steps = length(DA_stops))
-  out <-
-    future.apply::future_sapply(DA_stops, \(origin) {
-      pb()
+    pb <- progressr::progressor(steps = length(DA_stops))
+    out <-
+      future.apply::future_sapply(DA_stops, \(origin) {
+        pb()
 
-      origin_ID <- origin$DA$ID
-      origin_stop_ids <- origin$stops$stop_id
-      travels_from_origin <- traveltimes[names(traveltimes) %in% origin_stop_ids]
+        origin_ID <- origin$DA$ID
+        origin_stop_ids <- origin$stops$stop_id
+        travels_from_origin <- traveltimes[names(traveltimes) %in% origin_stop_ids]
 
-      if (length(travels_from_origin) == 0) return(NULL)
+        if (length(travels_from_origin) == 0) return(NULL)
 
-      # Only iterate over plausible destinations (100km straight-line distance)
-      this_DA <- methods::as(sf::st_buffer(origin$DA, 100000), "Spatial")
-      all_dests <- DA_table_centroid_sp$ID[
-        as.vector(rgeos::gIntersects(DA_table_centroid_sp, this_DA, byid = TRUE))]
-      all_dests <- all_dests[all_dests %in% DA_with_stops]
+        # Only iterate over plausible destinations (100km straight-line distance)
+        this_DA <- methods::as(sf::st_buffer(origin$DA, 100000), "Spatial")
+        all_dests <- DA_table_centroid_sp$ID[
+          as.vector(rgeos::gIntersects(DA_table_centroid_sp, this_DA, byid = TRUE))]
+        all_dests <- all_dests[all_dests %in% DA_with_stops]
 
-      min_to_dests <- sapply(all_dests, \(dest_ID) {
-        # Return NULL right away if there is no stops in the destination's buffer
-        dest_index <- names(DA_stops) == dest_ID
-        if (sum(dest_index) == 0) return(NULL)
-        # Stops around walking distance of destination
-        dest <- DA_stops[dest_index][[1]]$stops$stop_id
-        # If none, return NULL
-        if (length(dest) == 0) return(NULL)
+        min_to_dests <- sapply(all_dests, \(dest_ID) {
+          # Return NULL right away if there is no stops in the destination's buffer
+          dest_index <- names(DA_stops) == dest_ID
+          if (sum(dest_index) == 0) return(NULL)
+          # Stops around walking distance of destination
+          dest <- DA_stops[dest_index][[1]]$stops$stop_id
+          # If none, return NULL
+          if (length(dest) == 0) return(NULL)
 
-        min_travel_time(origin_ID = origin_ID,
-                        dest_ID = dest_ID,
-                        travels_from_origin = travels_from_origin,
-                        dest = dest)
-      }, simplify = FALSE, USE.NAMES = TRUE)
+          min_travel_time(origin_ID = origin_ID,
+                          dest_ID = dest_ID,
+                          travels_from_origin = travels_from_origin,
+                          dest = dest)
+        }, simplify = FALSE, USE.NAMES = TRUE)
 
-      min_to_dests <- min_to_dests[!sapply(min_to_dests, is.null)]
+        min_to_dests <- min_to_dests[!sapply(min_to_dests, is.null)]
 
-      if (length(min_to_dests) == 0) return(NULL)
+        if (length(min_to_dests) == 0) return(NULL)
 
-      out <- tibble::tibble(DA_ID = names(min_to_dests))
-      out[[origin_ID]] <- unlist(min_to_dests)
-      return(out)
-    }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+        out <- tibble::tibble(DA_ID = names(min_to_dests))
+        out[[origin_ID]] <- unlist(min_to_dests)
+        return(out)
+      }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   })
 
   # Rename each list with the DA ID
@@ -415,3 +445,4 @@ gtfs_traveltime_matrix <- function(gtfs, traveltimes,
   return(out)
 
 }
+
