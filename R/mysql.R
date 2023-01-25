@@ -468,7 +468,8 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
     geo_cols <- all_cols[grepl("geometry_", all_cols)]
     columns <- columns[columns %in% all_cols]
 
-    columns <- c("ID", columns, geo_cols)
+    columns <- c(column_to_select, all_cols[grepl("ID$", all_cols)], columns,
+                 geo_cols) |> unique()
     columns <- paste0(columns, collapse = ", ")
   }
 
@@ -544,11 +545,19 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
 #' @return A data frame containing all data from the specified table
 #' @export
 db_read_all_table <- function(table) {
-  conn <- db_connect()
-  out <- tryCatch(DBI::dbReadTable(conn, paste0("ttm_foot_", ID)),
-                  error = function(e) {DBI::dbDisconnect(conn)})
-  DBI::dbDisconnect(conn)
-  tibble::as_tibble(out)
+  tryCatch({
+    conn <- db_connect()
+    out <- DBI::dbReadTable(conn = conn, name = table)
+    DBI::dbDisconnect(conn)
+    tibble::as_tibble(out)
+  },
+  error = function(e) {
+    message(paste0("Connection to the database failed or download failed for table `", table ,
+                 "`. Retrying... . Error message:", e))
+    if (exists("conn") && class(conn) == "MySQLConnection")
+      DBI::dbDisconnect(conn)
+    cc.data::db_read_all_table(table = table)
+  })
 }
 
 #' Create a read only user to the AWS MySQL database

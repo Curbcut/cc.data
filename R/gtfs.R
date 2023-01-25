@@ -300,10 +300,10 @@ gtfs_traveltime_matrix_prep <- function(gtfs, traveltimes,
   DA_stops <- sample(DA_stops)
 
   # Return
-  return(DA_table_centroid_sp = DA_table_centroid_sp,
+  return(list(DA_table_centroid_sp = DA_table_centroid_sp,
          DA_stops = DA_stops,
          DA_stops_walk = DA_stops_walk,
-         traveltimes = traveltimes)
+         traveltimes = traveltimes))
 
 }
 
@@ -335,12 +335,6 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
     )
   }
 
-  # Assign the prep output to object
-  DA_table_centroid_sp <- prep_output$DA_table_centroid_sp
-  DA_stops <- prep_output$DA_stops
-  DA_stops_walk <- prep_output$DA_stops_walk
-  traveltimes <- prep_output$traveltimes
-
   # Minimal function over which to iterate to get minimal travel time
   # for a pair of points
   min_travel_time <- function(origin_ID, dest_ID, travels_from_origin, dest) {
@@ -356,13 +350,17 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
     if (is.null(travels) || length(travels) == 0) return(NULL)
 
     # Origin relevant stops
-    origin_walk_time <- DA_stops_walk[names(DA_stops_walk) == origin_ID][[1]]
-    origin_walk_time <- origin_walk_time[origin_walk_time$stop_id %in% names(travels), ]
+    origin_walk_time <- prep_output$DA_stops_walk[
+      names(prep_output$DA_stops_walk) == origin_ID][[1]]
+    origin_walk_time <- origin_walk_time[
+      origin_walk_time$stop_id %in% names(travels), ]
 
     # Destination relevant stops
-    dest_walk_time <- DA_stops_walk[names(DA_stops_walk) == dest_ID][[1]]
+    dest_walk_time <- prep_output$DA_stops_walk[
+      names(prep_output$DA_stops_walk) == dest_ID][[1]]
     relevant_stops <- unlist(sapply(travels, `[[`, "stop_id")) |> unique()
-    dest_walk_time <- dest_walk_time[dest_walk_time$stop_id %in% relevant_stops, ]
+    dest_walk_time <- dest_walk_time[
+      dest_walk_time$stop_id %in% relevant_stops, ]
 
     # Iterate over all the origin/destinations times
     travels_min_time <- sapply(seq_along(travels), \(t) {
@@ -389,33 +387,35 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
   }
 
   # Grab all DAs with stops
-  DA_with_stops <- names(DA_stops)
+  DA_with_stops <- names(prep_output$DA_stops)
 
   # Calculate the matrix
   progressr::with_progress({
-    pb <- progressr::progressor(steps = length(DA_stops))
+    pb <- progressr::progressor(steps = length(prep_output$DA_stops))
     out <-
-      future.apply::future_sapply(DA_stops, \(origin) {
+      future.apply::future_sapply(prep_output$DA_stops, \(origin) {
         pb()
 
         origin_ID <- origin$DA$ID
         origin_stop_ids <- origin$stops$stop_id
-        travels_from_origin <- traveltimes[names(traveltimes) %in% origin_stop_ids]
+        travels_from_origin <- prep_output$traveltimes[
+          names(prep_output$traveltimes) %in% origin_stop_ids]
 
         if (length(travels_from_origin) == 0) return(NULL)
 
         # Only iterate over plausible destinations (100km straight-line distance)
         this_DA <- methods::as(sf::st_buffer(origin$DA, 100000), "Spatial")
-        all_dests <- DA_table_centroid_sp$ID[
-          as.vector(rgeos::gIntersects(DA_table_centroid_sp, this_DA, byid = TRUE))]
+        all_dests <- prep_output$DA_table_centroid_sp$ID[
+          as.vector(rgeos::gIntersects(
+            prep_output$DA_table_centroid_sp, this_DA, byid = TRUE))]
         all_dests <- all_dests[all_dests %in% DA_with_stops]
 
         min_to_dests <- sapply(all_dests, \(dest_ID) {
           # Return NULL right away if there is no stops in the destination's buffer
-          dest_index <- names(DA_stops) == dest_ID
+          dest_index <- names(prep_output$DA_stops) == dest_ID
           if (sum(dest_index) == 0) return(NULL)
           # Stops around walking distance of destination
-          dest <- DA_stops[dest_index][[1]]$stops$stop_id
+          dest <- prep_output$DA_stops[dest_index][[1]]$stops$stop_id
           # If none, return NULL
           if (length(dest) == 0) return(NULL)
 
@@ -436,7 +436,7 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
   })
 
   # Rename each list with the DA ID
-  names(out) <- sapply(names(DA_stops), `[[`, "ID")
+  names(out) <- sapply(names(prep_output$DA_stops), `[[`, "ID")
 
   # Filter out empty outputs
   out <- out[!sapply(out, is.null)]

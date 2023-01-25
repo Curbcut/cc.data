@@ -219,3 +219,26 @@ rev_geocode_localhost <- function(point_sf, street = FALSE) {
   return(name)
 }
 
+#' Geocode using a local Nominatim instance (docker)
+#'
+#' @param address < `character`> Character vector corresponding to an address,
+#' e.g. 6540, Avenue Baldwin, Anjou, Montreal
+#'
+#' @return `sf` point
+#' @export
+geocode_localhost <- function(address) {
+
+  # Convert to ASCII
+  reworked <- paste0("%", charToRaw(address), collapse = "")
+
+  link <- paste0("http://localhost:8080/search?q=", reworked)
+
+  out <- tryCatch(httr::content(httr::GET(link)),
+                  error = function(e) NULL)
+
+  if (is.null(out) || length(out) == 0) return(sf::st_point())
+  return(
+    sf::st_point(x = c(as.numeric(out[[1]]$lon), as.numeric(out[[1]]$lat))))
+
+}
+

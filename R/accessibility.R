@@ -65,8 +65,8 @@ accessibility_DA_location <- function(DA_table) {
             paste0("Establishments primarily engaged in providing ",
                    "diagnostic services, treatments, general medical ",
                    "and surgical services and other hospital services"),
-            paste0("Establishments of licensed practitioners having ",
-                   "the degree of D.C. and engaged in the practice ",
+            paste0("Establishments of licensed practitioners engaging in ",
+                   "the practice ",
                    "of chiropractic medicine, practice of optometry, ",
                    "practice of podiatry, or practice of other ",
                    "health fields not elsewhere classified")))
@@ -118,6 +118,11 @@ accessibility_DA_location <- function(DA_table) {
         table(merged$industry)[table(merged$industry) > nrow(merged)*0.01] |>
         names()
       kept_industry <- kept_industry[!kept_industry %in% filter_out]
+
+      # Manually filtering out some industries
+      kept_industry <-
+        kept_industry[!kept_industry %in% "Operators of Nonresidential Buildings"]
+
       # Additionally filter out other industries
       out <- merged[merged$industry %in% kept_industry, ]
 
@@ -235,7 +240,7 @@ accessibility_DA_location <- function(DA_table) {
 
     names(industries) <-
       paste(field,
-            tolower(stringr::str_extract(names(industries), ".*?(?= |'|$)")),
+            tolower(stringr::str_extract(names(industries), ".*?(?=$|[^a-zA-Z])")),
             year, sep = "_")
 
     industries
@@ -249,7 +254,7 @@ accessibility_DA_location <- function(DA_table) {
 
       industries$var_code <-
         paste(field,
-              tolower(stringr::str_extract(industries$industry, ".*?(?= |'|$)")),
+              tolower(stringr::str_extract(industries$industry, ".*?(?=$|[^a-zA-Z])")),
               year, sep = "_")
 
       industries
@@ -275,11 +280,49 @@ accessibility_DA_location <- function(DA_table) {
                     point_DA, all = TRUE)
   out_df[is.na(out_df)] <- 0
 
-  # Return tables and dictionaries ------------------------------------------
+
+  # Clean up dictionary and add 'Total' -------------------------------------
 
   dict <- Reduce(rbind, sic_def)[c("var_code", "industry", "exp")]
   dict$theme <- stringr::str_extract(dict$var_code, "^.*?(?=_)")
   themes <- unique(dict$theme)
+
+  # Add total to themes with subthemes
+  with_sub <- table(dict$theme)[table(dict$theme) > 1]
+  for (i in names(with_sub)) {
+    var_code <- paste0(i, "_total_2021")
+
+    industry <- if (i == "education") {
+      "Educational facilities"
+    } else if (i == "fooddistribution") {
+      "Food Distribution Depots"
+    } else if (i == "healthcare") {
+      "Hospital and Doctor Services"
+    } else if (i == "retail") {
+      "Retail Establishment"
+    }
+
+    exp <- if (i == "education") {
+      "Establishments providing academic or technical instruction"
+    } else if (i == "fooddistribution") {
+      paste0("Establishments primarily engaged in selling food for home ",
+             "preparation and consumption")
+    } else if (i == "healthcare") {
+      paste0("Establishments primarily engaged in furnishing medical, ",
+             "surgical, and other health services to persons")
+    } else if (i == "retail") {
+      paste0("Establishments of retailing including shopping centers and ",
+             "department stores")
+    }
+
+    dict <- rbind(dict, tibble::tibble(var_code = var_code,
+                                       industry = industry,
+                                       theme = i,
+                                       exp = exp))
+  }
+
+
+  # Return tables and dictionaries ------------------------------------------
 
   return(list(data = tibble::as_tibble(out_df),
               dict = dict,
