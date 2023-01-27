@@ -21,7 +21,10 @@ accessibility_DA_location <- function(DA_table) {
     suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file)))
   }
 
-  content <- sapply(bucket_list_content("curbcut.amenities")$Key, \(x) {
+  bucket_content <- bucket_list_content("curbcut.amenities")$Key
+  DMTI <- bucket_content[grepl("^DMTI/.*.zip$", bucket_content)]
+
+  content <- sapply(DMTI, \(x) {
     bucket_read_object(object = x,
                        bucket = "curbcut.amenities",
                        objectext = ".zip",
@@ -42,7 +45,7 @@ accessibility_DA_location <- function(DA_table) {
   })
 
   # Take .zip out of names
-  names(content_sf) <- gsub("\\.zip$", "", names(content_sf))
+  names(content_sf) <- gsub("^DMTI/|\\.zip$", "", names(content_sf))
 
 
   # Class using the `sic` code ----------------------------------------------
@@ -143,6 +146,58 @@ accessibility_DA_location <- function(DA_table) {
   sic_def <- lapply(point_data, `[[`, "sic_def")
   point_data <- lapply(point_data, `[[`, "df")
 
+  # Add source to sic_fed
+  sic_def <- lapply(sic_def, \(x) {
+    if (!is.null(x)) x$source <- "DMTI Spatial"
+    if (!is.null(x)) x$date <- "2021"
+    x
+  })
+
+
+  # Additional datasets -----------------------------------------------------
+
+  content <- sapply("open_db_heathcare_facilities.zip", \(x) {
+    bucket_read_object(object = x,
+                       bucket = "curbcut.amenities",
+                       objectext = ".zip",
+                       method = read_method) |>
+      tibble::as_tibble()
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  # Transform to SF
+  content_sf <- lapply(content, \(x) {
+
+    x$longitude <- as.numeric(x$longitude)
+    x <- x[!is.na(x$longitude), ]
+    x$latitude <- as.numeric(x$latitude)
+    x <- x[!is.na(x$latitude), ]
+
+    sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
+      sf::st_transform(3347)
+  })
+
+  # Take .zip out of names
+  names(content_sf) <- gsub("\\.zip$", "", names(content_sf))
+
+  # Format like previous DMTI data, and combine
+  hospitals <- content_sf$open_db_heathcare_facilities[
+    content_sf$open_db_heathcare_facilities$odhf_facility_type == "Hospitals",
+    "odhf_facility_type"
+  ]
+  names(hospitals)[1] <- "industry"
+  point_data$dmti_healthcare_2021 <- point_data$dmti_healthcare_2021[
+    !point_data$dmti_healthcare_2021$industry == "Hospitals",
+  ]
+  point_data$dmti_healthcare_2021 <-
+    rbind(point_data$dmti_healthcare_2021, hospitals)
+  # Update sic_def
+  sic_def$dmti_healthcare_2021$source[
+    sic_def$dmti_healthcare_2021$industry == "Hospitals"
+  ] <- "Canadian Open Database of Healthcare Facilities"
+  sic_def$dmti_healthcare_2021$date[
+    sic_def$dmti_healthcare_2021$industry == "Hospitals"
+  ] <- "2020"
+
 
   # Sum point number per DA -------------------------------------------------
 
@@ -206,7 +261,9 @@ accessibility_DA_location <- function(DA_table) {
   sic_def$dmti_wifihotspots_2021 <-
     data.frame(sic_1 = "",
                industry = "Public Wifi Hotspot",
-               exp = "Locations that offer WiFi access")
+               exp = "Locations that offer WiFi access",
+               source = "DMTI Spatial",
+               date = 2021)
   # Clean up other names
   names(point_DA$dmti_arenas_2021) <-
     "Amusement and Recreation Services"
@@ -249,7 +306,7 @@ accessibility_DA_location <- function(DA_table) {
   # Match the same process to the SIC code definitions
   sic_def <-
     mapply(\(field_name, industries) {
-      year <- stringr::str_extract(field_name, "\\d{4}$")
+      year <- industries$date
       field <- stringr::str_extract(field_name, "(?<=dmti_).*(?=_\\d{4}$)")
 
       industries$var_code <-
@@ -283,7 +340,7 @@ accessibility_DA_location <- function(DA_table) {
 
   # Clean up dictionary and add 'Total' -------------------------------------
 
-  dict <- Reduce(rbind, sic_def)[c("var_code", "industry", "exp")]
+  dict <- Reduce(rbind, sic_def)[c("var_code", "industry", "exp", "source", "date")]
   dict$theme <- stringr::str_extract(dict$var_code, "^.*?(?=_)")
   themes <- unique(dict$theme)
 
@@ -315,10 +372,15 @@ accessibility_DA_location <- function(DA_table) {
              "department stores")
     }
 
+    source <- paste0(unique(dict$source[dict$theme == i]), collapse = " & ")
+    date <- paste0(unique(dict$date[dict$theme == i]), collapse = " & ")
+
     dict <- rbind(dict, tibble::tibble(var_code = var_code,
                                        industry = industry,
                                        theme = i,
-                                       exp = exp))
+                                       exp = exp,
+                                       source = source,
+                                       date = date))
   }
 
 

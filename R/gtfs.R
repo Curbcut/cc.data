@@ -392,51 +392,47 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
   # Calculate the matrix
   progressr::with_progress({
     pb <- progressr::progressor(steps = length(prep_output$DA_stops))
-    out <-
-      future.apply::future_sapply(prep_output$DA_stops, \(origin) {
-        pb()
+    out <- furrr::future_map(prep_output$DA_stops, \(origin) {
+      pb()
 
-        origin_ID <- origin$DA$ID
-        origin_stop_ids <- origin$stops$stop_id
-        travels_from_origin <- prep_output$traveltimes[
-          names(prep_output$traveltimes) %in% origin_stop_ids]
+      origin_ID <- origin$DA$ID
+      origin_stop_ids <- origin$stops$stop_id
+      travels_from_origin <- prep_output$traveltimes[
+        names(prep_output$traveltimes) %in% origin_stop_ids]
 
-        if (length(travels_from_origin) == 0) return(NULL)
+      if (length(travels_from_origin) == 0) return(NULL)
 
-        # Only iterate over plausible destinations (100km straight-line distance)
-        this_DA <- methods::as(sf::st_buffer(origin$DA, 100000), "Spatial")
-        all_dests <- prep_output$DA_table_centroid_sp$ID[
-          as.vector(rgeos::gIntersects(
-            prep_output$DA_table_centroid_sp, this_DA, byid = TRUE))]
-        all_dests <- all_dests[all_dests %in% DA_with_stops]
+      # Only iterate over plausible destinations (100km straight-line distance)
+      this_DA <- methods::as(sf::st_buffer(origin$DA, 100000), "Spatial")
+      all_dests <- prep_output$DA_table_centroid_sp$ID[
+        as.vector(rgeos::gIntersects(
+          prep_output$DA_table_centroid_sp, this_DA, byid = TRUE))]
+      all_dests <- all_dests[all_dests %in% DA_with_stops]
 
-        min_to_dests <- sapply(all_dests, \(dest_ID) {
-          # Return NULL right away if there is no stops in the destination's buffer
-          dest_index <- names(prep_output$DA_stops) == dest_ID
-          if (sum(dest_index) == 0) return(NULL)
-          # Stops around walking distance of destination
-          dest <- prep_output$DA_stops[dest_index][[1]]$stops$stop_id
-          # If none, return NULL
-          if (length(dest) == 0) return(NULL)
+      min_to_dests <- sapply(all_dests, \(dest_ID) {
+        # Return NULL right away if there is no stops in the destination's buffer
+        dest_index <- names(prep_output$DA_stops) == dest_ID
+        if (sum(dest_index) == 0) return(NULL)
+        # Stops around walking distance of destination
+        dest <- prep_output$DA_stops[dest_index][[1]]$stops$stop_id
+        # If none, return NULL
+        if (length(dest) == 0) return(NULL)
 
-          min_travel_time(origin_ID = origin_ID,
-                          dest_ID = dest_ID,
-                          travels_from_origin = travels_from_origin,
-                          dest = dest)
-        }, simplify = FALSE, USE.NAMES = TRUE)
+        min_travel_time(origin_ID = origin_ID,
+                        dest_ID = dest_ID,
+                        travels_from_origin = travels_from_origin,
+                        dest = dest)
+      }, simplify = FALSE, USE.NAMES = TRUE)
 
-        min_to_dests <- min_to_dests[!sapply(min_to_dests, is.null)]
+      min_to_dests <- min_to_dests[!sapply(min_to_dests, is.null)]
 
-        if (length(min_to_dests) == 0) return(NULL)
+      if (length(min_to_dests) == 0) return(NULL)
 
-        out <- tibble::tibble(DA_ID = names(min_to_dests))
-        out[[origin_ID]] <- unlist(min_to_dests)
-        return(out)
-      }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+      out <- tibble::tibble(DA_ID = names(min_to_dests))
+      out[[origin_ID]] <- unlist(min_to_dests)
+      return(out)
+    })
   })
-
-  # Rename each list with the DA ID
-  names(out) <- sapply(names(prep_output$DA_stops), `[[`, "ID")
 
   # Filter out empty outputs
   out <- out[!sapply(out, is.null)]
