@@ -94,10 +94,10 @@ tt_calculate <- function(DA_table_centroids, max_dist = 120000,
                          routing_server = "http://localhost:5000/") {
 
   # Error checking
-  if (sf::st_crs(DA_table)$input != "EPSG:4326")
-    DA_table <- suppressWarnings(sf::st_transform(DA_table, 4326))
-  if (!"ID" %in% names(DA_table))
-    stop("`ID` column must exist in `DA_table`")
+  if (sf::st_crs(DA_table_centroids)$input != "EPSG:4326")
+    DA_table_centroids <- suppressWarnings(sf::st_transform(DA_table_centroids, 4326))
+  if (!"ID" %in% names(DA_table_centroids))
+    stop("`ID` column must exist in `DA_table_centroids`")
 
   # Split the dataframe in smaller dataframes for faster paralleled calculations
   list_DA_centroids <- split(DA_table_centroids,
