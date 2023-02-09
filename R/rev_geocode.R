@@ -80,9 +80,7 @@ rev_geocode_OSM <- function(point_sf) {
 
   link <- paste0("photon.komoot.io/reverse?lon=", x, "&lat=", y)
 
-  out <- tryCatch(httr::content(
-    httr::GET(link,
-              httr::timeout(2))),
+  out <- tryCatch(httr::content(httr::GET(link)),
     error = function(e) NULL)
 
   if (is.null(out$features) || length(out$features) == 0) {

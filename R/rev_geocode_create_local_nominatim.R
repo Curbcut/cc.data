@@ -2,7 +2,7 @@
 #'
 #' @return Opens a terminal from which the docker image is created.
 #' @export
-rev_geocode_local_nominatim <- function() {
+rev_geocode_create_local_nominatim <- function() {
 
   if (Sys.info()["sysname"] != "Windows")
     stop("As of now, this function is only adapted for Windows.")

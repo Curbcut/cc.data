@@ -214,7 +214,7 @@ all the buildings in the country. The following will download and mount
 the docker image:
 
 ``` r
-rev_geocode_local_nominatim()
+rev_geocode_create_local_nominatim()
 ```
 
 Using a combination of the [National Open Database of

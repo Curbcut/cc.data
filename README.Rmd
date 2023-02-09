@@ -147,7 +147,7 @@ buildings_sf(DA_processed_table = processed_census$DA,
 The reverse geocoding can be sped up by building our own docker container of [Nominatim](https://nominatim.org/), which, when mounted using a [.pbf](http://download.geofabrik.de/north-america/canada.html) (OpenStreetMap) file, can be used to find the nearest address of a latitude and longitude coordinate. This option is more than 100x faster than querying external servers to reverse geocode a large dataset like all the buildings in the country. The following will download and mount the docker image:
 
 ```r
-rev_geocode_local_nominatim()
+rev_geocode_create_local_nominatim()
 ```
 
 Using a combination of the [National Open Database of Addresses](https://www.statcan.gc.ca/en/lode/databases/oda) and the local instance of Nominatim, we reverse geocode all the buildings in the country. This takes an even harder toll on memory usage, as the local Nominatim instance also uses a lot of computational power to serve the reverse geocoding. 
