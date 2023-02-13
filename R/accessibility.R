@@ -12,6 +12,10 @@
 #' @export
 accessibility_DA_location <- function(DA_table) {
 
+  ## TKTK INSTEAD OF GOING WITH DMTI FOR MOSTLY EVERYTHING, GO LOOK AT
+  ## https://www150.statcan.gc.ca/n1/pub/17-26-0002/172600022020001-eng.htm
+  ## AND SEE WHAT IS THEIR SOURCES, EX. The Open Database of Educational Facilities
+
   # Read DMTI data from bucket ----------------------------------------------
 
   read_method <- function(file) {

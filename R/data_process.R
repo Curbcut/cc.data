@@ -97,7 +97,7 @@ no2_process <- function(DA_table) {
   no2_data <- sf::st_join(no2_data, DA_table)
   no2_data <- sf::st_drop_geometry(no2_data)
 
-  no2_data <- aggregate(NO2 ~ ID, data = no2_data, mean, na.rm = TRUE)
+  no2_data <- stats::aggregate(NO2 ~ ID, data = no2_data, mean, na.rm = TRUE)
   no2_data <- tibble::as_tibble(no2_data)
   names(no2_data)[1] <- "DA_ID"
 
@@ -146,7 +146,7 @@ ndvi_process <- function(DA_table) {
   ndvi_data <- sf::st_join(ndvi_data, DA_table)
   ndvi_data <- sf::st_drop_geometry(ndvi_data)
 
-  ndvi_data <- aggregate(NDVI ~ ID, data = ndvi_data, mean, na.rm = TRUE)
+  ndvi_data <- stats:aggregate(NDVI ~ ID, data = ndvi_data, mean, na.rm = TRUE)
   ndvi_data <- tibble::as_tibble(ndvi_data)
   names(ndvi_data)[1] <- "DA_ID"
 

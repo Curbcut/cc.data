@@ -120,10 +120,9 @@ rev_geocode_OSM <- function(point_sf) {
 
   second <-
     out |> (\(out) {
-      if (is.null(out$name)) {
-        return(third)
-      }
-      return(paste(out$name, third, sep = ", "))
+      if (!is.null(out$street)) return(paste(out$street, third, sep = ", "))
+      if (!is.null(out$name)) return(paste(out$name, third, sep = ", "))
+      return(third)
     })()
 
   name <-

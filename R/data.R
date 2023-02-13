@@ -239,7 +239,7 @@
 #' A data frame of 2 columns and the same number of 13 rows
 #' \describe{
 #'   \item{osm_link }{The link from where to download buildings data from OSM}
-#'   \item{canbics_2021}{The province key from which to download MS building data}
+#'   \item{ms_code}{The province key from which to download MS building data}
 #'   \item{addresses}{The download link to get the province's database of addresses}
 #' }
 #' @source <https://github.com/microsoft/CanadianBuildingFootprints>

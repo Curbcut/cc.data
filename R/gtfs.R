@@ -392,7 +392,7 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
   # Calculate the matrix
   progressr::with_progress({
     pb <- progressr::progressor(steps = length(prep_output$DA_stops))
-    out <- furrr::future_map(prep_output$DA_stops, \(origin) {
+    out <- future.apply::future_lapply(prep_output$DA_stops, \(origin) {
       pb()
 
       origin_ID <- origin$DA$ID
@@ -431,7 +431,7 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
       out <- tibble::tibble(DA_ID = names(min_to_dests))
       out[[origin_ID]] <- unlist(min_to_dests)
       return(out)
-    })
+    }, future.seed = NULL)
   })
 
   # Filter out empty outputs

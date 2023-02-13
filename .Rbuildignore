@@ -3,3 +3,5 @@
 ^LICENSE\.md$
 ^README\.Rmd$
 ^calculated_ignore$
+data-raw
+^data-raw$
