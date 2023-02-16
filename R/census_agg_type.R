@@ -55,6 +55,11 @@ census_agg_type <- function(census_vectors_table = cc.data::census_vectors_table
   # Combine all years
   agg <- unique(Reduce(rbind, agg_year))
 
+  # Override for census bugs
+  agg <-
+    agg[!{agg$var_code == "housing_stress_renter" & agg$agg == "Additive"} &
+          !{agg$var_code == "housing_stress_owner" & agg$agg == "Additive"}, ]
+
   # Check for error
   if (length(unique(agg$var_code)) != nrow(agg)) {
     stop(paste0(

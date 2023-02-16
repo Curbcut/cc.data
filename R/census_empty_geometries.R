@@ -21,13 +21,30 @@ census_empty_geometries <- function(census_scales = cc.data::census_scales,
       future.apply::future_sapply(census_dataset, \(year) {
 
         # Retrieve
-        out <- cancensus::get_census(
+        # In the case it leads to an error (too large request), retrieve
+        # by provinces.
+        out <- tryCatch({cancensus::get_census(
           dataset = year,
           regions = list(C = "01"),
           level = scale,
           geo_format = "sf",
           quiet = TRUE
-        )
+        )}, error = function(e) {
+          regions <- cancensus::list_census_regions(year)
+          regions <- regions$region[regions$level == "PR"]
+          regions <- lapply(regions, \(r) {
+            cancensus::get_census(
+              dataset = year,
+              regions = list(PR = r),
+              level = scale,
+              geo_format = "sf",
+              quiet = TRUE
+            )
+          })
+          regions <- lapply(regions, `[`, c("GeoUID", "geometry"))
+          return(Reduce(rbind, regions))
+        })
+
         out <- out[, c("GeoUID", "geometry")]
         names(out) <- c("ID", "geometry")
         out <- sf::st_transform(out, 3347)

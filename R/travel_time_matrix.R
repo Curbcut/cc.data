@@ -104,22 +104,23 @@ tt_calculate <- function(DA_table_centroids, max_dist = 120000,
                         seq_len(nrow(DA_table_centroids)/500)) |>
     suppressWarnings()
 
-  # Get all IDs on which to iterate
+  # Get all IDs on which to iterate, and shuffle it
   all_ids <- DA_table_centroids$ID
+  all_ids <- sample(all_ids)
 
   # Iterate over every DA and merge to create the travel time matrix
   progressr::with_progress({
     pb <- progressr::progressor(steps = length(all_ids))
-    out <- sapply(all_ids, \(id) {
+    out <- future.apply::future_sapply(all_ids, \(id) {
 
-        id_geo <- DA_table_centroids[DA_table_centroids$ID == id, ]
-        first_coords <- DA_table_centroids[DA_table_centroids$ID == id, ] |>
+        id_geo <- sf:::`[.sf`(DA_table_centroids, DA_table_centroids$ID == id, )
+        first_coords <- id_geo |>
           sf::st_coordinates() |>
           tibble::as_tibble()
 
         first_coords <- paste0(first_coords$X, ",", first_coords$Y)
 
-        it <- future.apply::future_lapply(list_DA_centroids, \(df) {
+        it <- lapply(list_DA_centroids, \(df) {
 
           dist <- nngeo::st_nn(id_geo,
                                df,
@@ -139,7 +140,7 @@ tt_calculate <- function(DA_table_centroids, max_dist = 120000,
           coords <- paste0(mapply(paste0, samp$X, ",", samp$Y), collapse = ";")
           coords <- paste0(first_coords, ";", coords)
 
-          time <- httr::GET(paste0(routing_server, "table/v1/driving/",
+          time <- httr::GET(paste0(routing_server, "table/v1/mode/",
                                    coords, "?sources=0")) |>
             httr::content()
           time <- unlist(time$durations)
@@ -149,14 +150,14 @@ tt_calculate <- function(DA_table_centroids, max_dist = 120000,
             out[[id]] <- time[2:length(time)]
             out}, error = function(e) NULL)
 
-        }, future.seed = NULL)
+        })
 
         pb()
 
         it[!sapply(it, is.null)] |>
           data.table::rbindlist(fill = TRUE) |>
           tibble::as_tibble()
-    }, simplify = FALSE, USE.NAMES = TRUE)
+    }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
   })
 
   # Return

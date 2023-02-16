@@ -53,6 +53,14 @@ census_unit_type <- function(census_vectors_table = cc.data::census_vectors_tabl
   # Combine all years
   units <- unique(Reduce(rbind, units_year))
 
+  # Override for census bugs
+  units <-
+    units[!{units$var_code == "housing_stress_renter" & units$units == "Number"} &
+            !{units$var_code == "housing_stress_owner" & units$units == "Number"}, ]
+  units <-
+    units[!{units$var_code == "housing_value" & units$units == "Number"} &
+            !{units$var_code == "housing_rent" & units$units == "Number"}, ]
+
   # Check for error
   if (length(unique(units$var_code)) != nrow(units)) {
     stop(paste0(
@@ -62,5 +70,5 @@ census_unit_type <- function(census_vectors_table = cc.data::census_vectors_tabl
   }
 
   # Out
-  units
+  return(units)
 }
