@@ -216,6 +216,9 @@ gtfs_traveltime_matrix_prep <- function(gtfs, traveltimes,
     )
   }
 
+  requireNamespace("sp", quietly = TRUE)
+  requireNamespace("sf", quietly = TRUE)
+
   # Make it a buffer instead of a centroid
   DA_table <- DA_table["ID"]
   DA_table_centroid <- suppressWarnings(sf::st_centroid(DA_table))

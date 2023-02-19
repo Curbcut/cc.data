@@ -12,9 +12,9 @@
 #' @export
 accessibility_DA_location <- function(DA_table) {
 
-  ## TKTK INSTEAD OF GOING WITH DMTI FOR MOSTLY EVERYTHING, GO LOOK AT
-  ## https://www150.statcan.gc.ca/n1/pub/17-26-0002/172600022020001-eng.htm
-  ## AND SEE WHAT IS THEIR SOURCES, EX. The Open Database of Educational Facilities
+  if (all(names(DA_table) == c("ID", "geometry"))) {
+    stop("`DA_table` must have only the columns `ID` and `geometry`.")
+  }
 
   # Read DMTI data from bucket ----------------------------------------------
 
@@ -39,9 +39,9 @@ accessibility_DA_location <- function(DA_table) {
   # Transform to SF
   content_sf <- lapply(content, \(x) {
 
-    x$longitude <- as.numeric(x$longitude)
+    x$longitude <- suppressWarnings(as.numeric(x$longitude))
     x <- x[!is.na(x$longitude), ]
-    x$latitude <- as.numeric(x$latitude)
+    x$latitude <- suppressWarnings(as.numeric(x$latitude))
     x <- x[!is.na(x$latitude), ]
 
     sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
@@ -160,6 +160,7 @@ accessibility_DA_location <- function(DA_table) {
 
   # Additional datasets -----------------------------------------------------
 
+  ### Health care
   content <- sapply("open_db_heathcare_facilities.zip", \(x) {
     bucket_read_object(object = x,
                        bucket = "curbcut.amenities",
@@ -171,9 +172,9 @@ accessibility_DA_location <- function(DA_table) {
   # Transform to SF
   content_sf <- lapply(content, \(x) {
 
-    x$longitude <- as.numeric(x$longitude)
+    x$longitude <- suppressWarnings(as.numeric(x$longitude))
     x <- x[!is.na(x$longitude), ]
-    x$latitude <- as.numeric(x$latitude)
+    x$latitude <- suppressWarnings(as.numeric(x$latitude))
     x <- x[!is.na(x$latitude), ]
 
     sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
@@ -201,6 +202,88 @@ accessibility_DA_location <- function(DA_table) {
   sic_def$dmti_healthcare_2021$date[
     sic_def$dmti_healthcare_2021$industry == "Hospitals"
   ] <- "2020"
+
+  ### Education
+  read_method <- function(file) {
+    content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
+    csv_file <- content[grepl("\\.csv", content)]
+    utils::unzip(file, files = csv_file, exdir = tempdir())
+    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file),
+                                     fileEncoding = "latin1"))
+  }
+
+  content <- sapply("open_db_educational_facilities.zip", \(x) {
+    bucket_read_object(object = x,
+                       bucket = "curbcut.amenities",
+                       objectext = ".zip",
+                       method = read_method) |>
+      tibble::as_tibble()
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  # Transform to SF
+  schools_sf <- lapply(content, \(x) {
+
+    x$longitude <- suppressWarnings(as.numeric(x$Longitude))
+    x <- x[!is.na(x$longitude), ]
+    x$latitude <- suppressWarnings(as.numeric(x$Latitude))
+    x <- x[!is.na(x$latitude), ]
+
+    sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
+      sf::st_transform(3347)
+  })
+
+  # Take .zip out of names
+  names(schools_sf) <- gsub("\\.zip$", "", names(schools_sf))
+
+  # Format like previous DMTI data, and combine
+  education <- list()
+  education$early_childhood_education <-
+    tibble::tibble(industry = "Early childhood education",
+                   geometry = schools_sf$open_db_educational_facilities$geometry[
+                     schools_sf$open_db_educational_facilities$ISCED010 == 1]) |>
+    sf::st_as_sf(crs = 3347)
+  education$kindergarten <-
+    tibble::tibble(industry = "Kindergarten",
+                   geometry = schools_sf$open_db_educational_facilities$geometry[
+                     schools_sf$open_db_educational_facilities$ISCED020 == 1]) |>
+    sf::st_as_sf(crs = 3347)
+  education$elementary <-
+    tibble::tibble(industry = "Elementary",
+                   geometry = schools_sf$open_db_educational_facilities$geometry[
+                     schools_sf$open_db_educational_facilities$ISCED1 == 1]) |>
+    sf::st_as_sf(crs = 3347)
+  education$secondary <-
+    tibble::tibble(industry = "Secondary",
+                   geometry = schools_sf$open_db_educational_facilities$geometry[
+                     schools_sf$open_db_educational_facilities$ISCED2 == 1 |
+                       schools_sf$open_db_educational_facilities$ISCED3 == 1]) |>
+    sf::st_as_sf(crs = 3347)
+  education$post_secondary <-
+    tibble::tibble(industry = "Post-secondary",
+                   geometry = schools_sf$open_db_educational_facilities$geometry[
+                     schools_sf$open_db_educational_facilities$ISCED4Plus == 1]) |>
+    sf::st_as_sf(crs = 3347)
+
+  # Switch from DMTI to the Open DB of educational facilities
+  point_data <- point_data[names(point_data) != "dmti_education_2021"]
+  point_data$educational_facilities <- Reduce(rbind, education)
+
+  # Update sic_def
+  sic_def <- sic_def[names(sic_def) != "dmti_education_2021"]
+  sic_def$educational_facilities <-
+    tibble::tibble(sic_1 = NA,
+                   industry = c("Early childhood education",
+                                "Kindergarten",
+                                "Elementary",
+                                "Secondary",
+                                "Post-secondary"),
+                   exp = c("Establishment engaged in the support of early childhood education students",
+                           "Establishment engaged in the support of kindergarten students",
+                           "Establishment engaged in the support of elementary school students",
+                           "Establishment engaged in the support of secondary students",
+                           "Establishment engaged in the support of post-secondary students"),
+                   source = c("Canadian Open Database of Educational Facilities"),
+                   date = "2022")
 
 
   # Sum point number per DA -------------------------------------------------
@@ -245,13 +328,23 @@ accessibility_DA_location <- function(DA_table) {
         }, simplify = FALSE, USE.NAMES = TRUE)
 
         total <- x[c("DA_ID", "count")]
-        total <- stats::aggregate(total$count, by = list(DA_ID = total$DA_ID), sum) |>
+        total <- stats::aggregate(total$count,
+                                  by = list(DA_ID = total$DA_ID), sum) |>
           tibble::as_tibble()
         names(total)[2] <- "count"
 
         c(out, list(Total = total))
       })
   })
+
+  # Adjust for educational facilities
+  education <- sf::st_intersection(schools_sf$open_db_educational_facilities,
+                                   DA_table) |>
+    sf::st_drop_geometry()
+  education_total <- table(education$DA_ID)
+  point_DA$educational_facilities$Total <-
+    tibble::tibble(DA_ID = names(education_total),
+                   count = as.numeric(education_total))
 
 
   # Clean up ----------------------------------------------------------------
@@ -272,14 +365,6 @@ accessibility_DA_location <- function(DA_table) {
   names(point_DA$dmti_arenas_2021) <-
     "Amusement and Recreation Services"
   sic_def$dmti_arenas_2021$industry <- "Amusement and Recreation Services"
-  names(point_DA$dmti_education_2021)[
-    names(point_DA$dmti_education_2021) ==
-      "Schools and Educational Services, Not Elsewhere Classified"] <-
-    "Other Schools and Educational Services"
-  sic_def$dmti_education_2021$industry[
-    sic_def$dmti_education_2021$industry ==
-      "Schools and Educational Services, Not Elsewhere Classified"] <-
-    "Other Schools and Educational Services"
   names(point_DA$dmti_cinemas_2021) <-
     "Motion Picture Theaters"
   sic_def$dmti_cinemas_2021$industry <- "Motion Picture Theaters"
@@ -312,6 +397,9 @@ accessibility_DA_location <- function(DA_table) {
     mapply(\(field_name, industries) {
       year <- industries$date
       field <- stringr::str_extract(field_name, "(?<=dmti_).*(?=_\\d{4}$)")
+      if (is.na(field)) {
+        field <- stringr::str_extract(field_name, ".*(?=_)")
+      }
 
       industries$var_code <-
         paste(field,
@@ -353,7 +441,7 @@ accessibility_DA_location <- function(DA_table) {
   for (i in names(with_sub)) {
     var_code <- paste0(i, "_total_2021")
 
-    industry <- if (i == "education") {
+    industry <- if (i == "educational") {
       "Educational facilities"
     } else if (i == "fooddistribution") {
       "Food Distribution Depots"
@@ -363,7 +451,7 @@ accessibility_DA_location <- function(DA_table) {
       "Retail Establishment"
     }
 
-    exp <- if (i == "education") {
+    exp <- if (i == "educational") {
       "Establishments providing academic or technical instruction"
     } else if (i == "fooddistribution") {
       paste0("Establishments primarily engaged in selling food for home ",
@@ -403,11 +491,3 @@ accessibility_DA_location <- function(DA_table) {
 list_accessibility_themes <- function() {
   cc.data::accessibility_themes
 }
-
-
-
-
-
-
-
-
