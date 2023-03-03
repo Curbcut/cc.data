@@ -28,13 +28,13 @@ census_build_DA_years_dictionary <- function(DA_data_raw,
     ite <- sf::st_drop_geometry(ite)
     ite <- sapply(intersected, \(x) ite$ID[x], USE.NAMES = FALSE)
 
-    out <- tibble::tibble(ID_2016 = recent$ID)
+    out <- tibble::tibble(ID_2021 = recent$ID)
     out[[paste0("ID_", x)]] <- ite
 
     out
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   # Merge the outputs
-  Reduce(\(x, y) base::merge(x, y, by = "ID_2016", all.x = TRUE), dict_tibbles) |>
+  Reduce(\(x, y) base::merge(x, y, by = "ID_2021", all.x = TRUE), dict_tibbles) |>
     tibble::as_tibble()
 }

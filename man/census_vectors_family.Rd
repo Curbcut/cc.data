@@ -17,6 +17,8 @@ A data.frame of census variables code
 \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
 \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
+\item{parent_vec}{The string corresponding to the other \code{variable} that is its parent}
+\item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 }
 }
 }

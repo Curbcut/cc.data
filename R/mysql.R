@@ -68,7 +68,7 @@ db_query <- function(type, statement, name = NULL) {
   # Connect to database
   conn <- db_connect()
 
-  if (type %in% c("write", "execute")) {
+  if (type %in% c("write", "execute", "append")) {
     # The following is a SESSION variable, and so it must be enable/disable
     # for every connection.
     # The innodb_strict_mode setting affects the handling of syntax errors
@@ -155,6 +155,81 @@ db_disconnect <- function(conn) {
   DBI::dbDisconnect(conn)
 }
 
+#' Write data frame to database table
+#'
+#' This function writes a data frame to a database table. If a primary key is
+#' provided, the function creates a table with the primary key for faster
+#' retrieval and appends the data by waves. If an index is provided, the function
+#' creates an index on the index column for faster retrieval.
+#'
+#' @param df <`data.frame`> A non-sf data.frame to be written to the MySQL
+#' @param tb_name <`character`> The name of the table in the MySQL database
+#' @param primary_key <`character`> A column of the table to be written that should
+#' be the pimary key for faster retrieval. The ID in that column needs to be
+#' unique.
+#' @param index <`character`> A column of the table to be written that should
+#' be indexed for faster retrieval. No need for the values of the column to be
+#' unique.
+#' @param rows_per_append_wave <`numeric`> Number of rows to each for each waves
+#' of append. The thiner the dataframe is, the more many rows can be appended
+#' at a time. For census data with lots of columns and geometry columns, as
+#' each row is heavier, the number of rows to append at once needs to be smaller
+#' (around 1000). For buildings, every row is smaller and so around 50k can
+#' be appended at the same time.
+#'
+#' @return NULL
+db_write_table_helper <- function(df, tb_name, primary_key = NULL, index = NULL,
+                                 rows_per_append_wave = 1000) {
+  if (!is.null(primary_key)) {
+    # Create the table with the primary key for faster retrieval
+    cols <-
+      paste0(paste(
+        names(df), "VARCHAR(",
+        sapply(seq_len(ncol(df)),
+               \(x) {
+                 n <- suppressWarnings(max(nchar(df[[x]]), na.rm = TRUE))
+                 if (is.infinite(n)) n <- 5
+                 n
+               })
+        ,"),"), collapse = " ")
+    db_query(type = "execute",
+             statement = paste("CREATE TABLE", tb_name, "(",
+                               cols,
+                               "CONSTRAINT", paste0(tb_name, "_pk"),
+                               "PRIMARY KEY",
+                               paste0("(", primary_key , "))")))
+
+    # Append the table's data by waves of 25k rows
+    waves <- split(df, 1:ceiling(nrow(df) / rows_per_append_wave)) |>
+      suppressWarnings()
+
+    pb <- progressr::progressor(steps = length(waves))
+    lapply(waves, \(x) {
+      code <- db_query(type = "append", statement = x, name = tb_name)
+      db_query(type = "execute", code)
+      pb()
+    })
+  } else {
+    db_query(type = "write", statement = df, name = tb_name)
+  }
+
+  if (!is.null(index)) {
+    # Create an index on ID for faster retrieval
+    # Modify the column first so that it's character type
+    max_cell_size <- max(nchar(df[[index]]), na.rm = TRUE)
+    db_query(type = "execute", paste(
+      "ALTER TABLE", tb_name, "MODIFY COLUMN",
+      index, "VARCHAR(", max_cell_size, ")"
+    ))
+    # Index the ID column
+    index_name <- paste0("ID_index_", tb_name)
+    db_query(type = "execute", paste(
+      "CREATE INDEX", index_name,
+      "ON", tb_name, "(", index, ")"
+    ))
+  }
+}
+
 #' Write the an sf or non-sf table in the MySQL database
 #'
 #' @param df <`data.frame`> An sf or non-sf data.frame to be written to
@@ -226,57 +301,50 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
     row.names(df_no_geo) <- NULL
   } else df_no_geo <- df
 
+  # If there are too many columns and it causes the rows to be too large in size,
+  # split the df until it's split small enough to fit.
+  succeed <- FALSE
+  split_df <- 2
+  while (!succeed) {
 
-  # Remove if existing table
-  db_query("remove", tb_name)
+    tryCatch({
 
-  if (!is.null(primary_key)) {
-    # Create the table with the primary key for faster retrieval
-    cols <-
-      paste0(paste(
-        names(df_no_geo), "VARCHAR(",
-        sapply(seq_len(ncol(df_no_geo)),
-               \(x) {
-                 n <- suppressWarnings(max(nchar(df_no_geo[[x]]), na.rm = TRUE))
-                 if (is.infinite(n)) n <- 5
-                 n
-               })
-        ,"),"), collapse = " ")
-    db_query(type = "execute",
-             statement = paste("CREATE TABLE", tb_name, "(",
-                               cols,
-                               "CONSTRAINT", paste0(tb_name, "_pk"),
-                               "PRIMARY KEY",
-                               paste0("(", primary_key , "))")))
+    if (ncol(df_no_geo) > 1017) {
+      ind <- suppressWarnings(split(seq_len(ncol(df_no_geo)), 1:split_df))
 
-    # Append the table's data by waves of 25k rows
-    waves <- split(df_no_geo, 1:ceiling(nrow(df_no_geo) / rows_per_append_wave)) |>
-      suppressWarnings()
+      # Split the dataframe and keep `ID` in all
+      out_df <- lapply(ind, \(i) df_no_geo[, unique(c(1, i))])
 
-    pb <- progressr::progressor(steps = length(waves))
-    lapply(waves, \(x) {
-      code <- db_query(type = "append", statement = x, name = tb_name)
-      db_query(type = "execute", code)
-      pb()
+      # Split the table names
+      new_tb_name <- paste0(tb_name, "_part", 1:split_df)
+    } else {
+      out_df <- list(df_no_geo)
+      new_tb_name <- tb_name
+    }
+
+    # Remove if existing table
+    if (length(new_tb_name) > 1) {
+      all_tb <- db_list_tables()
+      shared_name <- all_tb[grepl(tb_name, all_tb)]
+      to_delete <- shared_name[grepl("_part\\d*$", shared_name)]
+      sapply(to_delete, \(x) db_query("remove", to_delete))
+    } else db_query("remove", tb_name)
+
+    # Save all the tables
+    mapply(\(df, name) {
+      db_write_table_helper(df = df, tb_name = name,
+                            primary_key = primary_key,
+                            index = index,
+                            rows_per_append_wave = rows_per_append_wave)
+    }, out_df, new_tb_name)
+
+    succeed <<- TRUE
+    break
+
+    }, error = function(e) {
+      split_df <<- split_df * 2
+      if (!grepl("Row size too large", e)) stop(print(e))
     })
-  } else {
-    db_query(type = "write", statement = df_no_geo, name = tb_name)
-  }
-
-  if (!is.null(index)) {
-  # Create an index on ID for faster retrieval
-  # Modify the column first so that it's character type
-  max_cell_size <- max(nchar(df_no_geo[[index]]), na.rm = TRUE)
-  db_query(type = "execute", paste(
-    "ALTER TABLE", tb_name, "MODIFY COLUMN",
-    index, "VARCHAR(", max_cell_size, ")"
-  ))
-  # Index the ID column
-  index_name <- paste0("ID_index_", tb_name)
-  db_query(type = "execute", paste(
-    "CREATE INDEX", index_name,
-    "ON", tb_name, "(", index, ")"
-  ))
   }
 
   return(invisible(NULL))
@@ -318,7 +386,9 @@ db_write_processed_data <- function(processed_census) {
       tb_centroids <- suppressWarnings(sf::st_point_on_surface(tb))
       tb <- tb[!as.vector(sf::st_intersects(tb_centroids, terr, sparse = FALSE)), ]
 
-      db_write_table(df = tb, tb_name = tb_name, primary_key = "ID")
+      db_write_table(df = tb, tb_name = tb_name, primary_key = "ID",
+                     rows_per_append_wave = 100)
+
     })
 
   return(invisible(NULL))
@@ -439,10 +509,8 @@ db_read_ttm <- function(mode, DA_ID) {
 
 }
 
-
-#' Read a table in the MySQL database
-#'
-#' Read a table in the database by filtering the ID column.
+#' Helper function to read data from a database table based on selected columns
+#' and IDs
 #'
 #' @param table <`character`> The table name in the MySQL database. To list all
 #' tables, use \code{\link[DBI]{dbListTables}}.
@@ -451,14 +519,22 @@ db_read_ttm <- function(mode, DA_ID) {
 #' @param column_to_select <`character vector`> To column from which the `IDs`
 #' should be selected. Defaults to `ID`.
 #' @param IDs <`character vector`> A character vector of all IDs to retrieve.
-#' @param crs <`numeric`> EPSG coordinate reference system to which the data
-#' should be transformed.
 #'
-#' @return A tibble or an sf tibble depending if geometry is available.
-#' @export
-db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
-                         crs = 3347) {
-
+#' @return A tibble containing the retrieved data from the database table.
+#'
+#' @details
+#' If columns are specified, this function will retrieve the specified columns
+#' and IDs. If "*" is used or the columns argument, all columns will be retrieved.
+#'
+#' The function will split the IDs into multiple smaller calls if the length of
+#' the IDs exceeds 2500.
+#'
+#' The retrieved data is returned as a tibble. The function converts each column
+#' to its right class based on its data type. ID columns are converted to
+#' character and all other columns are converted using the utils::type.convert()
+#' function.
+db_read_data_helper <- function(table, columns = "*", column_to_select = "ID",
+                                IDs) {
   # If not retrieve all columns, make sure to retrieve IDs
   if (length(columns) != 1 && all(columns != "*")) {
     all_cols <- db_query(type = "get", statement = sprintf("SELECT COLUMN_NAME
@@ -481,7 +557,6 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
     ids <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
   }
 
-
   # Construct the calls
   ids <- lapply(ids, \(x) paste0(column_to_select, " = '", x, "'"))
   query <- lapply(ids, \(x) paste(
@@ -503,13 +578,63 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
   })
   df <- tibble::as_tibble(Reduce(cbind, df))
 
+  # Return
+  return(df)
+}
+
+
+#' Read a table in the MySQL database
+#'
+#' Read a table in the database by filtering the ID column.
+#'
+#' @param table <`character`> The table name in the MySQL database. To list all
+#' tables, use \code{\link[DBI]{dbListTables}}.
+#' @param columns <`character vector`> A character vector of all columns to
+#' retrieve. By default, all columns (`*`).
+#' @param column_to_select <`character vector`> To column from which the `IDs`
+#' should be selected. Defaults to `ID`.
+#' @param IDs <`character vector`> A character vector of all IDs to retrieve.
+#' @param crs <`numeric`> EPSG coordinate reference system to which the data
+#' should be transformed.
+#'
+#' @return A tibble or an sf tibble depending if geometry is available.
+#' @export
+db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
+                         crs = 3347) {
+
+  all_tb <- db_list_tables()
+  shared_name <- all_tb[grepl(table, all_tb)]
+  to_retrieve <- shared_name[grepl("_part\\d*$", shared_name)]
+
+  df <- if (length(to_retrieve) == 0) {
+    db_read_data_helper(table = table, columns = columns,
+                        column_to_select = column_to_select,
+                        IDs = IDs)
+  } else {
+    dfs <- lapply(to_retrieve, \(x) {
+      db_read_data_helper(table = x, columns = columns,
+                          column_to_select = column_to_select,
+                          IDs = IDs)
+    })
+    Reduce(\(x, y) base::merge(x, y, by = "ID", all = TRUE), dfs) |>
+      tibble::as_tibble()
+  }
+
   # If it is geometry, convert it to sf
   if (sum(grepl("geometry", names(df))) > 0) {
     dfs <- suppressWarnings(split(df, 1:100))
 
     pb <- progressr::progressor(steps = length(dfs))
     dfs <- future.apply::future_lapply(dfs, \(df) {
-      geo_columns <- names(df)[grepl("geometry_", names(df))]
+
+      geo_cols_logic <- grepl("geometry_", names(df))
+      geo_columns <- names(df)[geo_cols_logic]
+
+      # Order the geo columns
+      ind <- as.numeric(gsub("geometry_", "", geo_columns)) |> order()
+      geo_columns <- geo_columns[ind]
+      col_order <- c(names(df)[!geo_cols_logic], geo_columns)
+      df <- df[, col_order]
 
       df$geometry <-
         lapply(seq_len(nrow(df)), \(x) {

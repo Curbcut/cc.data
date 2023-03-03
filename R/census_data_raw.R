@@ -27,7 +27,8 @@ census_data_raw <- function(empty_geometries,
 
         # Relevant named vectors
         vecs <-
-          census_vectors_table[, c("var_code", paste0("vec_", year), "parent_vectors")]
+          census_vectors_table[, c("var_code", paste0("vec_", year),
+                                   "parent_vectors", "parent")]
         vecs <- vecs[!is.na(vecs[[paste0("vec_", year)]]), ]
         var_codes <- vecs[[paste0("vec_", year)]]
         names(var_codes) <- vecs$var_code
@@ -89,15 +90,22 @@ census_data_raw <- function(empty_geometries,
 
         names(dat) <- gsub("_[0-9]$", "", names(dat))
 
+        # Only retrieve parent vectors for that are for use. These parent vectors
+        # are normally the same as the ones in the census vectors tables, but they
+        # are for normalization use only. Not to be used in the app.
+        var_codes_for_use <- var_codes[var_codes %in%
+                                         unlist(vecs[!vecs$parent, 2])]
+
         # Get parent vectors
         pv <- cancensus::list_census_vectors(census_dataset)
-        pv <- pv[pv$vector %in% var_codes, ]
+        pv <- pv[pv$vector %in% var_codes_for_use, ]
 
         pv_vec <- ifelse(is.na(pv$parent_vector), pv$aggregation, pv$parent_vector)
         pv_vec <- gsub(".* ", "", pv_vec)
 
         pv <- cbind(pv["vector"], parent_vector = pv_vec)
-        pv <- merge(tibble::tibble(var_code = names(var_codes), var_codes), pv,
+        pv <- merge(tibble::tibble(var_code = names(var_codes_for_use),
+                                   var_codes = var_codes_for_use), pv,
           by.x = "var_codes", by.y = "vector"
         )
         pv$var_code <- gsub("_[0-9]+$", "", pv$var_code)

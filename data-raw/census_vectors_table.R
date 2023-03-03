@@ -1,5 +1,66 @@
 ## IMPORT HOUSING CENSUS VECTORS ###############################################
 
+verify_parents <- function(vectors_df, parents_df) {
+
+  if (sum(vectors_df$parent) > 0)
+    stop("All vectors of `vectors_df` must be non-parent vectors. `parent` == F")
+
+  if (sum(parents_df$parent)  != nrow(parents_df))
+    stop("All vectors of `parents_df` must be parent vectors. `parent` == T")
+
+  # Get all non-NA parent vectors and check if they're in the parents_df
+  non_na_parents <- unique(vectors_df$parent_vec[!is.na(vectors_df$parent_vec)])
+  if (!all(non_na_parents %in% parents_df$var_code)) {
+    missing_parents <- non_na_parents[!non_na_parents %in% parents_df$var_code]
+    stop(paste0("Parent vector `", missing_parents, "` is missing. \n"))
+  }
+
+  # Loop through each row in the vectors_df and check if there is a valid parent
+  # vector for each year
+  vec_cols <- names(vectors_df)[grepl("vec_", names(vectors_df))]
+  row_indices <- seq_len(nrow(vectors_df))
+
+  lapply(row_indices, function(row_index) {
+    row_data <- vectors_df[row_index, ]
+    if (is.na(row_data$parent_vec)) {
+      return(NULL)
+    }
+
+    # Get all variables with non-NA vectors for the current row
+    var_vectors <- sapply(vec_cols, function(col_name) {
+      vectors <- unlist(row_data[[col_name]])
+      if (all(is.na(vectors))) {
+        return(NULL)
+      }
+      vectors
+    }, simplify = FALSE, USE.NAMES = TRUE)
+    existing_vars <- names(var_vectors[!sapply(var_vectors, is.null)])
+
+    # Check if there is a parent vector for each non-NA variable vector
+    parent_data <- parents_df[parents_df$var_code == row_data$parent_vec, ]
+    parent_vectors <- sapply(vec_cols, function(col_name) {
+      vectors <- unlist(parent_data[[col_name]])
+      if (all(is.na(vectors))) {
+        return(NULL)
+      }
+      vectors
+    }, simplify = FALSE, USE.NAMES = TRUE)
+    existing_parents <- names(parent_vectors[!sapply(parent_vectors, is.null)])
+
+    # If there is a non-NA variable vector without a parent vector, throw an error
+    if (!all(existing_vars %in% existing_parents)) {
+      var_code <- row_data$var_code
+      missing_parents <- existing_vars[!existing_vars %in% existing_parents]
+      stop(paste0("`", var_code, "` is missing a parent variable for `",
+                  missing_parents, "`. \n"))
+    }
+  })
+
+  # Return NULL invisibly
+  return(invisible(NULL))
+}
+
+
 census_vectors_housing <-
   tibble::tibble(
     var_code = "housing_tenant",
@@ -14,7 +75,9 @@ census_vectors_housing <-
     parent_vectors = list(NA),
     var_title = "Tenant-occupied (%)",
     var_short = "Tenant",
-    explanation = "the percentage of private dwellings occupied by tenants"
+    explanation = "the percentage of private dwellings occupied by tenants",
+    parent_vec = "private_households",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_rent",
@@ -29,7 +92,9 @@ census_vectors_housing <-
     parent_vectors = list(NA),
     var_title = "Average rent ($)",
     var_short = "Avg. rent",
-    explanation = "the average rent paid by tenants per month"
+    explanation = "the average rent paid by tenants per month",
+    parent_vec = NA,
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_repairs",
@@ -47,7 +112,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of households living in dwellings ",
       "requiring major repairs"
-    )
+    ),
+    parent_vec = "private_dwellings",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_value",
@@ -62,7 +129,9 @@ census_vectors_housing <-
     parent_vectors = list("v_CA01_1670"),
     var_title = "Average property value ($)",
     var_short = "Avg. value",
-    explanation = "the average value of owner-occupied dwellings"
+    explanation = "the average value of owner-occupied dwellings",
+    parent_vec = NA,
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_unafford",
@@ -80,7 +149,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of dwellings for which residents pay ",
       "more than 30% of income on housing costs"
-    )
+    ),
+    parent_vec = "owner_tenant_households",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_unsuit",
@@ -98,7 +169,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of households living in ",
       "accommodations without enough bedrooms"
-    )
+    ),
+    parent_vec = "private_households",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_stress_renter",
@@ -116,7 +189,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of renter households that spend ",
       "more than 30% of their income on shelter costs"
-    )
+    ),
+    parent_vec = "tenant_households",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_stress_owner",
@@ -134,7 +209,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of owner households that spend more ",
       "than 30% of their income on shelter costs"
-    )
+    ),
+    parent_vec = "owner_households",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_mobility_one",
@@ -152,7 +229,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of households that have moved in ",
       "the past year"
-    )
+    ),
+    parent_vec = "mobility_status_1",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_mobility_five",
@@ -170,7 +249,9 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of households that have moved in the ",
       "past five years"
-    )
+    ),
+    parent_vec = "mobility_status_5",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "housing_single_detached",
@@ -188,8 +269,137 @@ census_vectors_housing <-
     explanation = paste0(
       "the percentage of occupied private dwellings that ",
       "are single-detached houses"
-    )
+    ),
+    parent_vec = "private_dwellings",
+    parent = FALSE
   )
+
+census_vectors_housing_parent <-
+  tibble::tibble(
+    var_code = "private_households",
+    type = list("count"),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_4237"),
+    vec_2016 = list("v_CA16_4836"),
+    vec_2011 = list("v_CA11N_2252"),
+    vec_2006 = list("v_CA06_136"),
+    vec_2001 = list("v_CA01_129"),
+    vec_1996 = list("v_CA1996_1694"),
+    parent_vectors = list(NA),
+    var_title = "Households",
+    var_short = "Households",
+    explanation = "the total number of private households",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "private_dwellings",
+    type = list("count"),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_4272"),
+    vec_2016 = list("v_CA16_4870"),
+    vec_2011 = list("v_CA11N_2230"),
+    vec_2006 = list("v_CA06_105"),
+    vec_2001 = list("v_CA01_96"),
+    vec_1996 = list("v_CA1996_1678"),
+    parent_vectors = list(NA),
+    var_title = "Dwellings",
+    var_short = "Dwellings",
+    explanation = "the total number of private dwellings",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "owner_tenant_households",
+    type = list("count"),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_4288"),
+    vec_2016 = list("v_CA16_4886"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    parent_vectors = list(NA),
+    var_title = "Owner and tenant households",
+    var_short = "Households",
+    explanation = "the total number of owner and tenant households",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "tenant_households",
+    type = list(NA),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_4313"),
+    vec_2016 = list("v_CA16_4897"),
+    vec_2011 = list("v_CA11N_2288"),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    parent_vectors = list(NA),
+    var_title = "Tenant households",
+    var_short = "Tenant",
+    explanation = "the total number of tenant households",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "owner_households",
+    type = list(NA),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_4305"),
+    vec_2016 = list("v_CA16_4890"),
+    vec_2011 = list("v_CA11N_2281"),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    parent_vectors = list(NA),
+    var_title = "Owner households",
+    var_short = "Owner",
+    explanation = "the total number of owner households",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "mobility_status_1",
+    type = list(NA),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_5745"),
+    vec_2016 = list("v_CA16_6692"),
+    vec_2011 = list("v_CA11N_1717"),
+    vec_2006 = list("v_CA06_451"),
+    vec_2001 = list("v_CA01_381"),
+    vec_1996 = list("v_CA1996_1385"),
+    parent_vectors = list(NA),
+    var_title = "Residents 1 year prior",
+    var_short = "Residents",
+    explanation = "the total number of residents one year prior",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "mobility_status_5",
+    type = list(NA),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_5772"),
+    vec_2016 = list("v_CA16_6719"),
+    vec_2011 = list("v_CA11N_1744"),
+    vec_2006 = list("v_CA06_460"),
+    vec_2001 = list("v_CA01_390"),
+    vec_1996 = list("v_CA1996_1394"),
+    parent_vectors = list(NA),
+    var_title = "Residents 5 years prior",
+    var_short = "Residents",
+    explanation = "the total number of residents five years prior",
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+verify_parents(vectors_df = census_vectors_housing,
+               parents_df = census_vectors_housing_parent)
+
+census_vectors_housing <- rbind(census_vectors_housing,
+                            census_vectors_housing_parent)
 
 usethis::use_data(census_vectors_housing, overwrite = TRUE)
 
@@ -210,7 +420,9 @@ census_vectors_income <-
     parent_vectors = list(NA),
     var_title = "Median household income ($)",
     var_short = "Med. inc.",
-    explanation = "the median before-tax household income"
+    explanation = "the median before-tax household income",
+    parent_vec = NA,
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "inc_50",
@@ -232,7 +444,9 @@ census_vectors_income <-
     explanation = paste0(
       "the percentage of households with an income less ",
       "then $50,000"
-    )
+    ),
+    parent_vec = "with_income",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "inc_100",
@@ -251,7 +465,9 @@ census_vectors_income <-
     explanation = paste0(
       "the percentage of households with an income between ",
       "$50,000 and $100,000"
-    )
+    ),
+    parent_vec = "with_income",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "inc_high",
@@ -269,7 +485,9 @@ census_vectors_income <-
     explanation = paste0(
       "the percentage of households with an income higher ",
       "than $100,000"
-    )
+    ),
+    parent_vec = "with_income",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "inc_limat",
@@ -287,8 +505,54 @@ census_vectors_income <-
     explanation = paste0(
       "the prevalence of low income in private households ",
       "based on the Low-income measure, after-tax (LIM-AT)"
-    )
+    ),
+    parent_vec = "income_status",
+    parent = FALSE
   )
+
+census_vectors_income_parent <-
+  tibble::tibble(
+    var_code = "with_income",
+    type = list("count"),
+    theme = "Income",
+    vec_2021 = list("v_CA21_671"),
+    vec_2016 = list("v_CA16_2405"),
+    vec_2011 = list("v_CA11N_2533"),
+    vec_2006 = list("v_CA06_1988"),
+    vec_2001 = list("v_CA01_1621"),
+    vec_1996 = list("v_CA1996_1614"),
+    parent_vectors = list(NA),
+    var_title = "Labour force individuals",
+    var_short = "With income",
+    explanation = "the total population aged 15 years and over with an income",
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::add_row(
+    var_code = "income_status",
+    type = list("count"),
+    theme = "Income",
+    vec_2021 = list("v_CA21_1010"),
+    vec_2016 = list("v_CA16_2510"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    parent_vectors = list(NA),
+    var_title = "Households",
+    var_short = "Households",
+    explanation = paste0("the total population in private households to whom ",
+                         "low-income concepts are applicable"),
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+
+verify_parents(vectors_df = census_vectors_income,
+               parents_df = census_vectors_income_parent)
+
+census_vectors_income <- rbind(census_vectors_income,
+                               census_vectors_income_parent)
 
 usethis::use_data(census_vectors_income, overwrite = TRUE)
 
@@ -309,7 +573,9 @@ census_vectors_identity <-
     parent_vectors = list(NA),
     var_title = "Immigrants (%)",
     var_short = "Immigrants",
-    explanation = "the percentage of residents who are foreign-born"
+    explanation = "the percentage of residents who are foreign-born",
+    parent_vec = "population_ph",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "iden_imm_new",
@@ -328,9 +594,11 @@ census_vectors_identity <-
     var_title = "New immigrants (%)",
     var_short = "New immigrants",
     explanation = paste0(
-      "the percentage of people who have immigrated in ",
+      "the percentage of individuals who have immigrated in ",
       "the last five years"
-    )
+    ),
+    parent_vec = "population_ph",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "iden_vm",
@@ -346,9 +614,11 @@ census_vectors_identity <-
     var_title = "Visible minorities (%)",
     var_short = "Vis. minorities",
     explanation = paste0(
-      "the percentage of people who identify as part of ",
+      "the percentage of individuals who identify as part of ",
       "one or more visible minority groups"
-    )
+    ),
+    parent_vec = "population_ph",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "iden_aboriginal",
@@ -363,8 +633,36 @@ census_vectors_identity <-
     parent_vectors = list(NA),
     var_title = "Indigenous (%)",
     var_short = "Indigenous",
-    explanation = "the percentage of people who are of indigenous identity"
+    explanation = "the percentage of individuals who are of indigenous identity",
+    parent_vec = "population_ph",
+    parent = FALSE
   )
+
+census_vectors_identity_parent <-
+  tibble::tibble(
+    var_code = "population_ph",
+    type = list("count"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_4404"),
+    vec_2016 = list("v_CA16_3405"),
+    vec_2011 = list("v_CA11N_16"),
+    vec_2006 = list("v_CA06_474"),
+    vec_2001 = list("v_CA01_402"),
+    vec_1996 = list("v_CA1996_125"),
+    parent_vectors = list(NA),
+    var_title = "Individuals",
+    var_short = "Individuals",
+    explanation = "the total count of individuals in private households",
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+
+verify_parents(vectors_df = census_vectors_identity,
+               parents_df = census_vectors_identity_parent)
+
+census_vectors_identity <- rbind(census_vectors_identity,
+                                 census_vectors_identity_parent)
 
 usethis::use_data(census_vectors_identity, overwrite = TRUE)
 
@@ -389,9 +687,11 @@ census_vectors_transport <-
     var_title = "Drive to work (%)",
     var_short = "Drive",
     explanation = paste0(
-      "the percentage of people who drive a privately ",
+      "the percentage of individuals who drive a privately ",
       "owned car or truck to work"
-    )
+    ),
+    parent_vec = "employed_lf",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "trans_walk_or_bike",
@@ -409,7 +709,9 @@ census_vectors_transport <-
     parent_vectors = list(c("v_CA01_1253", "v_CA1996_1324")),
     var_title = "Walk or cycle to work (%)",
     var_short = "Walk or cycle",
-    explanation = "the percentage of people who walk or cycle to work"
+    explanation = "the percentage of individuals who walk or cycle to work",
+    parent_vec = "employed_lf",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "trans_transit",
@@ -425,9 +727,11 @@ census_vectors_transport <-
     var_title = "Public transit to work (%)",
     var_short = "Transit",
     explanation = paste0(
-      "the percentage of people who use public transit ",
+      "the percentage of individuals who use public transit ",
       "to get to work"
-    )
+    ),
+    parent_vec = "employed_lf",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "trans_t_15",
@@ -443,9 +747,11 @@ census_vectors_transport <-
     var_title = "Commute under 15 minutes (%)",
     var_short = "Commute <15m",
     explanation = paste0(
-      "the percentage of people whose commute time is ",
+      "the percentage of individuals whose commute time is ",
       "less than 15 minutes"
-    )
+    ),
+    parent_vec = "employed_lf",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "trans_t_45",
@@ -461,9 +767,11 @@ census_vectors_transport <-
     var_title = "Commute 15-45 minutes (%)",
     var_short = "Commute 14-45m",
     explanation = paste0(
-      "the percentage of people whose commute time is ",
+      "the percentage of individuals whose commute time is ",
       "between 15 and 45 minutes"
-    )
+    ),
+    parent_vec = "employed_lf",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "trans_t_45_plus",
@@ -479,57 +787,86 @@ census_vectors_transport <-
     var_title = "Commute more than 45 minutes (%)",
     var_short = "Commute >45m",
     explanation = paste0(
-      "the percentage of people whose commute time is ",
+      "the percentage of individuals whose commute time is ",
       "longer than 45 minutes"
-    )
+    ),
+    parent_vec = "employed_lf",
+    parent = FALSE
   )
+
+census_vectors_transport_parent <-
+  tibble::tibble(
+    var_code = "employed_lf",
+    type = list("count"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_7632"),
+    vec_2016 = list("v_CA16_5792"),
+    vec_2011 = list("v_CA11N_2191"),
+    vec_2006 = list("v_CA06_1100"),
+    vec_2001 = list(c("v_CA01_1254", "v_CA01_1254")),
+    vec_1996 = list("v_CA1996_1324"),
+    parent_vectors = list(NA),
+    var_title = "Employed individuals",
+    var_short = "Individuals",
+    explanation = paste0("the total count of employed labour force aged 15 ",
+                         "years and over with a usual place of work or no ",
+                         "fixed workplace address"),
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+verify_parents(vectors_df = census_vectors_transport,
+               parents_df = census_vectors_transport_parent)
+
+census_vectors_transport <- rbind(census_vectors_transport,
+                                 census_vectors_transport_parent)
 
 usethis::use_data(census_vectors_transport, overwrite = TRUE)
 
 
 ## IMPORT EMPLOYMENT CENSUS VECTORS ############################################
 
-census_vectors_employment <-
-  tibble::tibble(
-    var_code = "emp_professional",
-    type = list("pct"),
-    theme = "Employment",
-    vec_2021 = list(c("v_CA21_6642", "v_CA21_6645")),
-    vec_2016 = list(c("v_CA16_5735", "v_CA16_5738")),
-    vec_2011 = list(c("v_CA11N_2107", "v_CA11N_2110")),
-    vec_2006 = list(c("v_CA06_1021", "v_CA06_1022")),
-    vec_2001 = list(c("v_CA01_1181", "v_CA01_1182")),
-    vec_1996 = list(NA),
-    parent_vectors = list(NA),
-    var_title = "Managerial and professional occupations (%)",
-    var_short = "Professional",
-    explanation = paste0(
-      "the percentage of the workforce in professional and ",
-      "managerial occupations, based on the North American ",
-      "Industry Classification System"
-    )
-  ) |>
-  tibble::add_row(
-    var_code = "emp_creative",
-    type = list("pct"),
-    theme = "Employment",
-    vec_2021 = list(c("v_CA21_6633", "v_CA21_6657")),
-    vec_2016 = list(c("v_CA16_5726", "v_CA16_5750")),
-    vec_2011 = list(c("v_CA11N_2098", "v_CA11N_2122")),
-    vec_2006 = list(c("v_CA06_1018", "v_CA06_1026")),
-    vec_2001 = list(c("v_CA01_1178", "v_CA01_1186")),
-    vec_1996 = list(NA),
-    parent_vectors = list(NA),
-    var_title = "Creative occupations (%)",
-    var_short = "Creative",
-    explanation = paste0(
-      "the percentage of the workforce in artistic and ",
-      "cultural occupations, based on the North American ",
-      "Industry Classification System"
-    )
-  )
-
-usethis::use_data(census_vectors_employment, overwrite = TRUE)
+# census_vectors_employment <-
+#   tibble::tibble(
+#     var_code = "emp_professional",
+#     type = list("pct"),
+#     theme = "Employment",
+#     vec_2021 = list(c("v_CA21_6642", "v_CA21_6645")),
+#     vec_2016 = list(c("v_CA16_5735", "v_CA16_5738")),
+#     vec_2011 = list(c("v_CA11N_2107", "v_CA11N_2110")),
+#     vec_2006 = list(c("v_CA06_1021", "v_CA06_1022")),
+#     vec_2001 = list(c("v_CA01_1181", "v_CA01_1182")),
+#     vec_1996 = list(NA),
+#     parent_vectors = list(NA),
+#     var_title = "Managerial and professional occupations (%)",
+#     var_short = "Professional",
+#     explanation = paste0(
+#       "the percentage of the workforce in professional and ",
+#       "managerial occupations, based on the North American ",
+#       "Industry Classification System"
+#     )
+#   ) |>
+#   tibble::add_row(
+#     var_code = "emp_creative",
+#     type = list("pct"),
+#     theme = "Employment",
+#     vec_2021 = list(c("v_CA21_6633", "v_CA21_6657")),
+#     vec_2016 = list(c("v_CA16_5726", "v_CA16_5750")),
+#     vec_2011 = list(c("v_CA11N_2098", "v_CA11N_2122")),
+#     vec_2006 = list(c("v_CA06_1018", "v_CA06_1026")),
+#     vec_2001 = list(c("v_CA01_1178", "v_CA01_1186")),
+#     vec_1996 = list(NA),
+#     parent_vectors = list(NA),
+#     var_title = "Creative occupations (%)",
+#     var_short = "Creative",
+#     explanation = paste0(
+#       "the percentage of the workforce in artistic and ",
+#       "cultural occupations, based on the North American ",
+#       "Industry Classification System"
+#     )
+#   )
+#
+# usethis::use_data(census_vectors_employment, overwrite = TRUE)
 
 
 ## IMPORT FAMILY CENSUS VECTORS ############################################
@@ -546,12 +883,14 @@ census_vectors_family <-
     vec_2001 = list(c("v_CA01_63", "v_CA01_57", "v_CA01_67")),
     vec_1996 = list(NA),
     parent_vectors = list(c(
-      "v_CA11F_115", "v_CA06_55", "v_CA01_53",
-      "v_CA16_504"
+      "v_CA11F_182", "v_CA06_136", "v_CA01_129",
+      "v_CA16_504", "v_CA21_543"
     )),
     var_title = "Families with children (%)",
     var_short = "With child",
-    explanation = "the percentage of census families with children out of total households"
+    explanation = "the percentage of census families with children out of total households",
+    parent_vec = "private_households",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "family_one_person",
@@ -563,11 +902,22 @@ census_vectors_family <-
     vec_2006 = list("v_CA06_89"),
     vec_2001 = list("v_CA01_87"),
     vec_1996 = list("v_CA1996_98"),
-    parent_vectors = list(c("v_CA16_504", "v_CA21_543")),
+    parent_vectors = list(c("v_CA1996_1694", "v_CA01_129", "v_CA06_136",
+                            "v_CA11F_182", "v_CA16_504", "v_CA21_543")),
     var_title = "Living alone (%)",
     var_short = "Living alone",
-    explanation = "the percentage of one person households out of total households"
+    explanation = "the percentage of one person households out of total households",
+    parent_vec = "private_households",
+    parent = FALSE
   )
+
+#### PARENT VECTOR `PRIVATE HOUSEHOLDS` ALREADY PART OF `HOUSING`
+
+# verify_parents(vectors_df = census_vectors_family,
+#                parents_df = census_vectors_family_parent)
+#
+# census_vectors_family <- rbind(census_vectors_family,
+#                                   census_vectors_family_parent)
 
 usethis::use_data(census_vectors_family, overwrite = TRUE)
 
@@ -591,7 +941,9 @@ census_vectors_language <-
     explanation = paste0(
       "the percentage of individuals that only know French ",
       "as an official language"
-    )
+    ),
+    parent_vec = "population",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "lang_eng_only",
@@ -609,7 +961,9 @@ census_vectors_language <-
     explanation = paste0(
       "the percentage of individuals that only know English ",
       "as an official language"
-    )
+    ),
+    parent_vec = "population",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "lang_french_eng",
@@ -627,7 +981,9 @@ census_vectors_language <-
     explanation = paste0(
       "the percentage of individuals that know both official ",
       "languages (French and English)"
-    )
+    ),
+    parent_vec = "population",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "lang_no_official",
@@ -645,8 +1001,35 @@ census_vectors_language <-
     explanation = paste0(
       "the percentage of individuals that do not know either ",
       "of the official languages (French or English)"
-    )
+    ),
+    parent_vec = "population",
+    parent = FALSE
   )
+
+census_vectors_language_parent <-
+  tibble::tibble(
+    var_code = "population",
+    type = list("count"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_1"),
+    vec_2016 = list("v_CA16_401"),
+    vec_2011 = list("v_CA11F_1"),
+    vec_2006 = list("v_CA06_1"),
+    vec_2001 = list("v_CA01_2"),
+    vec_1996 = list("v_CA1996_2"),
+    parent_vectors = list(NA),
+    var_title = "Individuals",
+    var_short = "Individuals",
+    explanation = paste0("the total count of individuals"),
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+verify_parents(vectors_df = census_vectors_language,
+               parents_df = census_vectors_language_parent)
+
+census_vectors_language <- rbind(census_vectors_language,
+                                 census_vectors_language_parent)
 
 usethis::use_data(census_vectors_language, overwrite = TRUE)
 
@@ -679,7 +1062,9 @@ census_vectors_age <-
     )),
     var_title = "Aged between 0 and 14 (%)",
     var_short = "0-14 yo",
-    explanation = "the percentage of the population aged between 0 and 14 years old"
+    explanation = "the percentage of the population aged between 0 and 14 years old",
+    parent_vec = "population",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "age_15_64",
@@ -697,7 +1082,9 @@ census_vectors_age <-
     )),
     var_title = "Aged between 15 and 64 (%)",
     var_short = "15-64 yo",
-    explanation = "the percentage of the population aged between 15 and 64 years old"
+    explanation = "the percentage of the population aged between 15 and 64 years old",
+    parent_vec = "population",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "age_65_plus",
@@ -715,8 +1102,18 @@ census_vectors_age <-
     )),
     var_title = "Aged 65 and above (%)",
     var_short = "65+ yo",
-    explanation = "the percentage of the population aged 65 and above"
+    explanation = "the percentage of the population aged 65 and above",
+    parent_vec = "population",
+    parent = FALSE
   )
+
+#### PARENT VECTOR `POPULATION` ALREADY PART OF `LANGUAGE`
+
+# verify_parents(vectors_df = census_vectors_age,
+#                parents_df = census_vectors_age_parent)
+#
+# census_vectors_age <- rbind(census_vectors_age,
+#                             census_vectors_age_parent)
 
 usethis::use_data(census_vectors_age, overwrite = TRUE)
 
@@ -745,7 +1142,9 @@ census_vectors_education <-
       "the percentage of the population aged 15 and over ",
       "holding a University certificate, diploma or degree at bachelor level ",
       "or above"
-    )
+    ),
+    parent_vec = "population_15+",
+    parent = FALSE
   ) |>
   tibble::add_row(
     var_code = "edu_no_degree",
@@ -767,8 +1166,38 @@ census_vectors_education <-
     explanation = paste0(
       "the percentage of the population aged 15 and over ",
       "with no certificate, diploma or degree"
-    )
+    ),
+    parent_vec = "population_15+",
+    parent = FALSE
   )
+
+census_vectors_education_parent <-
+  tibble::tibble(
+    var_code = "population_15+",
+    type = list("count"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_5817"),
+    vec_2016 = list("v_CA16_5051"),
+    vec_2011 = list("v_CA11N_1771"),
+    vec_2006 = list(c("v_CA06_1234", "v_CA06_1248", "v_CA06_1262")),
+    vec_2001 = list("v_CA01_1384"),
+    vec_1996 = list("v_CA1996_1347"),
+    parent_vectors = list(NA),
+    var_title = "Individuals",
+    var_short = "Individuals",
+    explanation = paste0("the total count of individuals aged 15 years and ",
+                         "over in private households"),
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+verify_parents(vectors_df = census_vectors_education,
+               parents_df = census_vectors_education_parent)
+
+census_vectors_education <- rbind(census_vectors_education,
+                                  census_vectors_education_parent)
+
+
 
 usethis::use_data(census_vectors_education, overwrite = TRUE)
 
@@ -778,7 +1207,8 @@ usethis::use_data(census_vectors_education, overwrite = TRUE)
 census_vectors_table <- rbind(
   census_vectors_housing, census_vectors_income,
   census_vectors_identity, census_vectors_transport,
-  census_vectors_employment, census_vectors_family,
+  #census_vectors_employment,
+  census_vectors_family,
   census_vectors_language, census_vectors_age,
   census_vectors_education
 )
