@@ -124,6 +124,7 @@ build_canale <- function(DA_table, OSM_cache = TRUE) {
 #'
 #' @return A data frame containing all the three-plus way intersections in
 #' Canada.
+#' @export
 get_all_three_plus_ways <- function(OSM_cache = TRUE) {
   # Grab 2021 streets from OSM
   osm_pbf <- "http://download.geofabrik.de/north-america/canada-210101.osm.pbf"
