@@ -146,7 +146,7 @@ ndvi_process <- function(DA_table) {
   ndvi_data <- sf::st_join(ndvi_data, DA_table)
   ndvi_data <- sf::st_drop_geometry(ndvi_data)
 
-  ndvi_data <- stats:aggregate(NDVI ~ ID, data = ndvi_data, mean, na.rm = TRUE)
+  ndvi_data <- stats::aggregate(NDVI ~ ID, data = ndvi_data, mean, na.rm = TRUE)
   ndvi_data <- tibble::as_tibble(ndvi_data)
   names(ndvi_data)[1] <- "DA_ID"
 

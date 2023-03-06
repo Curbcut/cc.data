@@ -65,6 +65,10 @@ census_interpolate <- function(data_raw,
       int <- sf::st_drop_geometry(int)
       int$area_prop <- int$int_area / int$area
 
+      # Separate the parent variable that we will keep from the rest, and treat
+      # them all as additive without make the "_parent" follow.
+      TKTK
+
       # Additive values, pre needed for average values
       add <- names(int)[names(int) %in% agg_type$additive]
       add <- c(add, names(int)[grepl("_parent$", names(int))])

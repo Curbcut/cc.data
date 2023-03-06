@@ -37,10 +37,8 @@ census_data_raw <- function(empty_geometries,
         var_codes <-
           mapply(\(vec, name) {
             vec <- unname(vec)
-            sapply(vec, \(v) {
-              names(v) <- paste0(name, "_", which(v == vec))
-              v
-            }, USE.NAMES = FALSE)
+            names(vec) <- paste0(name, "_", seq_along(vec))
+            vec
           }, var_codes, names(var_codes), USE.NAMES = FALSE) |> unlist()
 
         # Current census dataset

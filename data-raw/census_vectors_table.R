@@ -803,7 +803,7 @@ census_vectors_transport_parent <-
     vec_2016 = list("v_CA16_5792"),
     vec_2011 = list("v_CA11N_2191"),
     vec_2006 = list("v_CA06_1100"),
-    vec_2001 = list(c("v_CA01_1254", "v_CA01_1254")),
+    vec_2001 = list(c("v_CA01_1254", "v_CA01_1263")),
     vec_1996 = list("v_CA1996_1324"),
     parent_vectors = list(NA),
     var_title = "Employed individuals",
