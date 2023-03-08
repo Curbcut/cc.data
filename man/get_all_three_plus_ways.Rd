@@ -4,7 +4,7 @@
 \alias{get_all_three_plus_ways}
 \title{Get all three-plus way intersections in Canada}
 \usage{
-get_all_three_plus_ways(OSM_cache = TRUE)
+get_all_three_plus_ways(year, OSM_cache = TRUE)
 }
 \arguments{
 \item{OSM_cache}{<\code{logical}> Indicates whether to use cached OSM data

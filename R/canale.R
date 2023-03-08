@@ -5,34 +5,22 @@ build_canale <- function(DA_table, OSM_cache = TRUE) {
 
   # Intersection density measure --------------------------------------------
 
-  three_ways <- get_all_three_plus_ways(OSM_cache = OSM_cache)
+  # three_ways <- get_all_three_plus_ways(OSM_cache = OSM_cache)
+  three_ways <- qs::qread("calculated_ignore/three_ways.qs")
 
-  # Create a buffer of 1km around DAs
-  DA_list <- suppressWarnings(split(DA_table, 1:640))
-  progressr::with_progress({
-    pb <- progressr::progressor(length(DA_list))
-    DA_buffer <- future.apply::future_lapply(DA_list, \(x) {
-      out <- sf::st_buffer(x, 1000)
-      pb()
-      return(out)
-    }, future.seed = NULL)
-  })
-  DA_buffer <- Reduce(rbind, DA_buffer)
+  DA_centroids <- sf::st_centroid(DA_table)
+  DA_buffer <- sf::st_buffer(DA_centroids, 1000)
 
   # How many 3+ way intersection per DA buffer
-  progressr::with_progress({
-    pb <- progressr::progressor(nrow(DA_buffer))
-    DA_three_ways <- future.apply::future_lapply(seq_len(nrow(DA_buffer)), \(x) {
-      df <- sf:::`[.sf`(DA_buffer, x, )
-      three_ways <- sf::st_intersects(DA_buffer, three_ways, sparse = FALSE) |>
-        sum()
-      df$three_ways <- three_ways
-      pb()
-      return(out)
-    }, future.seed = NULL)
-  })
-  DA_three_ways <- Reduce(rbind, DA_three_ways)
+  intersects <- sf::st_intersects(DA_buffer, three_ways)
+  DA_buffer$three_ways <- lengths(intersects)
 
+  # Calculate the mean and standard deviation
+  mean_data <- mean(DA_buffer$three_ways)
+  sd_data <- sd(DA_buffer$three_ways)
+
+  # Calculate the z-score for each data point
+  DA_table$z_int_d <- (DA_buffer$three_ways - mean_data) / sd_data
 
   # Dwelling density measure ------------------------------------------------
 
@@ -47,14 +35,94 @@ build_canale <- function(DA_table, OSM_cache = TRUE) {
   )
   dwellings <- dwellings[c("GeoUID", "Dwellings")]
   names(dwellings) <- c("ID", "dwellings")
+  dwellings <- merge(DA_table, dwellings, by = "ID")
+  dwellings$area <- get_area(dwellings)
+  dwellings <- sf::st_centroid(dwellings)
 
-  DA_table <- merge(DA_table, dwellings, by = "ID")
+  # Calculate the dwelling density for each DA buffer
+  intersects <- sf::st_intersects(DA_buffer, dwellings)
+  dwelling_density <- mapply(\(ID, ind) {
+    in_DA <- dwellings[ind, ]
+    density <- sum(in_DA$dwellings) / sum(in_DA$area)
+    tibble::tibble(ID = ID,
+                   density = density)
+  }, DA_buffer$ID, intersects, SIMPLIFY = FALSE)
+  dwelling_density <- data.table::rbindlist(dwelling_density)
+  dwelling_density <- tibble::as_tibble(dwelling_density)
+
+  # Calculate the mean and standard deviation
+  mean_data <- mean(dwelling_density$density, na.rm = TRUE)
+  sd_data <- sd(dwelling_density$density, na.rm = TRUE)
+
+  # Calculate the z-score for each data point
+  DA_table$z_dwl_d <- (dwelling_density$density - mean_data) / sd_data
+  DA_table$z_dwl_d[is.na(DA_table$z_dwl_d)] <- NA
 
 
   # Points of interest measure ----------------------------------------------
 
+  # Load the points of interests
+  poi <- read.csv("CANADA.txt")
+
+  # Grab the major groups (from the SIC code)
+  poi$sic_major_group <- stringr::str_extract(poi$SIC_1, "^\\d{2}")
+
+  # Get a list of all the major group that we want to keep as amenities
+  list_items <- rvest::read_html("https://www.osha.gov/data/sic-manual") |>
+    rvest::html_elements("li")
+  filtered_list_items <-
+    list_items[stringr::str_detect(rvest::html_text(list_items), "Division")]
+
+  divisions <- lapply(filtered_list_items, \(li) {
+    # Extract the title of the <li>
+    title <- rvest::html_text(rvest::html_element(li, "a"))
+    # Extract the <ul> elements for the current <li>
+    ul_elements <- rvest::html_elements(li, "a")
+    ul_vec <- sapply(ul_elements, \(x) {
+      stringr::str_extract(rvest::html_text(x), "(?<=Major Group )\\d{2}")
+    })
+    ul_vec <- ul_vec[!is.na(ul_vec)]
+    # Return
+    tibble::tibble(division = title,
+                   major_groups = as.numeric(ul_vec))
+  })
+  divisions <- tibble::as_tibble(data.table::rbindlist(divisions))
+
+  # Filter in only the amenities we are interested in
+  amenities <- c("Division G: Retail Trade",
+                 "Division H: Finance, Insurance, And Real Estate",
+                 "Division I: Services")
+  major_groups <- divisions$major_groups[divisions$division %in% amenities]
+  # Manually add missing major groups
+  major_groups <- c(major_groups, 41)
+  poi <- poi[poi$sic_major_group %in% major_groups, ]
+
+  # Make it as SF
+  poi <- sf::st_as_sf(poi, coords = c("X", "Y"), crs = 4326)
+  poi <- sf::st_transform(poi, crs = 3347)
+
+  # Calculate the POI number for each DA buffer
+  intersects <- sf::st_intersects(DA_buffer, poi)
+  DA_buffer$poi <- lengths(intersects)
+
+  # Calculate the mean and standard deviation
+  mean_data <- mean(DA_buffer$poi, na.rm = TRUE)
+  sd_data <- sd(DA_buffer$poi, na.rm = TRUE)
+
+  # Calculate the z-score for each data point
+  DA_table$z_poi <- (DA_buffer$poi - mean_data) / sd_data
 
 
+  # Sum the three z index for the final score -------------------------------
+
+  DA_table <- sf::st_drop_geometry(DA_table)
+  DA_table[["canale_year"]] <-
+    rowSums(DA_table[, c("z_dwl_d", "z_int_d", "z_poi")])
+
+
+  # Return ------------------------------------------------------------------
+
+  return(DA_table)
 }
 
 #' Get all three-plus way intersections in Canada
@@ -74,21 +142,57 @@ build_canale <- function(DA_table, OSM_cache = TRUE) {
 #' @return A data frame containing all the three-plus way intersections in
 #' Canada.
 #' @export
-get_all_three_plus_ways <- function(streets, OSM_cache = TRUE) {
-  # Grab 2021 streets from OSM
-  #osm_pbf <- "http://download.geofabrik.de/north-america/canada-210101.osm.pbf"
-  #streets <- osmextract::oe_read(osm_pbf, layer = "lines",
-   #                              quiet = FALSE, force_download = !OSM_cache,
+get_all_three_plus_ways <- function(year) {#, OSM_cache = TRUE) {
+  # # Grab 2021 streets from OSM
+  # osm_pbf <- "http://download.geofabrik.de/north-america/quebec-210101.osm.pbf"
+  # streets <- osmextract::oe_read(osm_pbf, layer = "lines",
+  #                              quiet = FALSE, force_download = !OSM_cache,
   #                               max_file_size = Inf)
+  #
+  # # Retain footbpaths and exclude limited-access highways and their entrances and
+  # # exits.
+  # fclasses <- c('trunk', 'primary', 'primary', 'secondary', 'tertiary',
+  #               'unclassified', 'residential', 'pedestrian', 'living_street',
+  #               'footway', 'steps', 'path')
+  # streets <- streets[streets$highway %in% fclasses, ]
+  # # Transform streets to the Stats Can CRS
+  # streets <- sf::st_transform(streets, 3347)
 
-  # Retain footbpaths and exclude limited-access highways and their entrances and
-  # exits.
-  fclasses <- c('trunk', 'primary', 'primary', 'secondary', 'tertiary',
-                'unclassified', 'residential', 'pedestrian', 'living_street',
-                'footway', 'steps', 'path')
-  streets <- streets[streets$highway %in% fclasses, ]
-  # Transform streets to the Stats Can CRS
+  # Download the streets network --------------------------------------------
+
+  url <- cc.data::road_network_url$url[cc.data::road_network_url$year == year]
+
+  # download the zip file
+  temp_zip_file <- tempfile()
+  download.file(url, temp_zip_file)
+
+  # extract contents to temporary folder
+  temp_folder <- tempfile()
+
+  # get the shapefile name
+  listed_files <- unzip(temp_zip_file, list = TRUE)$Name
+  shp <- if (year == 2001) {
+    stringr::str_subset(listed_files, ".e00$")
+  } else {
+    listed_files <- unzip(temp_zip_file, list = TRUE)$Name
+    stringr::str_subset(listed_files, ".shp$")
+  }
+  unzip(temp_zip_file, exdir = temp_folder)
+
+  streets <- sf::st_read(paste0(temp_folder, "/", shp))
   streets <- sf::st_transform(streets, 3347)
+
+  # Filter out highways -----------------------------------------------------
+
+  if (year == 2001) {
+    streets <- streets[streets$RANK1 == 0 & streets$RANK2 == 0, ]
+  } else if (year == 2006) {
+    streets <- streets[!streets$RANK %in% c("1", "2"), ]
+  } else {
+    streets <- streets[!streets$RANK %in% c("1", "2", "3"), ]
+  }
+
+
 
   # Make a grid on all Canada to separate the work charge to different cores
   grid <- sf::st_make_grid(streets, n = c(500, 200))
