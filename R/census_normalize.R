@@ -2,8 +2,8 @@
 #'
 #' @param interpolated <`list of sf data.frame`> The output of
 #' \code{\link[cc.data]{census_interpolate}}.
-#' @param census_vectors_table <`data.frame`> Should be equal to
-#' \code{\link[cc.data]{census_vectors_table}}
+#' @param census_vectors <`data.frame`> Should be equal to
+#' \code{\link[cc.data]{census_vectors}}
 #' @param unit_type <`data.frame`> The output of
 #' \code{\link[cc.data]{census_unit_type}}.
 #' @param census_scales <`character vector`> Should be equal to
@@ -15,17 +15,27 @@
 #' percentage normalized.
 #' @export
 census_normalize <- function(interpolated,
-                             census_vectors_table = cc.data::census_vectors_table,
+                             census_vectors = cc.data::census_vectors,
                              census_scales = cc.data::census_scales,
                              census_years = cc.data::census_years,
                              unit_type =
                                census_unit_type(
-                                 census_vectors_table = census_vectors_table,
+                                 census_vectors = census_vectors,
                                  census_scales = census_scales,
                                  census_years = census_years
                                )) {
   vars_pct <- census_vectors_table$var_code[census_vectors_table$type == "pct"]
   units <- unit_type[unit_type$var_code %in% vars_pct, ]
+
+  # Subset the census vectors table including necessary parent variables
+  parent_vecs <-
+    cc.data::census_vectors_table$parent_vec[
+      cc.data::census_vectors_table$var_code %in% census_vectors
+    ]
+  census_vectors <- unique(c(census_vectors, parent_vecs))
+  census_vectors_table <- cc.data::census_vectors_table[
+    cc.data::census_vectors_table$var_code %in% census_vectors,
+  ]
 
   sapply(census_scales, \(scale) {
     sapply(as.character(census_years), \(year) {
@@ -51,7 +61,10 @@ census_normalize <- function(interpolated,
       numb <-
         sapply(numb, \(x) {
           tb <- data_no_geo["ID"]
-          tb[[x]] <- pmin(1, data_no_geo[[x]] / data_no_geo[[paste0(x, "_parent")]])
+          parent_string <-
+            census_vectors_table$parent_vec[
+              census_vectors_table$var_code == x]
+          tb[[x]] <- pmin(1, data_no_geo[[x]] / data_no_geo[[parent_string]])
           # # If divided by zero and resulting to NaN, change it to 0
           # tb[[x]][tb[[x]] == "NaN"] <- 0
           tb

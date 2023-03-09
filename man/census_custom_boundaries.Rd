@@ -10,9 +10,8 @@ census_custom_boundaries(
   census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
-  agg_type = census_agg_type(census_vectors_table =
-    cc.data::census_vectors_table[cc.data::census_vectors_table$var_code \%in\%
-    census_vectors, ], census_scales = census_scales, census_years = census_years),
+  agg_type = census_agg_type(census_vectors = census_vectors, census_scales =
+    census_scales, census_years = census_years),
   crs
 )
 }

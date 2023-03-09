@@ -6,7 +6,7 @@
 \usage{
 census_reduce_years(
   parent_dropped,
-  census_vectors_table = cc.data::census_vectors_table,
+  census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years
 )
@@ -15,8 +15,8 @@ census_reduce_years(
 \item{parent_dropped}{<\verb{list of sf data.frame}> The output of
 \code{\link[cc.data]{census_drop_parents}}.}
 
-\item{census_vectors_table}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_vectors_table}}}
+\item{census_vectors}{<\verb{character vector}> Should be equal to
+\code{\link[cc.data]{census_vectors}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
 \code{\link[cc.data]{census_scales}}}

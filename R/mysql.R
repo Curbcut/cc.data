@@ -327,7 +327,7 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
       all_tb <- db_list_tables()
       shared_name <- all_tb[grepl(tb_name, all_tb)]
       to_delete <- shared_name[grepl("_part\\d*$", shared_name)]
-      sapply(to_delete, \(x) db_query("remove", to_delete))
+      sapply(to_delete, \(x) db_query("remove", x))
     } else db_query("remove", tb_name)
 
     # Save all the tables

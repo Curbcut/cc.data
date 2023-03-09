@@ -23,7 +23,7 @@ verify_parents <- function(vectors_df, parents_df) {
   lapply(row_indices, function(row_index) {
     row_data <- vectors_df[row_index, ]
     if (is.na(row_data$parent_vec)) {
-      return(NULL)
+      stop("All non-parent entries need to have a parent vector for normalization.")
     }
 
     # Get all variables with non-NA vectors for the current row
@@ -72,7 +72,6 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_103"),
     vec_2001 = list("v_CA01_100"),
     vec_1996 = list("v_CA1996_1683"),
-    parent_vectors = list(NA),
     var_title = "Tenant-occupied (%)",
     var_short = "Tenant",
     explanation = "the percentage of private dwellings occupied by tenants",
@@ -89,11 +88,10 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_2050"),
     vec_2001 = list("v_CA01_1667"),
     vec_1996 = list("v_CA1996_1701"),
-    parent_vectors = list(NA),
     var_title = "Average rent ($)",
     var_short = "Avg. rent",
     explanation = "the average rent paid by tenants per month",
-    parent_vec = NA,
+    parent_vec = "tenant_households",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -106,7 +104,6 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_108"),
     vec_2001 = list("v_CA01_104"),
     vec_1996 = list("v_CA1996_1687"),
-    parent_vectors = list(NA),
     var_title = "Housing requiring major repairs (%)",
     var_short = "Repairs",
     explanation = paste0(
@@ -126,11 +123,10 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_2054"),
     vec_2001 = list("v_CA01_1674"),
     vec_1996 = list("v_CA1996_1681"),
-    parent_vectors = list("v_CA01_1670"),
     var_title = "Average property value ($)",
     var_short = "Avg. value",
     explanation = "the average value of owner-occupied dwellings",
-    parent_vec = NA,
+    parent_vec = "owner_households",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -143,7 +139,6 @@ census_vectors_housing <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Unaffordable housing (%)",
     var_short = "Unaffordable",
     explanation = paste0(
@@ -163,7 +158,6 @@ census_vectors_housing <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Unsuitable housing (%)",
     var_short = "Unsuitable",
     explanation = paste0(
@@ -183,7 +177,6 @@ census_vectors_housing <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Renter housing stress (%)",
     var_short = "Renter stress",
     explanation = paste0(
@@ -203,7 +196,6 @@ census_vectors_housing <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Owner housing stress (%)",
     var_short = "Owner stress",
     explanation = paste0(
@@ -223,7 +215,6 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_453"),
     vec_2001 = list("v_CA01_383"),
     vec_1996 = list("v_CA1996_1387"),
-    parent_vectors = list(NA),
     var_title = "One-year housing mobility (%)",
     var_short = "1-year mob.",
     explanation = paste0(
@@ -243,7 +234,6 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_462"),
     vec_2001 = list("v_CA01_392"),
     vec_1996 = list("v_CA1996_1396"),
-    parent_vectors = list("v_CA1996_1394"),
     var_title = "Five-year housing mobility (%)",
     var_short = "5-year mob.",
     explanation = paste0(
@@ -263,7 +253,6 @@ census_vectors_housing <-
     vec_2006 = list("v_CA06_120"),
     vec_2001 = list("v_CA01_113"),
     vec_1996 = list("v_CA1996_108"),
-    parent_vectors = list(NA),
     var_title = "Single-detached (%)",
     var_short = "Single-detached",
     explanation = paste0(
@@ -285,7 +274,6 @@ census_vectors_housing_parent <-
     vec_2006 = list("v_CA06_136"),
     vec_2001 = list("v_CA01_129"),
     vec_1996 = list("v_CA1996_1694"),
-    parent_vectors = list(NA),
     var_title = "Households",
     var_short = "Households",
     explanation = "the total number of private households",
@@ -302,7 +290,6 @@ census_vectors_housing_parent <-
     vec_2006 = list("v_CA06_105"),
     vec_2001 = list("v_CA01_96"),
     vec_1996 = list("v_CA1996_1678"),
-    parent_vectors = list(NA),
     var_title = "Dwellings",
     var_short = "Dwellings",
     explanation = "the total number of private dwellings",
@@ -319,7 +306,6 @@ census_vectors_housing_parent <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Owner and tenant households",
     var_short = "Households",
     explanation = "the total number of owner and tenant households",
@@ -333,10 +319,9 @@ census_vectors_housing_parent <-
     vec_2021 = list("v_CA21_4313"),
     vec_2016 = list("v_CA16_4897"),
     vec_2011 = list("v_CA11N_2288"),
-    vec_2006 = list(NA),
-    vec_2001 = list(NA),
-    vec_1996 = list(NA),
-    parent_vectors = list(NA),
+    vec_2006 = list("v_CA06_2049"),
+    vec_2001 = list("v_CA01_1666"),
+    vec_1996 = list("v_CA1996_1683"),
     var_title = "Tenant households",
     var_short = "Tenant",
     explanation = "the total number of tenant households",
@@ -350,10 +335,9 @@ census_vectors_housing_parent <-
     vec_2021 = list("v_CA21_4305"),
     vec_2016 = list("v_CA16_4890"),
     vec_2011 = list("v_CA11N_2281"),
-    vec_2006 = list(NA),
-    vec_2001 = list(NA),
-    vec_1996 = list(NA),
-    parent_vectors = list(NA),
+    vec_2006 = list("v_CA06_2053"),
+    vec_2001 = list("v_CA01_1670"),
+    vec_1996 = list("v_CA1996_1682"),
     var_title = "Owner households",
     var_short = "Owner",
     explanation = "the total number of owner households",
@@ -370,8 +354,7 @@ census_vectors_housing_parent <-
     vec_2006 = list("v_CA06_451"),
     vec_2001 = list("v_CA01_381"),
     vec_1996 = list("v_CA1996_1385"),
-    parent_vectors = list(NA),
-    var_title = "Residents 1 year prior",
+    var_title = "Residents",
     var_short = "Residents",
     explanation = "the total number of residents one year prior",
     parent_vec = NA,
@@ -387,8 +370,7 @@ census_vectors_housing_parent <-
     vec_2006 = list("v_CA06_460"),
     vec_2001 = list("v_CA01_390"),
     vec_1996 = list("v_CA1996_1394"),
-    parent_vectors = list(NA),
-    var_title = "Residents 5 years prior",
+    var_title = "Residents",
     var_short = "Residents",
     explanation = "the total number of residents five years prior",
     parent_vec = NA,
@@ -417,11 +399,10 @@ census_vectors_income <-
     vec_2006 = list("v_CA06_2000"),
     vec_2001 = list("v_CA01_1634"),
     vec_1996 = list("v_CA1996_1627"),
-    parent_vectors = list(NA),
     var_title = "Median household income ($)",
     var_short = "Med. inc.",
     explanation = "the median before-tax household income",
-    parent_vec = NA,
+    parent_vec = "with_income",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -438,7 +419,6 @@ census_vectors_income <-
     vec_2006 = list(paste0("v_CA06_19", 89:93)),
     vec_2001 = list(paste0("v_CA01_16", 22:26)),
     vec_1996 = list(paste0("v_CA1996_16", 15:19)),
-    parent_vectors = list(NA),
     var_title = "Income under $50k (%)",
     var_short = "Inc. <$50k",
     explanation = paste0(
@@ -459,7 +439,6 @@ census_vectors_income <-
     vec_2006 = list(paste0("v_CA06_19", 94:98)),
     vec_2001 = list(paste0("v_CA01_16", 27:31)),
     vec_1996 = list(paste0("v_CA1996_16", 20:24)),
-    parent_vectors = list(NA),
     var_title = "Income between $50k-$100k (%)",
     var_short = "Inc. $50-100k",
     explanation = paste0(
@@ -479,7 +458,6 @@ census_vectors_income <-
     vec_2006 = list("v_CA06_1999"),
     vec_2001 = list("v_CA01_1632"),
     vec_1996 = list("v_CA1996_1625"),
-    parent_vectors = list(NA),
     var_title = "Income above $100k (%)",
     var_short = "Inc. >$100k",
     explanation = paste0(
@@ -499,7 +477,6 @@ census_vectors_income <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Prevalence of low income (after-tax) (%)",
     var_short = "Low income",
     explanation = paste0(
@@ -521,7 +498,6 @@ census_vectors_income_parent <-
     vec_2006 = list("v_CA06_1988"),
     vec_2001 = list("v_CA01_1621"),
     vec_1996 = list("v_CA1996_1614"),
-    parent_vectors = list(NA),
     var_title = "Labour force individuals",
     var_short = "With income",
     explanation = "the total population aged 15 years and over with an income",
@@ -538,7 +514,6 @@ census_vectors_income_parent <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Households",
     var_short = "Households",
     explanation = paste0("the total population in private households to whom ",
@@ -570,7 +545,6 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_478"),
     vec_2001 = list("v_CA01_406"),
     vec_1996 = list("v_CA1996_128"),
-    parent_vectors = list(NA),
     var_title = "Immigrants (%)",
     var_short = "Immigrants",
     explanation = "the percentage of residents who are foreign-born",
@@ -587,10 +561,6 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_553"),
     vec_2001 = list("v_CA01_507"),
     vec_1996 = list("v_CA1996_228"),
-    parent_vectors = list(c(
-      "v_CA1996_125", "v_CA01_402", "v_CA06_474",
-      "v_CA11N_16", "v_CA16_3405", "v_CA21_4404"
-    )),
     var_title = "New immigrants (%)",
     var_short = "New immigrants",
     explanation = paste0(
@@ -610,7 +580,6 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_1303"),
     vec_2001 = list("v_CA01_703"),
     vec_1996 = list("v_CA1996_784"),
-    parent_vectors = list(NA),
     var_title = "Visible minorities (%)",
     var_short = "Vis. minorities",
     explanation = paste0(
@@ -630,7 +599,6 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_565"),
     vec_2001 = list("v_CA01_718"),
     vec_1996 = list("v_CA1996_473"),
-    parent_vectors = list(NA),
     var_title = "Indigenous (%)",
     var_short = "Indigenous",
     explanation = "the percentage of individuals who are of indigenous identity",
@@ -649,7 +617,6 @@ census_vectors_identity_parent <-
     vec_2006 = list("v_CA06_474"),
     vec_2001 = list("v_CA01_402"),
     vec_1996 = list("v_CA1996_125"),
-    parent_vectors = list(NA),
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = "the total count of individuals in private households",
@@ -683,7 +650,6 @@ census_vectors_transport <-
       "v_CA1996_1326", "v_CA1996_1327", "v_CA1996_1335",
       "v_CA1996_1336"
     )),
-    parent_vectors = list(c("v_CA01_1253", "v_CA1996_1324")),
     var_title = "Drive to work (%)",
     var_short = "Drive",
     explanation = paste0(
@@ -706,7 +672,6 @@ census_vectors_transport <-
       "v_CA1996_1329", "v_CA1996_1330", "v_CA1996_1338",
       "v_CA1996_1339"
     )),
-    parent_vectors = list(c("v_CA01_1253", "v_CA1996_1324")),
     var_title = "Walk or cycle to work (%)",
     var_short = "Walk or cycle",
     explanation = "the percentage of individuals who walk or cycle to work",
@@ -723,7 +688,6 @@ census_vectors_transport <-
     vec_2006 = list("v_CA06_1103"),
     vec_2001 = list(c("v_CA01_1266", "v_CA01_1257")),
     vec_1996 = list(c("v_CA1996_1337", "v_CA1996_1328")),
-    parent_vectors = list(c("v_CA01_1253", "v_CA1996_1324")),
     var_title = "Public transit to work (%)",
     var_short = "Transit",
     explanation = paste0(
@@ -743,7 +707,6 @@ census_vectors_transport <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Commute under 15 minutes (%)",
     var_short = "Commute <15m",
     explanation = paste0(
@@ -763,7 +726,6 @@ census_vectors_transport <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Commute 15-45 minutes (%)",
     var_short = "Commute 14-45m",
     explanation = paste0(
@@ -783,7 +745,6 @@ census_vectors_transport <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    parent_vectors = list(NA),
     var_title = "Commute more than 45 minutes (%)",
     var_short = "Commute >45m",
     explanation = paste0(
@@ -805,7 +766,6 @@ census_vectors_transport_parent <-
     vec_2006 = list("v_CA06_1100"),
     vec_2001 = list(c("v_CA01_1254", "v_CA01_1263")),
     vec_1996 = list("v_CA1996_1324"),
-    parent_vectors = list(NA),
     var_title = "Employed individuals",
     var_short = "Individuals",
     explanation = paste0("the total count of employed labour force aged 15 ",
@@ -837,7 +797,6 @@ usethis::use_data(census_vectors_transport, overwrite = TRUE)
 #     vec_2006 = list(c("v_CA06_1021", "v_CA06_1022")),
 #     vec_2001 = list(c("v_CA01_1181", "v_CA01_1182")),
 #     vec_1996 = list(NA),
-#     parent_vectors = list(NA),
 #     var_title = "Managerial and professional occupations (%)",
 #     var_short = "Professional",
 #     explanation = paste0(
@@ -856,7 +815,6 @@ usethis::use_data(census_vectors_transport, overwrite = TRUE)
 #     vec_2006 = list(c("v_CA06_1018", "v_CA06_1026")),
 #     vec_2001 = list(c("v_CA01_1178", "v_CA01_1186")),
 #     vec_1996 = list(NA),
-#     parent_vectors = list(NA),
 #     var_title = "Creative occupations (%)",
 #     var_short = "Creative",
 #     explanation = paste0(
@@ -882,10 +840,6 @@ census_vectors_family <-
     vec_2006 = list(c("v_CA06_65", "v_CA06_59", "v_CA06_69")),
     vec_2001 = list(c("v_CA01_63", "v_CA01_57", "v_CA01_67")),
     vec_1996 = list(NA),
-    parent_vectors = list(c(
-      "v_CA11F_182", "v_CA06_136", "v_CA01_129",
-      "v_CA16_504", "v_CA21_543"
-    )),
     var_title = "Families with children (%)",
     var_short = "With child",
     explanation = "the percentage of census families with children out of total households",
@@ -902,8 +856,6 @@ census_vectors_family <-
     vec_2006 = list("v_CA06_89"),
     vec_2001 = list("v_CA01_87"),
     vec_1996 = list("v_CA1996_98"),
-    parent_vectors = list(c("v_CA1996_1694", "v_CA01_129", "v_CA06_136",
-                            "v_CA11F_182", "v_CA16_504", "v_CA21_543")),
     var_title = "Living alone (%)",
     var_short = "Living alone",
     explanation = "the percentage of one person households out of total households",
@@ -935,7 +887,6 @@ census_vectors_language <-
     vec_2006 = "v_CA06_245",
     vec_2001 = "v_CA01_215",
     vec_1996 = "v_CA1996_312",
-    parent_vectors = list(NA),
     var_title = "French only (%)",
     var_short = "Fr. only",
     explanation = paste0(
@@ -955,7 +906,6 @@ census_vectors_language <-
     vec_2006 = "v_CA06_244",
     vec_2001 = "v_CA01_214",
     vec_1996 = "v_CA1996_311",
-    parent_vectors = list(NA),
     var_title = "English only (%)",
     var_short = "Eng. only",
     explanation = paste0(
@@ -975,7 +925,6 @@ census_vectors_language <-
     vec_2006 = "v_CA06_246",
     vec_2001 = "v_CA01_216",
     vec_1996 = "v_CA1996_313",
-    parent_vectors = list(NA),
     var_title = "French and English (%)",
     var_short = "Fr. and Eng.",
     explanation = paste0(
@@ -995,7 +944,6 @@ census_vectors_language <-
     vec_2006 = "v_CA06_247",
     vec_2001 = "v_CA01_217",
     vec_1996 = "v_CA1996_314",
-    parent_vectors = list(NA),
     var_title = "Neither French nor English (%)",
     var_short = "Non-official",
     explanation = paste0(
@@ -1017,7 +965,6 @@ census_vectors_language_parent <-
     vec_2006 = list("v_CA06_1"),
     vec_2001 = list("v_CA01_2"),
     vec_1996 = list("v_CA1996_2"),
-    parent_vectors = list(NA),
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = paste0("the total count of individuals"),
@@ -1056,10 +1003,6 @@ census_vectors_age <-
       "v_CA1996_7", "v_CA1996_31", "v_CA1996_8", "v_CA1996_32",
       "v_CA1996_9", "v_CA1996_33"
     )),
-    parent_vectors = list(c(
-      "v_CA06_3", "v_CA06_22", "v_CA01_6", "v_CA01_25",
-      "v_CA1996_6", "v_CA1996_30"
-    )),
     var_title = "Aged between 0 and 14 (%)",
     var_short = "0-14 yo",
     explanation = "the percentage of the population aged between 0 and 14 years old",
@@ -1076,10 +1019,6 @@ census_vectors_age <-
     vec_2006 = list(c(paste0("v_CA06_", 7:16), paste0("v_CA06_", 26:35))),
     vec_2001 = list(c(paste0("v_CA01_", 10:19), paste0("v_CA01_", 29:38))),
     vec_1996 = list(c(paste0("v_CA1996_", 15:24), paste0("v_CA1996_", 39:48))),
-    parent_vectors = list(c(
-      "v_CA06_3", "v_CA06_22", "v_CA01_6", "v_CA01_25",
-      "v_CA1996_6", "v_CA1996_30"
-    )),
     var_title = "Aged between 15 and 64 (%)",
     var_short = "15-64 yo",
     explanation = "the percentage of the population aged between 15 and 64 years old",
@@ -1096,10 +1035,6 @@ census_vectors_age <-
     vec_2006 = list(c(paste0("v_CA06_", 17:21), paste0("v_CA06_", 36:40))),
     vec_2001 = list(c(paste0("v_CA01_", 20:24), paste0("v_CA01_", 39:43))),
     vec_1996 = list(c(paste0("v_CA1996_", 25:29), paste0("v_CA1996_", 49:53))),
-    parent_vectors = list(c(
-      "v_CA06_3", "v_CA06_22", "v_CA01_6", "v_CA01_25",
-      "v_CA1996_6", "v_CA1996_30"
-    )),
     var_title = "Aged 65 and above (%)",
     var_short = "65+ yo",
     explanation = "the percentage of the population aged 65 and above",
@@ -1131,11 +1066,6 @@ census_vectors_education <-
     vec_2006 = list(c("v_CA06_1240", "v_CA06_1254", "v_CA06_1268")),
     vec_2001 = list("v_CA01_1397"),
     vec_1996 = list("v_CA1996_1360"),
-    parent_vectors = list(c(
-      "v_CA06_1234", "v_CA06_1248", "v_CA06_1262",
-      "v_CA1996_1347", "v_CA01_1384", "v_CA11N_1771",
-      "v_CA16_5051"
-    )),
     var_title = "Bachelor and above (%)",
     var_short = "Bachelor+",
     explanation = paste0(
@@ -1143,7 +1073,7 @@ census_vectors_education <-
       "holding a University certificate, diploma or degree at bachelor level ",
       "or above"
     ),
-    parent_vec = "population_15+",
+    parent_vec = "population_15plus",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -1156,24 +1086,19 @@ census_vectors_education <-
     vec_2006 = list(c("v_CA06_1235", "v_CA06_1249", "v_CA06_1263")),
     vec_2001 = list("v_CA01_1387"),
     vec_1996 = list("v_CA1996_1350"),
-    parent_vectors = list(c(
-      "v_CA06_1234", "v_CA06_1248", "v_CA06_1262",
-      "v_CA1996_1347", "v_CA01_1384", "v_CA11N_1771",
-      "v_CA16_5051"
-    )),
     var_title = "No certificate, diploma or degree (%)",
     var_short = "No degree",
     explanation = paste0(
       "the percentage of the population aged 15 and over ",
       "with no certificate, diploma or degree"
     ),
-    parent_vec = "population_15+",
+    parent_vec = "population_15plus",
     parent = FALSE
   )
 
 census_vectors_education_parent <-
   tibble::tibble(
-    var_code = "population_15+",
+    var_code = "population_15plus",
     type = list("count"),
     theme = "Identity",
     vec_2021 = list("v_CA21_5817"),
@@ -1182,7 +1107,6 @@ census_vectors_education_parent <-
     vec_2006 = list(c("v_CA06_1234", "v_CA06_1248", "v_CA06_1262")),
     vec_2001 = list("v_CA01_1384"),
     vec_1996 = list("v_CA1996_1347"),
-    parent_vectors = list(NA),
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = paste0("the total count of individuals aged 15 years and ",

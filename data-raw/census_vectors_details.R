@@ -23,23 +23,18 @@ census_vectors_details <-
       }, simplify = FALSE)
 
     # Add the parent vector
-    vec_table$parent_vec <- sapply(vec_table$vec, \(vecs) {
-      if (sum(is.na(vecs)) >= 1) return(NA)
-      sapply(vecs, \(vec) {
-        raw_vecs$parent_vector[raw_vecs$vector == vec]
-      }, USE.NAMES = FALSE) |> unique()
+    vec_table$parent_vec <- sapply(year_vec_table$var_code, \(vecs) {
+      parent <- cc.data::census_vectors_table$parent[
+        cc.data::census_vectors_table$var_code == vecs
+      ]
+      if (parent) return(NA)
+      parent_string <- cc.data::census_vectors_table$parent_vec[
+        cc.data::census_vectors_table$var_code == vecs
+      ]
+      cc.data::census_vectors_table[[paste0("vec_", year)]][
+        cc.data::census_vectors_table$var_code == parent_string
+      ]
     }, simplify = FALSE)
-
-    # Change the parent vector if specified in cc.data::census_vectors_table
-    overwritten_pv <- sapply(year_vec_table$parent_vectors, \(par_vec) {
-      out <- par_vec[grepl(census_dataset, par_vec)]
-      if (length(out) == 0) return(NA)
-      return(out)
-    }, simplify = F)
-    for (i in seq_along(overwritten_pv)) {
-      if (!sum(is.na(overwritten_pv[[i]])) >= 1)
-        vec_table$parent_vec[[i]] <- overwritten_pv[[i]]
-    }
 
     # Add the aggregation
     vec_table$aggregation <-

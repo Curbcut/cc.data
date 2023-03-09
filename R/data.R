@@ -268,3 +268,9 @@
 #' @format ## `accessibility_themes`
 #' A character vector
 "accessibility_themes"
+
+#' URLs of where to get the road network shapefile
+#'
+#' @format ## `road_network_url`
+#' tibble with census years and URLs
+"road_network_url"

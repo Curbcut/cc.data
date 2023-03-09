@@ -4,8 +4,8 @@
 #' \code{\link[cc.data]{census_data_raw}}.
 #' @param agg_type <`named list`> The output of
 #' \code{\link[cc.data]{census_agg_type}}.
-#' @param census_vectors_table <`character vector`> Should be equal to
-#' \code{\link[cc.data]{census_vectors_table}}
+#' @param census_vectors <`character vector`> Should be equal to
+#' \code{\link[cc.data]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
 #' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
@@ -14,11 +14,11 @@
 #' @return A list of scales and years of census data with geometries interpolated
 #' to the current year.
 census_interpolate <- function(data_raw,
-                               census_vectors_table = cc.data::census_vectors_table,
+                               census_vectors = cc.data::census_vectors,
                                census_scales = cc.data::census_scales,
                                census_years = cc.data::census_years,
                                agg_type = census_agg_type(
-                                 census_vectors_table = census_vectors_table,
+                                 census_vectors = census_vectors,
                                  census_scales = census_scales,
                                  census_years = census_years
                                )) {
@@ -38,7 +38,7 @@ census_interpolate <- function(data_raw,
         return(data_scale[[year]])
       }
 
-      # IDs that needing interpolation
+      # IDs that needs interpolation
       y_df <- data_scale[[year]]
       needing_inter <- sapply(all_dest$ID, \(id) {
         if (!id %in% y_df$ID) {
@@ -65,13 +65,8 @@ census_interpolate <- function(data_raw,
       int <- sf::st_drop_geometry(int)
       int$area_prop <- int$int_area / int$area
 
-      # Separate the parent variable that we will keep from the rest, and treat
-      # them all as additive without make the "_parent" follow.
-      TKTK
-
       # Additive values, pre needed for average values
       add <- names(int)[names(int) %in% agg_type$additive]
-      add <- c(add, names(int)[grepl("_parent$", names(int))])
       add_vars <- sapply(add, \(x) {
         v <- int[[x]] * int$area_prop
         out <- tibble::tibble(l = v)
@@ -90,7 +85,10 @@ census_interpolate <- function(data_raw,
         sapply(avg, \(x) {
           ids <- sapply(unique(int$ID), \(id) {
             dat <- add_vars[add_vars$ID == id, ]
-            val <- weighted_mean(dat[[x]], dat[[paste0(x, "_parent")]])
+            parent_string <-
+              cc.data::census_vectors_table$parent_vec[
+                cc.data::census_vectors_table$var_code == x]
+            val <- weighted_mean(dat[[x]], dat[[parent_string]])
             # Only keep output polygons with a majority non-NA inputs
             na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)
             if (na_pct >= 0.5) val <- NA_real_
@@ -138,7 +136,7 @@ census_interpolate <- function(data_raw,
 
       # Bind the correct year's data with the interpolated data
       out <- rbind(
-        sf::st_drop_geometry(y_df[!y_df$ID %in% needing_inter, ]),
+        sf::st_drop_geometry(y_df[!y_df$ID %in% out$ID, ]),
         out
       )
 

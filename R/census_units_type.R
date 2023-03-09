@@ -1,7 +1,7 @@
 #' Get census variables units type
 #'
-#' @param census_vectors_table <`data.frame`> Should be equal to
-#' \code{\link[cc.data]{census_vectors_table}}
+#' @param census_vectors <`data.frame`> Should be equal to
+#' \code{\link[cc.data]{census_vectors}}
 #' @param census_scales <`character vector`> Should be equal to
 #' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
@@ -10,9 +10,20 @@
 #' @return A dataframe of two columns. The first column is the var_code, and the
 #' second is the unit.
 #' @export
-census_unit_type <- function(census_vectors_table = cc.data::census_vectors_table,
+census_unit_type <- function(census_vectors = cc.data::census_vectors,
                              census_scales = cc.data::census_scales,
                              census_years = cc.data::census_years) {
+
+  # Subset the census vectors table including necessary parent variables
+  parent_vecs <-
+    cc.data::census_vectors_table$parent_vec[
+      cc.data::census_vectors_table$var_code %in% census_vectors
+    ]
+  census_vectors <- unique(c(census_vectors, parent_vecs))
+  census_vectors_table <- cc.data::census_vectors_table[
+    cc.data::census_vectors_table$var_code %in% census_vectors,
+  ]
+
   units_year <-
     # Skip 2001. Some vectors have `number` units instead of `currency`,
     # e.g. `v_CA01_1674`

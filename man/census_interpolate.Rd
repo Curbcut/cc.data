@@ -6,10 +6,10 @@
 \usage{
 census_interpolate(
   data_raw,
-  census_vectors_table = cc.data::census_vectors_table,
+  census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
-  agg_type = census_agg_type(census_vectors_table = census_vectors_table, census_scales =
+  agg_type = census_agg_type(census_vectors = census_vectors, census_scales =
     census_scales, census_years = census_years)
 )
 }
@@ -17,8 +17,8 @@ census_interpolate(
 \item{data_raw}{<\verb{list of sf data.frame}> The output of
 \code{\link[cc.data]{census_data_raw}}.}
 
-\item{census_vectors_table}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_vectors_table}}}
+\item{census_vectors}{<\verb{character vector}> Should be equal to
+\code{\link[cc.data]{census_vectors}}}
 
 \item{census_scales}{<\verb{character vector}> Should be equal to
 \code{\link[cc.data]{census_scales}}}

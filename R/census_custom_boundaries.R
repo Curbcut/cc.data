@@ -28,19 +28,18 @@ census_custom_boundaries <-
            census_scales = cc.data::census_scales,
            census_years = cc.data::census_years,
            agg_type = census_agg_type(
-             census_vectors_table =
-               cc.data::census_vectors_table[
-                 cc.data::census_vectors_table$var_code %in% census_vectors,
-               ],
+             census_vectors = census_vectors,
              census_scales = census_scales,
              census_years = census_years
            ),
            crs) {
 
     # Subset the census vectors if necessary
-    census_vecs <-
-      cc.data::census_vectors_table[cc.data::census_vectors_table$var_code %in%
-        census_vectors, ]
+    parent_vecs <-
+      cc.data::census_vectors_table$parent_vec[
+        cc.data::census_vectors_table$var_code %in% census_vectors
+      ]
+    parent_vecs <- parent_vecs[!is.na(parent_vecs)]
 
     # Prepare the progress bar
     pb <- progressr::progressor(steps = length(destination) * length(census_years))
@@ -64,12 +63,10 @@ census_custom_boundaries <-
         ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
 
         # Open a DB connection and get the necessary data
+        parent_vecs <- parent_vecs[!is.na(parent_vecs)]
         origin <- db_read_data(
           table = paste0("raw_DA_", year),
-          columns = c(
-            census_vectors,
-            paste0(census_vectors, "_parent")
-          ),
+          columns = unique(c(census_vectors, parent_vecs)),
           IDs = ids_retrieve_from_db
         )
 
@@ -86,7 +83,6 @@ census_custom_boundaries <-
 
         # Additive values, pre needed for average values
         add <- names(int)[names(int) %in% agg_type$additive]
-        add <- c(add, names(int)[grepl("_parent$", names(int))])
         add_vars <- sapply(add, \(x) {
           v <- int[[x]] * int$area_prop
           out <- tibble::tibble(l = v)
@@ -105,7 +101,10 @@ census_custom_boundaries <-
           sapply(avg, \(x) {
             ids <- sapply(unique(int$ID), \(id) {
               dat <- add_vars[add_vars$ID == id, ]
-              val <- weighted_mean(dat[[x]], dat[[paste0(x, "_parent")]])
+              parent_string <-
+                cc.data::census_vectors_table$parent_vec[
+                  cc.data::census_vectors_table$var_code == x]
+              val <- weighted_mean(dat[[x]], dat[[parent_string]])
               # Only keep output polygons with a majority non-NA inputs
               na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)
               if (na_pct >= 0.5) val <- NA_real_
@@ -160,15 +159,12 @@ census_custom_boundaries <-
     normalized <- census_normalize(
       interpolated = interpolated,
       census_scales = names(interpolated),
-      census_vectors_table = census_vecs,
+      census_vectors = census_vectors,
       census_years = census_years
     )
-    parent_dropped <- census_drop_parents(normalized,
-      census_vectors_table = census_vecs
-    )
-    census_reduce_years(parent_dropped,
+    census_reduce_years(normalized,
       census_scales = names(interpolated),
-      census_vectors_table = census_vecs,
+      census_vectors = census_vectors,
       census_years = census_years
     )
   }
