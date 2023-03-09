@@ -35,11 +35,7 @@ census_custom_boundaries <-
            crs) {
 
     # Subset the census vectors if necessary
-    parent_vecs <-
-      cc.data::census_vectors_table$parent_vec[
-        cc.data::census_vectors_table$var_code %in% census_vectors
-      ]
-    parent_vecs <- parent_vecs[!is.na(parent_vecs)]
+    census_vectors_table <- census_get_vectors_table(census_vectors)
 
     # Prepare the progress bar
     pb <- progressr::progressor(steps = length(destination) * length(census_years))
@@ -63,10 +59,9 @@ census_custom_boundaries <-
         ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
 
         # Open a DB connection and get the necessary data
-        parent_vecs <- parent_vecs[!is.na(parent_vecs)]
         origin <- db_read_data(
           table = paste0("raw_DA_", year),
-          columns = unique(c(census_vectors, parent_vecs)),
+          columns = census_vectors_table$var_code,
           IDs = ids_retrieve_from_db
         )
 

@@ -16,15 +16,7 @@ census_agg_type <- function(census_vectors = cc.data::census_vectors,
                             census_scales = cc.data::census_scales,
                             census_years = cc.data::census_years) {
 
-  # Subset the census vectors table including necessary parent variables
-  parent_vecs <-
-    cc.data::census_vectors_table$parent_vec[
-      cc.data::census_vectors_table$var_code %in% census_vectors
-    ]
-  census_vectors <- unique(c(census_vectors, parent_vecs))
-  census_vectors_table <- cc.data::census_vectors_table[
-    cc.data::census_vectors_table$var_code %in% census_vectors,
-  ]
+  census_vectors_table <- census_get_vectors_table(census_vectors)
 
   agg_year <-
     # Skip 2001. Some vectors are labelled as averaged but aggregated as

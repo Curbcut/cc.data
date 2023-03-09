@@ -26,14 +26,7 @@ census_normalize <- function(interpolated,
                                )) {
 
   # Subset the census vectors table including necessary parent variables
-  parent_vecs <-
-    cc.data::census_vectors_table$parent_vec[
-      cc.data::census_vectors_table$var_code %in% census_vectors
-    ]
-  census_vectors <- unique(c(census_vectors, parent_vecs))
-  census_vectors_table <- cc.data::census_vectors_table[
-    cc.data::census_vectors_table$var_code %in% census_vectors,
-  ]
+  census_vectors_table <- census_get_vectors_table(census_vectors)
 
   vars_pct <- census_vectors_table$var_code[census_vectors_table$type == "pct"]
   units <- unit_type[unit_type$var_code %in% vars_pct, ]

@@ -74,7 +74,8 @@ census_vectors_housing <-
     vec_1996 = list("v_CA1996_1683"),
     var_title = "Tenant-occupied (%)",
     var_short = "Tenant",
-    explanation = "the percentage of private dwellings occupied by tenants",
+    explanation = "the percentage of private households occupied by tenants",
+    exp_q5 = "are occupied by tenants",
     parent_vec = "private_households",
     parent = FALSE
   ) |>
@@ -91,6 +92,7 @@ census_vectors_housing <-
     var_title = "Average rent ($)",
     var_short = "Avg. rent",
     explanation = "the average rent paid by tenants per month",
+    exp_q5 = "the average rent is",
     parent_vec = "tenant_households",
     parent = FALSE
   ) |>
@@ -107,9 +109,9 @@ census_vectors_housing <-
     var_title = "Housing requiring major repairs (%)",
     var_short = "Repairs",
     explanation = paste0(
-      "the percentage of households living in dwellings ",
-      "requiring major repairs"
+      "the percentage of dwellings requiring major repairs"
     ),
+    exp_q5 = "are requiring major repairs",
     parent_vec = "private_dwellings",
     parent = FALSE
   ) |>
@@ -126,6 +128,7 @@ census_vectors_housing <-
     var_title = "Average property value ($)",
     var_short = "Avg. value",
     explanation = "the average value of owner-occupied dwellings",
+    exp_q5 = "the average property value of owner-occupied dwellings is",
     parent_vec = "owner_households",
     parent = FALSE
   ) |>
@@ -142,9 +145,10 @@ census_vectors_housing <-
     var_title = "Unaffordable housing (%)",
     var_short = "Unaffordable",
     explanation = paste0(
-      "the percentage of dwellings for which residents pay ",
+      "the percentage of households which pay ",
       "more than 30% of income on housing costs"
     ),
+    exp_q5 = "pay more than 30% of income on housing costs",
     parent_vec = "owner_tenant_households",
     parent = FALSE
   ) |>
@@ -164,6 +168,7 @@ census_vectors_housing <-
       "the percentage of households living in ",
       "accommodations without enough bedrooms"
     ),
+    exp_q5 = "are living in accommodations without enough bedrooms",
     parent_vec = "private_households",
     parent = FALSE
   ) |>
@@ -183,6 +188,7 @@ census_vectors_housing <-
       "the percentage of renter households that spend ",
       "more than 30% of their income on shelter costs"
     ),
+    exp_q5 = "are under housing stress",
     parent_vec = "tenant_households",
     parent = FALSE
   ) |>
@@ -202,6 +208,7 @@ census_vectors_housing <-
       "the percentage of owner households that spend more ",
       "than 30% of their income on shelter costs"
     ),
+    exp_q5 = "are under housing stress",
     parent_vec = "owner_households",
     parent = FALSE
   ) |>
@@ -217,10 +224,9 @@ census_vectors_housing <-
     vec_1996 = list("v_CA1996_1387"),
     var_title = "One-year housing mobility (%)",
     var_short = "1-year mob.",
-    explanation = paste0(
-      "the percentage of households that have moved in ",
-      "the past year"
-    ),
+    explanation = paste0("the percentage of residents that moved in ",
+                         "the past year"),
+    exp_q5 = "have moved in the past year",
     parent_vec = "mobility_status_1",
     parent = FALSE
   ) |>
@@ -236,10 +242,9 @@ census_vectors_housing <-
     vec_1996 = list("v_CA1996_1396"),
     var_title = "Five-year housing mobility (%)",
     var_short = "5-year mob.",
-    explanation = paste0(
-      "the percentage of households that have moved in the ",
-      "past five years"
-    ),
+    explanation = paste0("the percentage of residents that moved in ",
+                         "the past 5 years"),
+    exp_q5 = "have moved in the past five years",
     parent_vec = "mobility_status_5",
     parent = FALSE
   ) |>
@@ -259,6 +264,7 @@ census_vectors_housing <-
       "the percentage of occupied private dwellings that ",
       "are single-detached houses"
     ),
+    exp_q5 = "are single-detached houses",
     parent_vec = "private_dwellings",
     parent = FALSE
   )
@@ -277,6 +283,7 @@ census_vectors_housing_parent <-
     var_title = "Households",
     var_short = "Households",
     explanation = "the total number of private households",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -293,6 +300,7 @@ census_vectors_housing_parent <-
     var_title = "Dwellings",
     var_short = "Dwellings",
     explanation = "the total number of private dwellings",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -309,6 +317,7 @@ census_vectors_housing_parent <-
     var_title = "Owner and tenant households",
     var_short = "Households",
     explanation = "the total number of owner and tenant households",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -325,6 +334,7 @@ census_vectors_housing_parent <-
     var_title = "Tenant households",
     var_short = "Tenant",
     explanation = "the total number of tenant households",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -341,6 +351,7 @@ census_vectors_housing_parent <-
     var_title = "Owner households",
     var_short = "Owner",
     explanation = "the total number of owner households",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -357,6 +368,7 @@ census_vectors_housing_parent <-
     var_title = "Residents",
     var_short = "Residents",
     explanation = "the total number of residents one year prior",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -373,6 +385,7 @@ census_vectors_housing_parent <-
     var_title = "Residents",
     var_short = "Residents",
     explanation = "the total number of residents five years prior",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   )
@@ -402,7 +415,8 @@ census_vectors_income <-
     var_title = "Median household income ($)",
     var_short = "Med. inc.",
     explanation = "the median before-tax household income",
-    parent_vec = "with_income",
+    exp_q5 = "the median household income is",
+    parent_vec = "private_households",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -422,9 +436,10 @@ census_vectors_income <-
     var_title = "Income under $50k (%)",
     var_short = "Inc. <$50k",
     explanation = paste0(
-      "the percentage of households with an income less ",
-      "then $50,000"
+      "the percentage of labour force individuals with an income less ",
+      "than $50,000"
     ),
+    exp_q5 = "have an income of less than $50,000",
     parent_vec = "with_income",
     parent = FALSE
   ) |>
@@ -442,9 +457,10 @@ census_vectors_income <-
     var_title = "Income between $50k-$100k (%)",
     var_short = "Inc. $50-100k",
     explanation = paste0(
-      "the percentage of households with an income between ",
+      "the percentage of labour force individuals with an income between ",
       "$50,000 and $100,000"
     ),
+    exp_q5 = "have an income between $50,000 and $100,000",
     parent_vec = "with_income",
     parent = FALSE
   ) |>
@@ -461,9 +477,10 @@ census_vectors_income <-
     var_title = "Income above $100k (%)",
     var_short = "Inc. >$100k",
     explanation = paste0(
-      "the percentage of households with an income higher ",
+      "the percentage of labour force individuals with an income higher ",
       "than $100,000"
     ),
+    exp_q5 = "have an income higher than $100,000",
     parent_vec = "with_income",
     parent = FALSE
   ) |>
@@ -483,6 +500,7 @@ census_vectors_income <-
       "the prevalence of low income in private households ",
       "based on the Low-income measure, after-tax (LIM-AT)"
     ),
+    exp_q5 = "are considered low income",
     parent_vec = "income_status",
     parent = FALSE
   )
@@ -501,6 +519,7 @@ census_vectors_income_parent <-
     var_title = "Labour force individuals",
     var_short = "With income",
     explanation = "the total population aged 15 years and over with an income",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -518,13 +537,18 @@ census_vectors_income_parent <-
     var_short = "Households",
     explanation = paste0("the total population in private households to whom ",
                          "low-income concepts are applicable"),
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   )
 
 
+# addition of needed parent available from the housing vectors
+from_hou <- census_vectors_housing_parent[
+  census_vectors_housing_parent$var_code %in% census_vectors_income$parent_vec, ]
+
 verify_parents(vectors_df = census_vectors_income,
-               parents_df = census_vectors_income_parent)
+               parents_df = rbind(census_vectors_income_parent, from_hou))
 
 census_vectors_income <- rbind(census_vectors_income,
                                census_vectors_income_parent)
@@ -547,7 +571,8 @@ census_vectors_identity <-
     vec_1996 = list("v_CA1996_128"),
     var_title = "Immigrants (%)",
     var_short = "Immigrants",
-    explanation = "the percentage of residents who are foreign-born",
+    explanation = "the percentage of individuals who are foreign-born",
+    exp_q5 = "are foreign-born",
     parent_vec = "population_ph",
     parent = FALSE
   ) |>
@@ -567,6 +592,7 @@ census_vectors_identity <-
       "the percentage of individuals who have immigrated in ",
       "the last five years"
     ),
+    exp_q5 = "have immigrated in the last five years",
     parent_vec = "population_ph",
     parent = FALSE
   ) |>
@@ -586,6 +612,7 @@ census_vectors_identity <-
       "the percentage of individuals who identify as part of ",
       "one or more visible minority groups"
     ),
+    exp_q5 = "identify as part of one or more visible minority groups",
     parent_vec = "population_ph",
     parent = FALSE
   ) |>
@@ -602,6 +629,7 @@ census_vectors_identity <-
     var_title = "Indigenous (%)",
     var_short = "Indigenous",
     explanation = "the percentage of individuals who are of indigenous identity",
+    exp_q5 = "are of indigenous identity",
     parent_vec = "population_ph",
     parent = FALSE
   )
@@ -620,6 +648,7 @@ census_vectors_identity_parent <-
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = "the total count of individuals in private households",
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   )
@@ -656,6 +685,7 @@ census_vectors_transport <-
       "the percentage of individuals who drive a privately ",
       "owned car or truck to work"
     ),
+    exp_q5 = "drive a privately owned car or truck to work",
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -675,6 +705,7 @@ census_vectors_transport <-
     var_title = "Walk or cycle to work (%)",
     var_short = "Walk or cycle",
     explanation = "the percentage of individuals who walk or cycle to work",
+    exp_q5 = "walk or cycle to work",
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -694,6 +725,7 @@ census_vectors_transport <-
       "the percentage of individuals who use public transit ",
       "to get to work"
     ),
+    exp_q5 = "use public transit to get to work",
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -713,6 +745,7 @@ census_vectors_transport <-
       "the percentage of individuals whose commute time is ",
       "less than 15 minutes"
     ),
+    exp_q5 = "have a commute time of less than 15 minutes",
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -732,6 +765,7 @@ census_vectors_transport <-
       "the percentage of individuals whose commute time is ",
       "between 15 and 45 minutes"
     ),
+    exp_q5 = "have a commute time between 15 and 45 minutes",
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -751,6 +785,7 @@ census_vectors_transport <-
       "the percentage of individuals whose commute time is ",
       "longer than 45 minutes"
     ),
+    exp_q5 = "have a commute time longer than 45 minutes",
     parent_vec = "employed_lf",
     parent = FALSE
   )
@@ -771,6 +806,7 @@ census_vectors_transport_parent <-
     explanation = paste0("the total count of employed labour force aged 15 ",
                          "years and over with a usual place of work or no ",
                          "fixed workplace address"),
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   )
@@ -834,16 +870,18 @@ census_vectors_family <-
     var_code = "family_children",
     type = list("pct"),
     theme = "Household",
-    vec_2021 = list("v_CA21_546"),
-    vec_2016 = list("v_CA16_507"),
+    vec_2021 = list("v_CA21_502", "v_CA21_505"),
+    vec_2016 = list(c("v_CA16_494", "v_CA16_495", "v_CA16_496", "v_CA16_498",
+                      "v_CA16_499", "v_CA16_500")),
     vec_2011 = list(c("v_CA11F_129", "v_CA11F_119", "v_CA11F_125")),
     vec_2006 = list(c("v_CA06_65", "v_CA06_59", "v_CA06_69")),
     vec_2001 = list(c("v_CA01_63", "v_CA01_57", "v_CA01_67")),
-    vec_1996 = list(NA),
+    vec_1996 = list(c("v_CA1996_68", "v_CA1996_74", "v_CA1996_78")),
     var_title = "Families with children (%)",
     var_short = "With child",
     explanation = "the percentage of census families with children out of total households",
-    parent_vec = "private_households",
+    exp_q5 = "live with children",
+    parent_vec = "census_families",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -859,17 +897,37 @@ census_vectors_family <-
     var_title = "Living alone (%)",
     var_short = "Living alone",
     explanation = "the percentage of one person households out of total households",
-    parent_vec = "private_households",
+    exp_q5 = "are one-person households",
+    parent_vec = "census_families",
     parent = FALSE
   )
 
-#### PARENT VECTOR `PRIVATE HOUSEHOLDS` ALREADY PART OF `HOUSING`
+census_vectors_family_parent <-
+  tibble::tibble(
+    var_code = "census_families",
+    type = list("count"),
+    theme = "Household",
+    vec_2021 = list("v_CA21_499"),
+    vec_2016 = list("v_CA16_497", "v_CA16_491"),
 
-# verify_parents(vectors_df = census_vectors_family,
-#                parents_df = census_vectors_family_parent)
-#
-# census_vectors_family <- rbind(census_vectors_family,
-#                                   census_vectors_family_parent)
+    vec_2011 = list("v_CA11F_115"),
+    vec_2006 = list("v_CA06_55"),
+    vec_2001 = list("v_CA01_53"),
+    vec_1996 = list("v_CA1996_60"),
+    var_title = "Census families",
+    var_short = "Families",
+    explanation = paste0("the total count of census families"),
+    exp_q5 = NA,
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+
+verify_parents(vectors_df = census_vectors_family,
+               parents_df = census_vectors_family_parent)
+
+census_vectors_family <- rbind(census_vectors_family,
+                                  census_vectors_family_parent)
 
 usethis::use_data(census_vectors_family, overwrite = TRUE)
 
@@ -893,6 +951,7 @@ census_vectors_language <-
       "the percentage of individuals that only know French ",
       "as an official language"
     ),
+    exp_q5 = "only know French out of the two official languages",
     parent_vec = "population",
     parent = FALSE
   ) |>
@@ -912,6 +971,7 @@ census_vectors_language <-
       "the percentage of individuals that only know English ",
       "as an official language"
     ),
+    exp_q5 = "only know English out of the two official languages",
     parent_vec = "population",
     parent = FALSE
   ) |>
@@ -931,6 +991,7 @@ census_vectors_language <-
       "the percentage of individuals that know both official ",
       "languages (French and English)"
     ),
+    exp_q5 = "know both official languages (French and English)",
     parent_vec = "population",
     parent = FALSE
   ) |>
@@ -950,6 +1011,7 @@ census_vectors_language <-
       "the percentage of individuals that do not know either ",
       "of the official languages (French or English)"
     ),
+    exp_q5 = "do not know either of the official languages (French or English)",
     parent_vec = "population",
     parent = FALSE
   )
@@ -968,6 +1030,7 @@ census_vectors_language_parent <-
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = paste0("the total count of individuals"),
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   )
@@ -1006,6 +1069,7 @@ census_vectors_age <-
     var_title = "Aged between 0 and 14 (%)",
     var_short = "0-14 yo",
     explanation = "the percentage of the population aged between 0 and 14 years old",
+    exp_q5 = "are aged between 0 and 14 years old",
     parent_vec = "population",
     parent = FALSE
   ) |>
@@ -1022,6 +1086,7 @@ census_vectors_age <-
     var_title = "Aged between 15 and 64 (%)",
     var_short = "15-64 yo",
     explanation = "the percentage of the population aged between 15 and 64 years old",
+    exp_q5 = "are aged between 15 and 64 years old",
     parent_vec = "population",
     parent = FALSE
   ) |>
@@ -1038,6 +1103,7 @@ census_vectors_age <-
     var_title = "Aged 65 and above (%)",
     var_short = "65+ yo",
     explanation = "the percentage of the population aged 65 and above",
+    exp_q5 = "are aged 65 and above",
     parent_vec = "population",
     parent = FALSE
   )
@@ -1060,7 +1126,7 @@ census_vectors_education <-
     var_code = "edu_bachelor_above",
     type = list("pct"),
     theme = "Education",
-    vec_2021 = list("v_CA21_5853"),
+    vec_2021 = list("v_CA21_5847"),
     vec_2016 = list("v_CA16_5078"),
     vec_2011 = list("v_CA11N_1792"),
     vec_2006 = list(c("v_CA06_1240", "v_CA06_1254", "v_CA06_1268")),
@@ -1073,6 +1139,7 @@ census_vectors_education <-
       "holding a University certificate, diploma or degree at bachelor level ",
       "or above"
     ),
+    exp_q5 = "hold a University certificate, diploma or degree at bachelor level or above",
     parent_vec = "population_15plus",
     parent = FALSE
   ) |>
@@ -1092,6 +1159,7 @@ census_vectors_education <-
       "the percentage of the population aged 15 and over ",
       "with no certificate, diploma or degree"
     ),
+    exp_q5 = "hold no certificate, diploma or degree",
     parent_vec = "population_15plus",
     parent = FALSE
   )
@@ -1107,10 +1175,11 @@ census_vectors_education_parent <-
     vec_2006 = list(c("v_CA06_1234", "v_CA06_1248", "v_CA06_1262")),
     vec_2001 = list("v_CA01_1384"),
     vec_1996 = list("v_CA1996_1347"),
-    var_title = "Individuals",
+    var_title = "Individuals aged 15 and over",
     var_short = "Individuals",
     explanation = paste0("the total count of individuals aged 15 years and ",
                          "over in private households"),
+    exp_q5 = NA,
     parent_vec = NA,
     parent = TRUE
   )

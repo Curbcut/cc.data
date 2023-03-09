@@ -2,25 +2,19 @@
 % Please edit documentation in R/canale.R
 \name{get_all_three_plus_ways}
 \alias{get_all_three_plus_ways}
-\title{Get all three-plus way intersections in Canada}
+\title{Get all three+ way intersections in Canadian streets for a given year}
 \usage{
 get_all_three_plus_ways(year)
 }
 \arguments{
-\item{OSM_cache}{<\code{logical}> Indicates whether to use cached OSM data
-or download it again. Default is TRUE.}
+\item{year}{<\code{numeric}> indicates the year of the streets network to use.
+Options are census years starting 2001.}
 }
 \value{
-A data frame containing all the three-plus way intersections in
-Canada.
+An \code{sf} object representing the three+ way intersections in the
+streets network.
 }
 \description{
-This function returns all three-plus way intersections in Canada. It downloads
-OpenStreetMap (OSM) data for Canada, retains footpaths, and excludes
-limited-access highways and their entrances and exits. The OSM data is
-transformed to the Stats Can CRS, and a grid is created to separate the work
-charge to different cores. The function then calculates all the three-plus
-way intersections in all the grids, and the streets that touch the lines of
-the grid and potentially missed in the first step. Finally, it binds all the
-three-plus way intersections and returns them.
+This function downloads the streets network for a given year and returns all
+the intersections with three or more streets.
 }
