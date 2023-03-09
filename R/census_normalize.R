@@ -24,8 +24,6 @@ census_normalize <- function(interpolated,
                                  census_scales = census_scales,
                                  census_years = census_years
                                )) {
-  vars_pct <- census_vectors_table$var_code[census_vectors_table$type == "pct"]
-  units <- unit_type[unit_type$var_code %in% vars_pct, ]
 
   # Subset the census vectors table including necessary parent variables
   parent_vecs <-
@@ -36,6 +34,9 @@ census_normalize <- function(interpolated,
   census_vectors_table <- cc.data::census_vectors_table[
     cc.data::census_vectors_table$var_code %in% census_vectors,
   ]
+
+  vars_pct <- census_vectors_table$var_code[census_vectors_table$type == "pct"]
+  units <- unit_type[unit_type$var_code %in% vars_pct, ]
 
   sapply(census_scales, \(scale) {
     sapply(as.character(census_years), \(year) {
