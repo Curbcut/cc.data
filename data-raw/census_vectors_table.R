@@ -323,7 +323,7 @@ census_vectors_housing_parent <-
   ) |>
   tibble::add_row(
     var_code = "tenant_households",
-    type = list(NA),
+    type = list("count"),
     theme = "Housing",
     vec_2021 = list("v_CA21_4313"),
     vec_2016 = list("v_CA16_4897"),
@@ -340,7 +340,7 @@ census_vectors_housing_parent <-
   ) |>
   tibble::add_row(
     var_code = "owner_households",
-    type = list(NA),
+    type = list("count"),
     theme = "Housing",
     vec_2021 = list("v_CA21_4305"),
     vec_2016 = list("v_CA16_4890"),
@@ -357,7 +357,7 @@ census_vectors_housing_parent <-
   ) |>
   tibble::add_row(
     var_code = "mobility_status_1",
-    type = list(NA),
+    type = list("count"),
     theme = "Housing",
     vec_2021 = list("v_CA21_5745"),
     vec_2016 = list("v_CA16_6692"),
@@ -374,7 +374,7 @@ census_vectors_housing_parent <-
   ) |>
   tibble::add_row(
     var_code = "mobility_status_5",
-    type = list(NA),
+    type = list("count"),
     theme = "Housing",
     vec_2021 = list("v_CA21_5772"),
     vec_2016 = list("v_CA16_6719"),
@@ -870,7 +870,7 @@ census_vectors_family <-
     var_code = "family_children",
     type = list("pct"),
     theme = "Household",
-    vec_2021 = list("v_CA21_502", "v_CA21_505"),
+    vec_2021 = list(c("v_CA21_502", "v_CA21_505")),
     vec_2016 = list(c("v_CA16_494", "v_CA16_495", "v_CA16_496", "v_CA16_498",
                       "v_CA16_499", "v_CA16_500")),
     vec_2011 = list(c("v_CA11F_129", "v_CA11F_119", "v_CA11F_125")),
@@ -908,7 +908,7 @@ census_vectors_family_parent <-
     type = list("count"),
     theme = "Household",
     vec_2021 = list("v_CA21_499"),
-    vec_2016 = list("v_CA16_497", "v_CA16_491"),
+    vec_2016 = list(c("v_CA16_497", "v_CA16_491")),
 
     vec_2011 = list("v_CA11F_115"),
     vec_2006 = list("v_CA06_55"),

@@ -18,6 +18,282 @@ accessibility_DA_location <- function(DA_table) {
 
   # Read DMTI data from bucket ----------------------------------------------
 
+  `TKTK PUT IN BUCKET AND EXTRACT FROM THERE`
+
+  poi_1 <- sf::read_sf("calculated_ignore/poi/poi_2021_1.shp")
+  poi_2 <- sf::read_sf("calculated_ignore/poi/poi_2021_2.shp")
+
+  poi <- rbind(poi_1, poi_2)
+  poi <- sf::st_transform(poi, crs = sf::st_crs(DA_table)$input)
+
+  # Filter out NAs and empty geometries
+  poi <- poi[!is.na(poi$SIC_1), ]
+  poi <- poi[!sf::st_is_empty(poi), ]
+
+
+  # Retail ------------------------------------------------------------------
+
+  # Create the retail dictionary
+  retail_general <- tibble::tibble(
+    var = "retail_general",
+    major_group = list("53"),
+    title = "General Merchandise Stores",
+    short = "General",
+    exp = paste0("retail stores which sell a number of lines of merchandise, ",
+                 "such as dry goods, apparel and accessories, furniture and ",
+                 "home furnishings, small wares, hardware, and food"))
+
+  retail_apparel <- tibble::tibble(
+    var = "retail_apparel",
+    major_group = list("56"),
+    title = "Apparel And Accessory Stores",
+    short = "Apparel",
+    exp = paste0("retail stores primarily engaged in selling new clothing, ",
+                 "shoes, hats, underwear, and related articles for personal ",
+                 "wear and adornment")
+  )
+
+  retail_furniture <- tibble::tibble(
+    var = "retail_furniture",
+    major_group = list("57"),
+    title = "Home Furniture, Furnishings, And Equipment Stores",
+    short = "Furniture",
+    exp = paste0("retail stores selling goods used for furnishing the home, ",
+                 "such as furniture, floor coverings, draperies, glass and ",
+                 "chinaware, domestic stoves, refrigerators, and other ",
+                 "household electrical and gas appliances")
+  )
+
+  retail_eating <- tibble::tibble(
+    var = "retail_eating",
+    major_group = list("58"),
+    title = "Eating And Drinking Places",
+    short = "Eating",
+    exp = paste0("retail establishments selling prepared foods and drinks ",
+                 "for consumption on the premises; and also lunch counters ",
+                 "and refreshment stands selling prepared foods and drinks ",
+                 "for immediate consumption")
+  )
+
+  retail_misc <- tibble::tibble(
+    var = "retail_misc",
+    major_group = list("59"),
+    title = "Miscellaneous Retail",
+    short = "Retail",
+    exp = paste0("retail establishments such as drug stores, liquor stores, ",
+                 "used merchandise stores, miscellaneous shopping goods stores, ",
+                 "non-store retailers, fuel dealers, and miscellaneous retail ",
+                 "stores not elsewhere classified")
+  )
+
+  retail_dict <- rbind(retail_general, retail_apparel,
+                       retail_furniture, retail_eating, retail_misc)
+
+  retail_total <- tibble::tibble(
+    var = "retail_total",
+    major_group = list(unlist(retail_dict$major_group)),
+    title = "Retail Trade",
+    short = "Retail",
+    exp = paste0("establishments engaged in selling merchandise for personal ",
+                 "or household consumption and rendering services incidental ",
+                 "to the sale of the goods"))
+
+  retail_dict <- rbind(retail_dict, retail_total)
+  retail_dict$source <- "DMTI"
+  retail_dict$date <- "2022"
+  retail_dict$theme <- "retail"
+
+  # Subset the POI for just the retail
+  poi_retail <- poi[poi$SIC_MJ_GRP %in% unlist(retail_dict$major_group), ]
+
+  # How many points per variables are there in each DA
+  retail <- sapply(retail_dict$var, \(var) {
+
+    mjr_groups <- retail_dict$major_group[retail_dict$var == var][[1]]
+
+    points <- poi_retail[poi_retail$SIC_MJ_GRP %in% mjr_groups, ]
+
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
+
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "NAME", "SIC_1")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+
+    return(list(DA = out,
+                points = points))
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  retail_data <- Reduce(merge, lapply(retail, `[[`, "DA"))
+  # retail_points <- Reduce(merge, lapply(retail, `[[`, "points"))
+
+
+  # Financial institutions --------------------------------------------------
+
+  # Create the finance dictionary
+  finance_depository <- tibble::tibble(
+    var = "finance_depository",
+    major_group = list("60"),
+    title = "Depository Institutions",
+    short = "Depository",
+    exp = paste0("institutions that are engaged in deposit banking or closely ",
+                 "related functions, including fiduciary activities"))
+
+  finance_nondepository <- tibble::tibble(
+    var = "finance_nondepository",
+    major_group = list("61"),
+    title = "Non-depository Credit Institutions",
+    short = "Credit",
+    exp = paste0("establishments engaged in extending credit in the form of ",
+                 "loans, but not engaged in deposit banking"))
+
+  finance_dict <- rbind(finance_depository, finance_nondepository)
+
+  finance_total <- tibble::tibble(
+    var = "finance_total",
+    major_group = list(unlist(finance_dict$major_group)),
+    title = "Financial Institutions",
+    short = "Finance",
+    exp = paste0("establishments operating primarily in the fields of finance ",
+                 "including includes depository institutions and ",
+                 "non-depository credit institutions"))
+
+  finance_dict <- rbind(finance_dict, finance_total)
+  finance_dict$source <- "DMTI"
+  finance_dict$date <- "2022"
+  finance_dict$theme <- "finance"
+
+  # Subset the POI for just the finance
+  poi_finance <- poi[poi$SIC_MJ_GRP %in% unlist(finance_dict$major_group), ]
+
+  # How many points per variables are there in each DA
+  finance <- sapply(finance_dict$var, \(var) {
+
+    mjr_groups <- finance_dict$major_group[finance_dict$var == var][[1]]
+
+    points <- poi_finance[poi_finance$SIC_MJ_GRP %in% mjr_groups, ]
+
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
+
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "NAME", "SIC_1")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+    return(list(DA = out,
+                points = points))
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  finance_data <- Reduce(merge, lapply(finance, `[[`, "DA"))
+  # finance_points <- Reduce(merge, lapply(finance, `[[`, "points"))
+
+
+  # Food stores -------------------------------------------------------------
+
+  # Create the food dictionary
+  food_grocery <- tibble::tibble(
+    var = "food_grocery",
+    industry = list("5411"),
+    title = "Grocery Stores",
+    short = "Groceries",
+    exp = paste0("stores, commonly known as supermarkets, food stores, and ",
+                 "grocery stores"))
+
+  food_meat <- tibble::tibble(
+    var = "food_meat",
+    industry = list("5421"),
+    title = "Meat and Fish Markets",
+    short = "Meat",
+    exp = paste0("establishments primarily engaged in the retail sale of ",
+                 "fresh, frozen, or cured meats, fish, shellfish, and other ",
+                 "seafoods")
+  )
+
+  food_fruit <- tibble::tibble(
+    var = "food_furniture",
+    industry = list("5431"),
+    title = "Fruit and Vegetable Markets",
+    short = "Fruit/Veg.",
+    exp = paste0("establishments primarily engaged in the retail sale of ",
+                 "fresh fruits and vegetables")
+  )
+
+  food_dairy <- tibble::tibble(
+    var = "food_dairy",
+    industry = list("5451"),
+    title = "Dairy Products Stores",
+    short = "Dairy",
+    exp = paste0("establishments primarily engaged in the retail sale of ",
+                 "packaged dairy products to over-the-counter customers")
+  )
+
+  food_bakeries <- tibble::tibble(
+    var = "food_bakeries",
+    industry = list("5461"),
+    title = "Retail Bakeries",
+    short = "Bakeries",
+    exp = paste0("establishments primarily engaged in the retail sale of ",
+                 "bakery products")
+  )
+
+  food_misc <- tibble::tibble(
+    var = "food_misc",
+    industry = list("5499"),
+    title = "Miscellaneous Food Stores",
+    short = "Food",
+    exp = paste0("establishments primarily engaged in the retail sale of ",
+                 "specialized foods, not elsewhere classified, such as eggs",
+                 ", poultry, health foods, spices, herbs, coffee, and tea")
+  )
+
+  food_dict <- rbind(food_grocery, food_meat, food_fruit, food_dairy,
+                     food_bakeries, food_misc)
+
+  food_total <- tibble::tibble(
+    var = "food_total",
+    industry = list(unlist(food_dict$industry)),
+    title = "Food Stores",
+    short = "Food",
+    exp = paste0("retail stores primarily engaged in selling food for home ",
+                 "preparation and consumption"))
+
+  food_dict <- rbind(food_dict, food_total)
+  food_dict$source <- "DMTI"
+  food_dict$date <- "2022"
+  food_dict$theme <- "food"
+
+  # Subset the POI for just the food
+  poi$sic_short <- gsub("0000$", "", poi$SIC_1)
+  poi_food <- poi[poi$sic_short %in% unlist(food_dict$industry), ]
+
+  # How many points per variables are there in each DA
+  food <- sapply(food_dict$var, \(var) {
+
+    industries <- food_dict$industry[food_dict$var == var][[1]]
+
+    points <- poi_food[poi_food$sic_short %in% industries, ]
+
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
+
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "NAME", "SIC_1")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+    return(list(DA = out,
+                points = points))
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  food_data <- Reduce(merge, lapply(food, `[[`, "DA"))
+  # food_points <- Reduce(merge, lapply(food, `[[`, "points"))
+
+
+  # Healthcare services -----------------------------------------------------
+
   read_method <- function(file) {
     content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
     csv_file <- content[grepl("\\.csv", content)]
@@ -25,462 +301,238 @@ accessibility_DA_location <- function(DA_table) {
     suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file)))
   }
 
-  bucket_content <- bucket_list_content("curbcut.amenities")$Key
-  DMTI <- bucket_content[grepl("^DMTI/.*.zip$", bucket_content)]
-
-  content <- sapply(DMTI, \(x) {
-    bucket_read_object(object = x,
+  # Grab from bucket
+  healthcare <-
+    bucket_read_object(object = "open_db_heathcare_facilities.zip",
                        bucket = "curbcut.amenities",
                        objectext = ".zip",
                        method = read_method) |>
-      tibble::as_tibble()
-  }, simplify = FALSE, USE.NAMES = TRUE)
+    tibble::as_tibble()
 
   # Transform to SF
-  content_sf <- lapply(content, \(x) {
+  healthcare$longitude <- suppressWarnings(as.numeric(healthcare$longitude))
+  healthcare <- healthcare[!is.na(healthcare$longitude), ]
+  healthcare$latitude <- suppressWarnings(as.numeric(healthcare$latitude))
+  healthcare <- healthcare[!is.na(healthcare$latitude), ]
+  healthcare <- sf::st_as_sf(healthcare, coords = c("longitude", "latitude"),
+                              crs = 4326) |>
+    sf::st_transform(3347)
 
-    x$longitude <- suppressWarnings(as.numeric(x$longitude))
-    x <- x[!is.na(x$longitude), ]
-    x$latitude <- suppressWarnings(as.numeric(x$latitude))
-    x <- x[!is.na(x$latitude), ]
+  healthcare$odhf_facility_type[healthcare$odhf_facility_type ==
+                                  "nursing and residential care facilities"] <-
+    "Nursing and residential care facilities"
 
-    sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
-      sf::st_transform(3347)
-  })
+  # Create the food dictionary
+  healthcare_grocery <- tibble::tibble(
+    var = "healthcare_ambulatory",
+    type = list("Ambulatory health care services"),
+    title = "Ambulatory health care services",
+    short = "Ambulatory",
+    exp = paste0("establishments primarily engaged in providing health care ",
+                 "services, directly or indirectly, to ambulatory patients (",
+                 "Example: medical clinic, mental health center)"))
 
-  # Take .zip out of names
-  names(content_sf) <- gsub("^DMTI/|\\.zip$", "", names(content_sf))
+  healthcare_hospitals <- tibble::tibble(
+    var = "healthcare_hospitals",
+    type = list("Hospitals"),
+    title = "Hospitals",
+    short = "Hospitals",
+    exp = paste0("establishments, licensed as hospitals, primarily engaged ",
+                 "in providing diagnostic and medical treatment services, and ",
+                 "specialized accommodation services to in-patients (Example: ",
+                 "emergency department, general hospital)")
+  )
 
+  healthcare_nursing <- tibble::tibble(
+    var = "healthcare_nursing",
+    type = list("Nursing and residential care facilities"),
+    title = "Nursing and residential care facilities",
+    short = "Nursing",
+    exp = paste0("establishments primarily engaged in providing residential ",
+                 "care combined with either nursing, supervisory or other ",
+                 "types of care as required by the residents (Example: ",
+                 "nursing home)")
+  )
 
-  # Class using the `sic` code ----------------------------------------------
+  healthcare_dict <- rbind(healthcare_grocery, healthcare_hospitals,
+                           healthcare_nursing)
 
-  # Special case healthcare
-  hc <- content_sf$dmti_healthcare_2021
-  hc$sic_1 <- substr(hc$sic_1, 1, 3)
-  hc <- hc[hc$sic_1 %in% c("801", "805", "806", "804"), ]
-  sic_df <- data.frame(
-    sic_1 = c("801", "805", "806", "804"),
-    industry = c("Doctors' offices and clinics",
-                 "Nursing and personal care facilities",
-                 "Hospitals",
-                 "Other health practitioners' offices and clinics"),
-    exp = c(paste0("Establishments of licensed practitioners having ",
-                   "the degree of M.D. and engaged in the practice ",
-                   "of general or specialized medicine and surgery"),
-            paste0("Establishments primarily engaged in providing ",
-                   "inpatient nursing and rehabilitative services"),
-            paste0("Establishments primarily engaged in providing ",
-                   "diagnostic services, treatments, general medical ",
-                   "and surgical services and other hospital services"),
-            paste0("Establishments of licensed practitioners engaging in ",
-                   "the practice ",
-                   "of chiropractic medicine, practice of optometry, ",
-                   "practice of podiatry, or practice of other ",
-                   "health fields not elsewhere classified")))
-  merged <- merge(hc, sic_df)["industry"]
-  hc <- list(df = merged,
-             sic_def = sic_df)
+  healthcare_total <- tibble::tibble(
+    var = "healthcare_total",
+    type = list(unlist(healthcare_dict$type)),
+    title = "Healthcare facilities",
+    short = "Healthcare",
+    exp = paste0("physical site at which the primary activity is the ",
+                 "provision of healthcare"))
 
-  # Prepare some industries to filter out
-  filter_out <- c("Drive-In Motion Picture Theaters",
-                  "Candy, Nut, and Confectionery Stores")
-  content_sf_ <- content_sf[names(content_sf) != "dmti_healthcare_2021"]
-  progressr::with_progress({
-    pb <- progressr::progressor(steps = length(content_sf_))
-    point_data <- future.apply::future_lapply(content_sf_, \(x) {
-      requireNamespace("sf", quietly = TRUE)
-
-      if (!"sic_1" %in% names(x)) return({
-        x$industry <- NA
-        list(df = x["industry"])
-      })
-
-      # Bring sic down to 4 digits
-      x$sic_1 <- substr(x$sic_1, 1, 4)
-
-      # Scrape the SIC meaning
-      unique_sics <- unique(x$sic_1)
-      unique_sics <- unique_sics[unique_sics != ""]
-
-      sics <- sapply(unique_sics, \(sic) {
-        page <-
-          httr::GET(paste0("https://www.naics.com/sic-industry-description/?code=",
-                           sic)) |>
-          httr::content(as = "text")
-
-        title <- stringr::str_extract(page, "(?<=<title>).*(?=</title>)") |>
-          stringr::str_extract("(?<=\\d{4} ).*(?= &#8211)")
-        exp <- stringr::str_extract(page, "(?<=</h6>).*?(?=\\.)")
-
-        return(list(title = title, exp = exp))
-      }, simplify = FALSE, USE.NAMES = TRUE)
-
-      # Merge industry naming to each point data
-      sic_df <- tibble::tibble(sic_1 = unique_sics,
-                               industry = sapply(sics, `[[`, "title"),
-                               exp = sapply(sics, `[[`, "exp"))
-      merged <- merge(x, sic_df)["industry"]
-      # Filter out too small industries (possibly misclassified)
-      kept_industry <-
-        table(merged$industry)[table(merged$industry) > nrow(merged)*0.01] |>
-        names()
-      kept_industry <- kept_industry[!kept_industry %in% filter_out]
-
-      # Manually filtering out some industries
-      kept_industry <-
-        kept_industry[!kept_industry %in% "Operators of Nonresidential Buildings"]
-
-      # Additionally filter out other industries
-      out <- merged[merged$industry %in% kept_industry, ]
-
-      # Filter back `sic_df` to only use the kept industries
-      sic_df <- sic_df[sic_df$industry %in% kept_industry, ]
-
-      pb()
-
-      # Return
-      return(list(df = out,
-                  sic_def = sic_df))
-    }, future.seed = NULL)
-  })
-
-  # Concatenate back with health practictioners
-  point_data <- c(point_data, list(dmti_healthcare_2021 = hc))
-
-  sic_def <- lapply(point_data, `[[`, "sic_def")
-  point_data <- lapply(point_data, `[[`, "df")
-
-  # Add source to sic_fed
-  sic_def <- lapply(sic_def, \(x) {
-    if (!is.null(x)) x$source <- "DMTI Spatial"
-    if (!is.null(x)) x$date <- "2021"
-    x
-  })
+  healthcare_dict <- rbind(healthcare_dict, healthcare_total)
+  healthcare_dict$source <- "Canadian Open Database of Healthcare Facilities (ODHF)"
+  healthcare_dict$date <- "2020"
+  healthcare_dict$theme <- "healthcare"
 
 
-  # Additional datasets -----------------------------------------------------
+  # How many points per variables are there in each DA
+  healthcare <- sapply(healthcare_dict$var, \(var) {
 
-  ### Health care
-  content <- sapply("open_db_heathcare_facilities.zip", \(x) {
-    bucket_read_object(object = x,
-                       bucket = "curbcut.amenities",
-                       objectext = ".zip",
-                       method = read_method) |>
-      tibble::as_tibble()
+    types <- healthcare_dict$type[healthcare_dict$var == var][[1]]
+
+    points <- healthcare[healthcare$odhf_facility_type %in% types, ]
+
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
+
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "facility_name", "odhf_facility_type")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+    return(list(DA = out,
+                points = points))
   }, simplify = FALSE, USE.NAMES = TRUE)
 
-  # Transform to SF
-  content_sf <- lapply(content, \(x) {
+  healthcare_data <- Reduce(merge, lapply(healthcare, `[[`, "DA"))
+  # healthcare_points <- Reduce(merge, lapply(healthcare, `[[`, "points"))
 
-    x$longitude <- suppressWarnings(as.numeric(x$longitude))
-    x <- x[!is.na(x$longitude), ]
-    x$latitude <- suppressWarnings(as.numeric(x$latitude))
-    x <- x[!is.na(x$latitude), ]
 
-    sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
-      sf::st_transform(3347)
-  })
+  # Education facilities ----------------------------------------------------
 
-  # Take .zip out of names
-  names(content_sf) <- gsub("\\.zip$", "", names(content_sf))
-
-  # Format like previous DMTI data, and combine
-  hospitals <- content_sf$open_db_heathcare_facilities[
-    content_sf$open_db_heathcare_facilities$odhf_facility_type == "Hospitals",
-    "odhf_facility_type"
-  ]
-  names(hospitals)[1] <- "industry"
-  point_data$dmti_healthcare_2021 <- point_data$dmti_healthcare_2021[
-    !point_data$dmti_healthcare_2021$industry == "Hospitals",
-  ]
-  point_data$dmti_healthcare_2021 <-
-    rbind(point_data$dmti_healthcare_2021, hospitals)
-  # Update sic_def
-  sic_def$dmti_healthcare_2021$source[
-    sic_def$dmti_healthcare_2021$industry == "Hospitals"
-  ] <- "Canadian Open Database of Healthcare Facilities"
-  sic_def$dmti_healthcare_2021$date[
-    sic_def$dmti_healthcare_2021$industry == "Hospitals"
-  ] <- "2020"
-
-  ### Education
   read_method <- function(file) {
     content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
     csv_file <- content[grepl("\\.csv", content)]
     utils::unzip(file, files = csv_file, exdir = tempdir())
-    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file),
-                                     fileEncoding = "latin1"))
+    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file)))
   }
 
-  content <- sapply("open_db_educational_facilities.zip", \(x) {
-    bucket_read_object(object = x,
+  # Grab from bucket
+  educational <-
+    bucket_read_object(object = "open_db_educational_facilities.zip",
                        bucket = "curbcut.amenities",
                        objectext = ".zip",
                        method = read_method) |>
-      tibble::as_tibble()
-  }, simplify = FALSE, USE.NAMES = TRUE)
+    tibble::as_tibble()
 
   # Transform to SF
-  schools_sf <- lapply(content, \(x) {
+  educational$longitude <- suppressWarnings(as.numeric(educational$longitude))
+  educational <- educational[!is.na(educational$longitude), ]
+  educational$latitude <- suppressWarnings(as.numeric(educational$latitude))
+  educational <- educational[!is.na(educational$latitude), ]
+  educational <- sf::st_as_sf(educational, coords = c("longitude", "latitude"),
+                             crs = 4326) |>
+    sf::st_transform(3347)
 
-    x$longitude <- suppressWarnings(as.numeric(x$Longitude))
-    x <- x[!is.na(x$longitude), ]
-    x$latitude <- suppressWarnings(as.numeric(x$Latitude))
-    x <- x[!is.na(x$latitude), ]
+  educational$odhf_facility_type[educational$odhf_facility_type ==
+                                  "nursing and residential care facilities"] <-
+    "Nursing and residential care facilities"
 
-    sf::st_as_sf(x, coords = c("longitude", "latitude"), crs = 4326) |>
-      sf::st_transform(3347)
-  })
+  # Create the food dictionary
+  educational_grocery <- tibble::tibble(
+    var = "educational_ambulatory",
+    type = list("Ambulatory health care services"),
+    title = "Ambulatory health care services",
+    short = "Ambulatory",
+    exp = paste0("establishments primarily engaged in providing health care ",
+                 "services, directly or indirectly, to ambulatory patients (",
+                 "Example: medical clinic, mental health center)"))
 
-  # Take .zip out of names
-  names(schools_sf) <- gsub("\\.zip$", "", names(schools_sf))
+  educational_hospitals <- tibble::tibble(
+    var = "educational_hospitals",
+    type = list("Hospitals"),
+    title = "Hospitals",
+    short = "Hospitals",
+    exp = paste0("establishments, licensed as hospitals, primarily engaged ",
+                 "in providing diagnostic and medical treatment services, and ",
+                 "specialized accommodation services to in-patients (Example: ",
+                 "emergency department, general hospital)")
+  )
 
-  # Format like previous DMTI data, and combine
-  education <- list()
-  education$early_childhood_education <-
-    tibble::tibble(industry = "Early childhood education",
-                   geometry = schools_sf$open_db_educational_facilities$geometry[
-                     schools_sf$open_db_educational_facilities$ISCED010 == 1]) |>
-    sf::st_as_sf(crs = 3347)
-  education$kindergarten <-
-    tibble::tibble(industry = "Kindergarten",
-                   geometry = schools_sf$open_db_educational_facilities$geometry[
-                     schools_sf$open_db_educational_facilities$ISCED020 == 1]) |>
-    sf::st_as_sf(crs = 3347)
-  education$elementary <-
-    tibble::tibble(industry = "Elementary",
-                   geometry = schools_sf$open_db_educational_facilities$geometry[
-                     schools_sf$open_db_educational_facilities$ISCED1 == 1]) |>
-    sf::st_as_sf(crs = 3347)
-  education$secondary <-
-    tibble::tibble(industry = "Secondary",
-                   geometry = schools_sf$open_db_educational_facilities$geometry[
-                     schools_sf$open_db_educational_facilities$ISCED2 == 1 |
-                       schools_sf$open_db_educational_facilities$ISCED3 == 1]) |>
-    sf::st_as_sf(crs = 3347)
-  education$post_secondary <-
-    tibble::tibble(industry = "Post-secondary",
-                   geometry = schools_sf$open_db_educational_facilities$geometry[
-                     schools_sf$open_db_educational_facilities$ISCED4Plus == 1]) |>
-    sf::st_as_sf(crs = 3347)
+  educational_nursing <- tibble::tibble(
+    var = "educational_nursing",
+    type = list("Nursing and residential care facilities"),
+    title = "Nursing and residential care facilities",
+    short = "Nursing",
+    exp = paste0("establishments primarily engaged in providing residential ",
+                 "care combined with either nursing, supervisory or other ",
+                 "types of care as required by the residents (Example: ",
+                 "nursing home)")
+  )
 
-  # Switch from DMTI to the Open DB of educational facilities
-  point_data <- point_data[names(point_data) != "dmti_education_2021"]
-  point_data$educational_facilities <- Reduce(rbind, education)
+  educational_dict <- rbind(educational_grocery, educational_hospitals,
+                           educational_nursing)
 
-  # Update sic_def
-  sic_def <- sic_def[names(sic_def) != "dmti_education_2021"]
-  sic_def$educational_facilities <-
-    tibble::tibble(sic_1 = NA,
-                   industry = c("Early childhood education",
-                                "Kindergarten",
-                                "Elementary",
-                                "Secondary",
-                                "Post-secondary"),
-                   exp = c("Establishment engaged in the support of early childhood education students",
-                           "Establishment engaged in the support of kindergarten students",
-                           "Establishment engaged in the support of elementary school students",
-                           "Establishment engaged in the support of secondary students",
-                           "Establishment engaged in the support of post-secondary students"),
-                   source = c("Canadian Open Database of Educational Facilities"),
-                   date = "2022")
+  educational_total <- tibble::tibble(
+    var = "educational_total",
+    type = list(unlist(educational_dict$type)),
+    title = "educational facilities",
+    short = "educational",
+    exp = paste0("physical site at which the primary activity is the ",
+                 "provision of educational"))
+
+  educational_dict <- rbind(educational_dict, educational_total)
+  educational_dict$source <- "Canadian Open Database of educational Facilities (ODHF)"
+  educational_dict$date <- "2020"
+  educational_dict$theme <- "educational"
 
 
-  # Sum point number per DA -------------------------------------------------
+  # How many points per variables are there in each DA
+  educational <- sapply(educational_dict$var, \(var) {
 
-  # Intersect
-  names(DA_table)[1] <- "DA_ID"
-  progressr::with_progress({
-    pb <- progressr::progressor(steps = length(point_data))
-    point_data <- future.apply::future_lapply(point_data, \(x) {
-      out <- sf::st_intersection(x, DA_table) |>
-        sf::st_drop_geometry()
-      pb()
-      out
-    }, future.seed = NULL)
-  })
+    types <- educational_dict$type[educational_dict$var == var][[1]]
 
-  # Count industry per DA
-  progressr::with_progress({
-    pb <- progressr::progressor(steps = length(point_data))
-    point_DA <-
-      future.apply::future_lapply(point_data, \(x) {
-        df <- sf::st_drop_geometry(x)
-        df$industry[is.na(df$industry)] <- ""
+    points <- educational[educational$odhf_facility_type %in% types, ]
 
-        df <- as.data.frame(table(df$industry, df$DA_ID))
-        colnames(df) <- c("industry", "DA_ID", "count")
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
 
-        pb()
-        df <- df[df$count > 0, ]
-        tibble::as_tibble(df)
-      }, future.seed = NULL)
-  })
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "facility_name", "odhf_facility_type")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+    return(list(DA = out,
+                points = points))
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  educational_data <- Reduce(merge, lapply(educational, `[[`, "DA"))
+  # educational_points <- Reduce(merge, lapply(educational, `[[`, "points"))
 
 
-  # Separate industries -----------------------------------------------------
-
-  progressr::with_progress({
-    point_DA <-
-      lapply(point_DA, \(x) {
-        out <- sapply(as.character(unique(x$industry)), \(z) {
-          x[x$industry == z, c("DA_ID", "count")]
-        }, simplify = FALSE, USE.NAMES = TRUE)
-
-        total <- x[c("DA_ID", "count")]
-        total <- stats::aggregate(total$count,
-                                  by = list(DA_ID = total$DA_ID), sum) |>
-          tibble::as_tibble()
-        names(total)[2] <- "count"
-
-        c(out, list(Total = total))
-      })
-  })
-
-  # Adjust for educational facilities
-  education <- sf::st_intersection(schools_sf$open_db_educational_facilities,
-                                   DA_table) |>
-    sf::st_drop_geometry()
-  education_total <- table(education$DA_ID)
-  point_DA$educational_facilities$Total <-
-    tibble::tibble(DA_ID = names(education_total),
-                   count = as.numeric(education_total))
 
 
-  # Clean up ----------------------------------------------------------------
-
-  # If there's only one industry and a total, just keep the industry
-  point_DA <- lapply(point_DA, \(x) {
-    if (length(x) == 2) x[1] else x
-  })
-  # Adjust wifi hotspot
-  names(point_DA$dmti_wifihotspots_2021) <- "Public Wifi Hotspot"
-  sic_def$dmti_wifihotspots_2021 <-
-    data.frame(sic_1 = "",
-               industry = "Public Wifi Hotspot",
-               exp = "Locations that offer WiFi access",
-               source = "DMTI Spatial",
-               date = 2021)
-  # Clean up other names
-  names(point_DA$dmti_arenas_2021) <-
-    "Amusement and Recreation Services"
-  sic_def$dmti_arenas_2021$industry <- "Amusement and Recreation Services"
-  names(point_DA$dmti_cinemas_2021) <-
-    "Motion Picture Theaters"
-  sic_def$dmti_cinemas_2021$industry <- "Motion Picture Theaters"
-  names(point_DA$dmti_fooddistribution_2021)[
-    names(point_DA$dmti_fooddistribution_2021) ==
-      "Meat and Fish (Seafood) Markets, Including Freezer Provisioners"] <-
-    "Meat and Fish (Seafood) Markets"
-  sic_def$dmti_fooddistribution_2021$industry[
-    sic_def$dmti_fooddistribution_2021$industry ==
-      "Meat and Fish (Seafood) Markets, Including Freezer Provisioners"] <-
-    "Meat and Fish (Seafood) Markets"
 
 
-  # One variable, one dataframe ---------------------------------------------
-
-  point_DA <- mapply(\(field_name, industries) {
-    year <- stringr::str_extract(field_name, "\\d{4}$")
-    field <- stringr::str_extract(field_name, "(?<=dmti_).*(?=_\\d{4}$)")
-
-    names(industries) <-
-      paste(field,
-            tolower(stringr::str_extract(names(industries), ".*?(?=$|[^a-zA-Z])")),
-            year, sep = "_")
-
-    industries
-  }, names(point_DA), point_DA)
-
-  # Match the same process to the SIC code definitions
-  sic_def <-
-    mapply(\(field_name, industries) {
-      year <- industries$date
-      field <- stringr::str_extract(field_name, "(?<=dmti_).*(?=_\\d{4}$)")
-      if (is.na(field)) {
-        field <- stringr::str_extract(field_name, ".*(?=_)")
-      }
-
-      industries$var_code <-
-        paste(field,
-              tolower(stringr::str_extract(industries$industry, ".*?(?=$|[^a-zA-Z])")),
-              year, sep = "_")
-
-      industries
-    }, names(sic_def), sic_def, SIMPLIFY = FALSE)
 
 
-  # Merge to single dataframe -----------------------------------------------
-
-  point_DA <- lapply(point_DA, \(x) {
-    mapply(\(var_code, df) {
-      names(df)[2] <- var_code
-      df
-    }, names(x), x, SIMPLIFY = FALSE)
-  })
-
-  point_DA <-
-    Reduce(\(a, b) merge(a, b, by = "DA_ID", all = TRUE),
-           lapply(point_DA,
-                  \(x) Reduce(\(a, b) merge(a, b, by = "DA_ID", all = TRUE), x)))
-
-  # Populate all the DA table
-  out_df <- merge(sf::st_drop_geometry(DA_table),
-                    point_DA, all = TRUE)
-  out_df[is.na(out_df)] <- 0
 
 
-  # Clean up dictionary and add 'Total' -------------------------------------
 
-  dict <- Reduce(rbind, sic_def)[c("var_code", "industry", "exp", "source", "date")]
-  dict$theme <- stringr::str_extract(dict$var_code, "^.*?(?=_)")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  # Return all the measures and the dictionary ------------------------------
+
+  access <- Reduce(merge, list(retail_data, finance_data, food_data,
+                               healthcare_data, ...))
+  points <- Reduce(merge, list(retail_points, finance_points, food_points,
+                               healthcare_points, ...))
+  dict <- Reduce(merge, list(retail_dict, finance_dict, food_dict,
+                             healthcare_dict, ...))
   themes <- unique(dict$theme)
 
-  # Add total to themes with subthemes
-  with_sub <- table(dict$theme)[table(dict$theme) > 1]
-  for (i in names(with_sub)) {
-    var_code <- paste0(i, "_total_2021")
+  return(list(data = access, dict = dict, points = points, themes))
 
-    industry <- if (i == "educational") {
-      "Educational facilities"
-    } else if (i == "fooddistribution") {
-      "Food Distribution Depots"
-    } else if (i == "healthcare") {
-      "Hospital and Doctor Services"
-    } else if (i == "retail") {
-      "Retail Establishment"
-    }
-
-    exp <- if (i == "educational") {
-      "Establishments providing academic or technical instruction"
-    } else if (i == "fooddistribution") {
-      paste0("Establishments primarily engaged in selling food for home ",
-             "preparation and consumption")
-    } else if (i == "healthcare") {
-      paste0("Establishments primarily engaged in furnishing medical, ",
-             "surgical, and other health services to persons")
-    } else if (i == "retail") {
-      paste0("Establishments of retailing including shopping centers and ",
-             "department stores")
-    }
-
-    source <- paste0(unique(dict$source[dict$theme == i]), collapse = " & ")
-    date <- paste0(unique(dict$date[dict$theme == i]), collapse = " & ")
-
-    dict <- rbind(dict, tibble::tibble(var_code = var_code,
-                                       industry = industry,
-                                       theme = i,
-                                       exp = exp,
-                                       source = source,
-                                       date = date))
-  }
-
-
-  # Return tables and dictionaries ------------------------------------------
-
-  return(list(data = tibble::as_tibble(out_df),
-              dict = dict,
-              themes = themes))
 
 }
 

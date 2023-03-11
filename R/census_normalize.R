@@ -58,6 +58,10 @@ census_normalize <- function(interpolated,
           parent_string <-
             census_vectors_table$parent_vec[
               census_vectors_table$var_code == x]
+          if (!parent_string %in% names(parent_string)) {
+            stop(paste0("parent string (`", parent_string,
+                        "`) of `", x, "` is not in the data to normalize."))
+          }
           tb[[x]] <- pmin(1, data_no_geo[[x]] / data_no_geo[[parent_string]])
           # # If divided by zero and resulting to NaN, change it to 0
           # tb[[x]][tb[[x]] == "NaN"] <- 0
