@@ -19,8 +19,8 @@ census_data_raw <- function(empty_geometries,
   pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
 
   data_raw <-
-    future.apply::future_sapply(census_scales, \(scale) {
-      future.apply::future_sapply(as.character(census_years), \(year) {
+    sapply(census_scales, \(scale) {
+      sapply(as.character(census_years), \(year) {
 
         # Relevant named vectors
         vecs <-
@@ -109,8 +109,8 @@ census_data_raw <- function(empty_geometries,
         # Return
         pb()
         return(dat)
-      }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
-    }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+      }, simplify = FALSE, USE.NAMES = TRUE)
+    }, simplify = FALSE, USE.NAMES = TRUE)
 
   # Bind the results to empty geometries
   future.apply::future_mapply(\(data_r, empty_g) {

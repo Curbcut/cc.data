@@ -58,7 +58,7 @@ census_normalize <- function(interpolated,
           parent_string <-
             census_vectors_table$parent_vec[
               census_vectors_table$var_code == x]
-          if (!parent_string %in% names(parent_string)) {
+          if (!parent_string %in% names(data_no_geo)) {
             stop(paste0("parent string (`", parent_string,
                         "`) of `", x, "` is not in the data to normalize."))
           }
