@@ -8,20 +8,19 @@
 #' Options are census years starting from 2001.
 #' @param DA_table <`sf data.frame`> An \code{sf} object representing the
 #' dissemination areas (DAs) to calculate the CanALE index for.
+#'
+#' @details Workflow from CanALE User Guide http://canue.ca/wp-content/uploads/2018/03/CanALE_UserGuide.pdf
+#'
 #' @return A data.frame object representing the CanALE index for the given year
 #' and DAs.
 #' @export
-build_canale <- function(year, DA_table) {#, OSM_cache = TRUE) {
-
-  # Workflow from CanALE User Guide
-  # http://canue.ca/wp-content/uploads/2018/03/CanALE_UserGuide.pdf
+build_canale <- function(year, DA_table) {
 
   # Intersection density measure --------------------------------------------
 
   three_ways <- get_all_three_plus_ways(year = year)
 
-  DA_centroids <- sf::st_centroid(DA_table)
-  DA_buffer <- sf::st_buffer(DA_centroids, 1000)
+  DA_buffer <- sf::st_buffer(DA_table, 1000)
 
   # How many 3+ way intersection per DA buffer
   intersects <- sf::st_intersects(DA_buffer, three_ways)
@@ -34,55 +33,99 @@ build_canale <- function(year, DA_table) {#, OSM_cache = TRUE) {
   # Calculate the z-score for each data point
   DA_table$z_int_d <- (DA_buffer$three_ways - mean_data) / sd_data
 
+
   # Dwelling density measure ------------------------------------------------
 
-  # Append number of dwellings to DA
-  dwellings <- cancensus::get_census(
-    dataset = "CA21",
+  dwell_vecs <- c(CA21 = "v_CA21_4", CA16 = "v_CA16_404", CA11 = "v_CA11F_2",
+                  CA06 = "v_CA06_98", CA01 = "v_CA01_96")
+
+  cancensus_dataset <- paste0("CA", gsub("^20", "", year))
+
+  # Get dwellings information from the census
+  dwellings <- tryCatch({cancensus::get_census(
+    dataset = cancensus_dataset,
     regions = list(C = "01"),
     level = "DA",
-    vectors = "v_CA21_4",
-    geo_format = NA,
+    vectors = c(dwellings = unname(dwell_vecs[cancensus_dataset])),
+    geo_format = "sf",
     quiet = TRUE
-  )
-  dwellings <- dwellings[c("GeoUID", "Dwellings")]
-  names(dwellings) <- c("ID", "dwellings")
-  dwellings <- merge(DA_table, dwellings, by = "ID")
-  dwellings$area <- get_area(dwellings)
-  dwellings <- sf::st_centroid(dwellings)
+  )}, error = function(e) {
+    regions <- cancensus::list_census_regions(cancensus_dataset)
+    regions <- regions$region[regions$level == "PR"]
+    regions <- lapply(regions, \(r) {
+      cancensus::get_census(
+        dataset = cancensus_dataset,
+        regions = list(PR = r),
+        level = "DA",
+        vectors = c(dwellings = unname(dwell_vecs[cancensus_dataset])),
+        geo_format = "sf",
+        quiet = TRUE
+      )
+    })
+    regions <- lapply(regions, `[`, c("GeoUID", "dwellings", "geometry"))
+    return(Reduce(rbind, regions))
+  })
 
-  ## MUST INTERPOLATE. FOR EACH DA, WE TAKE THE % OF AREA OF ALL THE DAS
-  ## THAT TOUCH THE BUFFER. IF 20% OF THE DA IS IN OUR BUFFER, WE TAKE 20%
-  ## OF THE DWELLINGS NUMBER IN ONLY. WE THEM SUM ALL THE DWELLINGS IN THE
-  ## BUFFER AND DIVIDE IT BY THE AREA OF THE BUFFER.
+  dwellings <- sf::st_transform(dwellings, 3347)
+  dwellings <- sf::st_make_valid(dwellings)
 
-  # Calculate the dwelling density for each DA buffer
-  intersects <- sf::st_intersects(DA_buffer, dwellings)
-  dwelling_density <- mapply(\(ID, ind) {
-    in_DA <- dwellings[ind, ]
-    density <- sum(in_DA$dwellings) / sum(in_DA$area)
-    tibble::tibble(ID = ID,
-                   density = density)
-  }, DA_buffer$ID, intersects, SIMPLIFY = FALSE)
-  dwelling_density <- data.table::rbindlist(dwelling_density)
-  dwelling_density <- tibble::as_tibble(dwelling_density)
+  dwellings$previous_area <- get_area(dwellings)
+  dwellings_cut <- sf::st_intersection(DA_buffer, dwellings)
+  dwellings_cut$new_area <- get_area(dwellings_cut)
+  dwellings_cut <- sf::st_drop_geometry(dwellings_cut)
+
+  dwellings_cut$area_pct <- dwellings_cut$new_area / dwellings_cut$previous_area
+  dwellings_cut$n_dwellings <- dwellings_cut$dwellings * dwellings_cut$area_pct
+
+  # For each ID, get the density
+  dwelling_density <- aggregate(cbind(n_dwellings, new_area) ~ ID,
+                                data = dwellings_cut,
+                                FUN = \(...) sum(..., na.rm = TRUE))
+  dwelling_density$density <- dwelling_density$n_dwellings / dwelling_density$new_area
 
   # Calculate the mean and standard deviation
   mean_data <- mean(dwelling_density$density, na.rm = TRUE)
   sd_data <- stats::sd(dwelling_density$density, na.rm = TRUE)
 
   # Calculate the z-score for each data point
-  DA_table$z_dwl_d <- (dwelling_density$density - mean_data) / sd_data
-  DA_table$z_dwl_d[is.na(DA_table$z_dwl_d)] <- NA
+  dwelling_density$z_dwl_d <- (dwelling_density$density - mean_data) / sd_data
+  dwelling_density$z_dwl_d[is.na(dwelling_density$z_dwl_d)] <- NA
+
+  # Merge it to the DA_table
+  DA_table <- merge(DA_table, dwelling_density[c("ID", "z_dwl_d")],
+                    by = "ID", all.x = TRUE)
 
 
   # Points of interest measure ----------------------------------------------
 
-  # Load the points of interests
-  poi <- utils::read.csv("calculated_ignore/CANADA.txt")
+  poi_year <- if (year == 2001) 2002 else year
+
+  # Prepare to grab poi data from the bucket
+  files <- bucket_list_content("curbcut.amenities")$Key
+  txt_shp <- files[grepl("poi/.*(txt$|zip$)", files)]
+  year_shps <- txt_shp[grepl(poi_year, txt_shp)]
+
+  poi <- lapply(year_shps, \(f) {
+    # If it is a txt file, read it from the bucket with the read.csv method
+    if (grepl("\\.txt$", f)) {
+      out <- bucket_read_object(object = f,
+                                objectext = ".txt",
+                                method = utils::read.csv,
+                                bucket = "curbcut.amenities")
+      return(out)
+    }
+
+    # If it's not a txt file, it's a shapefile. Read it using the following
+    # function.
+    bucket_read_object_zip_shp(object = f, bucket = "curbcut.amenities")
+  })
+  poi <- Reduce(rbind, poi)
+
+  # Get the right column indicating the SIC codes
+  sic_col <- if (year %in% c(2001)) "SIC.1" else "SIC_1"
 
   # Grab the major groups (from the SIC code)
-  poi$sic_major_group <- stringr::str_extract(poi$SIC_1, "^\\d{2}")
+  poi$sic_major_group <- stringr::str_extract(poi[[sic_col]], "^\\d{2}")
 
   # Get a list of all the major group that we want to keep as amenities
   list_items <- rvest::read_html("https://www.osha.gov/data/sic-manual") |>
@@ -133,8 +176,9 @@ build_canale <- function(year, DA_table) {#, OSM_cache = TRUE) {
   # Sum the three z index for the final score -------------------------------
 
   DA_table <- sf::st_drop_geometry(DA_table)
-  DA_table[["canale_year"]] <-
+  DA_table[[paste0("canale_", year)]] <-
     rowSums(DA_table[, c("z_dwl_d", "z_int_d", "z_poi")])
+  DA_table <- DA_table[c("ID", paste0("canale_", year))]
 
   # Return ------------------------------------------------------------------
 

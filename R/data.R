@@ -26,6 +26,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -47,6 +48,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -68,6 +70,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -89,6 +92,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -110,6 +114,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -131,6 +136,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -152,6 +158,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -173,6 +180,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -194,6 +202,7 @@
 #'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }

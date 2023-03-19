@@ -76,6 +76,7 @@ census_vectors_housing <-
     var_short = "Tenant",
     explanation = "the percentage of private households occupied by tenants",
     exp_q5 = "are occupied by tenants",
+    rankings_chr = list(NULL),
     parent_vec = "private_households",
     parent = FALSE
   ) |>
@@ -93,6 +94,9 @@ census_vectors_housing <-
     var_short = "Avg. rent",
     explanation = "the average rent paid by tenants per month",
     exp_q5 = "the average rent is",
+    rankings_chr = list(c("exceptionally inexpensive", "unusually inexpensive",
+                          "just about average price", "unusually expensive",
+                          "exceptionally expensive")),
     parent_vec = "tenant_households",
     parent = FALSE
   ) |>
@@ -112,6 +116,7 @@ census_vectors_housing <-
       "the percentage of dwellings requiring major repairs"
     ),
     exp_q5 = "are requiring major repairs",
+    rankings_chr = list(NULL),
     parent_vec = "private_dwellings",
     parent = FALSE
   ) |>
@@ -129,6 +134,7 @@ census_vectors_housing <-
     var_short = "Avg. value",
     explanation = "the average value of owner-occupied dwellings",
     exp_q5 = "the average property value of owner-occupied dwellings is",
+    rankings_chr = list(NULL),
     parent_vec = "owner_households",
     parent = FALSE
   ) |>
@@ -149,6 +155,9 @@ census_vectors_housing <-
       "more than 30% of income on housing costs"
     ),
     exp_q5 = "pay more than 30% of income on housing costs",
+    rankings_chr = list(c("exceptionally unaffordable", "unusually unaffordable",
+                          "just about average affordability",
+                          "unusually affordable", "exceptionally affordable")),
     parent_vec = "owner_tenant_households",
     parent = FALSE
   ) |>
@@ -169,6 +178,9 @@ census_vectors_housing <-
       "accommodations without enough bedrooms"
     ),
     exp_q5 = "are living in accommodations without enough bedrooms",
+    rankings_chr = list(c("exceptionally unsuitable", "unusually unsuitable",
+                          "just about average suitability", "unusually suitable",
+                          "exceptionally suitable")),
     parent_vec = "private_households",
     parent = FALSE
   ) |>
@@ -189,6 +201,7 @@ census_vectors_housing <-
       "more than 30% of their income on shelter costs"
     ),
     exp_q5 = "are under housing stress",
+    rankings_chr = list(NULL),
     parent_vec = "tenant_households",
     parent = FALSE
   ) |>
@@ -209,6 +222,7 @@ census_vectors_housing <-
       "than 30% of their income on shelter costs"
     ),
     exp_q5 = "are under housing stress",
+    rankings_chr = list(NULL),
     parent_vec = "owner_households",
     parent = FALSE
   ) |>
@@ -227,6 +241,7 @@ census_vectors_housing <-
     explanation = paste0("the percentage of residents that moved in ",
                          "the past year"),
     exp_q5 = "have moved in the past year",
+    rankings_chr = list(NULL),
     parent_vec = "mobility_status_1",
     parent = FALSE
   ) |>
@@ -245,6 +260,7 @@ census_vectors_housing <-
     explanation = paste0("the percentage of residents that moved in ",
                          "the past 5 years"),
     exp_q5 = "have moved in the past five years",
+    rankings_chr = list(NULL),
     parent_vec = "mobility_status_5",
     parent = FALSE
   ) |>
@@ -265,6 +281,7 @@ census_vectors_housing <-
       "are single-detached houses"
     ),
     exp_q5 = "are single-detached houses",
+    rankings_chr = list(NULL),
     parent_vec = "private_dwellings",
     parent = FALSE
   )
@@ -284,6 +301,7 @@ census_vectors_housing_parent <-
     var_short = "Households",
     explanation = "the total number of private households",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -301,6 +319,7 @@ census_vectors_housing_parent <-
     var_short = "Dwellings",
     explanation = "the total number of private dwellings",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -318,6 +337,7 @@ census_vectors_housing_parent <-
     var_short = "Households",
     explanation = "the total number of owner and tenant households",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -335,6 +355,7 @@ census_vectors_housing_parent <-
     var_short = "Tenant",
     explanation = "the total number of tenant households",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -352,6 +373,7 @@ census_vectors_housing_parent <-
     var_short = "Owner",
     explanation = "the total number of owner households",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -369,6 +391,7 @@ census_vectors_housing_parent <-
     var_short = "Residents",
     explanation = "the total number of residents one year prior",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -386,6 +409,7 @@ census_vectors_housing_parent <-
     var_short = "Residents",
     explanation = "the total number of residents five years prior",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )
@@ -416,6 +440,7 @@ census_vectors_income <-
     var_short = "Med. inc.",
     explanation = "the median before-tax household income",
     exp_q5 = "the median household income is",
+    rankings_chr = list(NULL),
     parent_vec = "private_households",
     parent = FALSE
   ) |>
@@ -440,6 +465,7 @@ census_vectors_income <-
       "than $50,000"
     ),
     exp_q5 = "have an income of less than $50,000",
+    rankings_chr = list(NULL),
     parent_vec = "with_income",
     parent = FALSE
   ) |>
@@ -461,6 +487,7 @@ census_vectors_income <-
       "$50,000 and $100,000"
     ),
     exp_q5 = "have an income between $50,000 and $100,000",
+    rankings_chr = list(NULL),
     parent_vec = "with_income",
     parent = FALSE
   ) |>
@@ -481,6 +508,7 @@ census_vectors_income <-
       "than $100,000"
     ),
     exp_q5 = "have an income higher than $100,000",
+    rankings_chr = list(NULL),
     parent_vec = "with_income",
     parent = FALSE
   ) |>
@@ -520,6 +548,7 @@ census_vectors_income_parent <-
     var_short = "With income",
     explanation = "the total population aged 15 years and over with an income",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   ) |>
@@ -538,6 +567,7 @@ census_vectors_income_parent <-
     explanation = paste0("the total population in private households to whom ",
                          "low-income concepts are applicable"),
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )
@@ -573,6 +603,7 @@ census_vectors_identity <-
     var_short = "Immigrants",
     explanation = "the percentage of individuals who are foreign-born",
     exp_q5 = "are foreign-born",
+    rankings_chr = list(NULL),
     parent_vec = "population_ph",
     parent = FALSE
   ) |>
@@ -593,6 +624,7 @@ census_vectors_identity <-
       "the last five years"
     ),
     exp_q5 = "have immigrated in the last five years",
+    rankings_chr = list(NULL),
     parent_vec = "population_ph",
     parent = FALSE
   ) |>
@@ -613,6 +645,7 @@ census_vectors_identity <-
       "one or more visible minority groups"
     ),
     exp_q5 = "identify as part of one or more visible minority groups",
+    rankings_chr = list(NULL),
     parent_vec = "population_ph",
     parent = FALSE
   ) |>
@@ -630,6 +663,7 @@ census_vectors_identity <-
     var_short = "Indigenous",
     explanation = "the percentage of individuals who are of indigenous identity",
     exp_q5 = "are of indigenous identity",
+    rankings_chr = list(NULL),
     parent_vec = "population_ph",
     parent = FALSE
   )
@@ -649,6 +683,7 @@ census_vectors_identity_parent <-
     var_short = "Individuals",
     explanation = "the total count of individuals in private households",
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )
@@ -686,6 +721,7 @@ census_vectors_transport <-
       "owned car or truck to work"
     ),
     exp_q5 = "drive a privately owned car or truck to work",
+    rankings_chr = list(NULL),
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -706,6 +742,7 @@ census_vectors_transport <-
     var_short = "Walk or cycle",
     explanation = "the percentage of individuals who walk or cycle to work",
     exp_q5 = "walk or cycle to work",
+    rankings_chr = list(NULL),
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -726,6 +763,7 @@ census_vectors_transport <-
       "to get to work"
     ),
     exp_q5 = "use public transit to get to work",
+    rankings_chr = list(NULL),
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -746,6 +784,7 @@ census_vectors_transport <-
       "less than 15 minutes"
     ),
     exp_q5 = "have a commute time of less than 15 minutes",
+    rankings_chr = list(NULL),
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -766,6 +805,7 @@ census_vectors_transport <-
       "between 15 and 45 minutes"
     ),
     exp_q5 = "have a commute time between 15 and 45 minutes",
+    rankings_chr = list(NULL),
     parent_vec = "employed_lf",
     parent = FALSE
   ) |>
@@ -786,6 +826,7 @@ census_vectors_transport <-
       "longer than 45 minutes"
     ),
     exp_q5 = "have a commute time longer than 45 minutes",
+    rankings_chr = list(NULL),
     parent_vec = "employed_lf",
     parent = FALSE
   )
@@ -807,6 +848,7 @@ census_vectors_transport_parent <-
                          "years and over with a usual place of work or no ",
                          "fixed workplace address"),
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )
@@ -881,6 +923,7 @@ census_vectors_family <-
     var_short = "With child",
     explanation = "the percentage of census families with children out of total households",
     exp_q5 = "live with children",
+    rankings_chr = list(NULL),
     parent_vec = "census_families",
     parent = FALSE
   ) |>
@@ -898,6 +941,7 @@ census_vectors_family <-
     var_short = "Living alone",
     explanation = "the percentage of one person households out of total households",
     exp_q5 = "are one-person households",
+    rankings_chr = list(NULL),
     parent_vec = "census_families",
     parent = FALSE
   )
@@ -918,6 +962,7 @@ census_vectors_family_parent <-
     var_short = "Families",
     explanation = paste0("the total count of census families"),
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )
@@ -952,7 +997,8 @@ census_vectors_language <-
       "as an official language"
     ),
     exp_q5 = "only know French out of the two official languages",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -972,7 +1018,8 @@ census_vectors_language <-
       "as an official language"
     ),
     exp_q5 = "only know English out of the two official languages",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -992,7 +1039,8 @@ census_vectors_language <-
       "languages (French and English)"
     ),
     exp_q5 = "know both official languages (French and English)",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -1012,13 +1060,14 @@ census_vectors_language <-
       "of the official languages (French or English)"
     ),
     exp_q5 = "do not know either of the official languages (French or English)",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   )
 
 census_vectors_language_parent <-
   tibble::tibble(
-    var_code = "population",
+    var_code = "c_population",
     type = list("count"),
     theme = "Identity",
     vec_2021 = list("v_CA21_1"),
@@ -1031,6 +1080,7 @@ census_vectors_language_parent <-
     var_short = "Individuals",
     explanation = paste0("the total count of individuals"),
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )
@@ -1070,7 +1120,8 @@ census_vectors_age <-
     var_short = "0-14 yo",
     explanation = "the percentage of the population aged between 0 and 14 years old",
     exp_q5 = "are aged between 0 and 14 years old",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -1087,7 +1138,8 @@ census_vectors_age <-
     var_short = "15-64 yo",
     explanation = "the percentage of the population aged between 15 and 64 years old",
     exp_q5 = "are aged between 15 and 64 years old",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -1104,7 +1156,8 @@ census_vectors_age <-
     var_short = "65+ yo",
     explanation = "the percentage of the population aged 65 and above",
     exp_q5 = "are aged 65 and above",
-    parent_vec = "population",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
     parent = FALSE
   )
 
@@ -1140,6 +1193,7 @@ census_vectors_education <-
       "or above"
     ),
     exp_q5 = "hold a University certificate, diploma or degree at bachelor level or above",
+    rankings_chr = list(NULL),
     parent_vec = "population_15plus",
     parent = FALSE
   ) |>
@@ -1160,6 +1214,7 @@ census_vectors_education <-
       "with no certificate, diploma or degree"
     ),
     exp_q5 = "hold no certificate, diploma or degree",
+    rankings_chr = list(NULL),
     parent_vec = "population_15plus",
     parent = FALSE
   )
@@ -1180,6 +1235,7 @@ census_vectors_education_parent <-
     explanation = paste0("the total count of individuals aged 15 years and ",
                          "over in private households"),
     exp_q5 = NA,
+    rankings_chr = list(NULL),
     parent_vec = NA,
     parent = TRUE
   )

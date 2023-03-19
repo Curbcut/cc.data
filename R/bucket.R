@@ -205,3 +205,35 @@ bucket_read_object <- function(object, objectext, bucket, method) {
                       overwrite = TRUE)
   do.call(method, list(tmp))
 }
+
+#' Read a shapefile (.shp) from a zip file in an AWS S3 bucket
+#'
+#' This function downloads a zip file from an AWS S3 bucket, unzips it, and reads
+#' the shapefile (.shp) contained in it. The function requires the \code{aws.s3}
+#' package and the \code{sf} package.
+#'
+#' @param object <`character`> Name of the file with extension to retrieve.
+#' @param bucket <`character`> The name of the bucket from which to download
+#' the object.
+#'
+#' @return An \code{sf} object representing the shapefile.
+#' @export
+#'
+#' @details This function assumes that the zip file in the bucket contains only
+#' one shapefile. If there are multiple shapefiles, it will only read the first
+#' one it finds.
+bucket_read_object_zip_shp <- function(object, bucket) {
+
+  # Get the file from the bucket
+  file <- bucket_read_object(object = object,
+                             bucket = bucket,
+                             objectext = ".zip",
+                             method = c)
+
+  # Unzip, grab the shapefile name, and read it
+  content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
+  shp_file <- content[grepl("\\.shp", content)]
+  utils::unzip(file, exdir = tempdir())
+  sf::st_read(paste0(tempdir(), "\\", shp_file))
+
+}
