@@ -4,11 +4,14 @@
 \alias{build_canale}
 \title{Build CanALE index for a given year}
 \usage{
-build_canale(year, DA_table)
+build_canale(
+  years = cc.data::census_years[2:length(cc.data::census_years)],
+  DA_table
+)
 }
 \arguments{
-\item{year}{<\code{numeric}> indicating the year of the streets network to use.
-Options are census years starting from 2001.}
+\item{years}{<\code{numeric}> Indicating the years of the streets network to use.
+Options are census years starting from 2001. Defaults to \code{\link{census_years}}.}
 
 \item{DA_table}{<\verb{sf data.frame}> An \code{sf} object representing the
 dissemination areas (DAs) to calculate the CanALE index for.}
@@ -21,4 +24,7 @@ and DAs.
 This function builds the Canadian Active Living Environment (CanALE) index
 for a given year based on three measures: intersection density, dwelling
 density, and points of interest (POI) density.
+}
+\details{
+Workflow from CanALE User Guide http://canue.ca/wp-content/uploads/2018/03/CanALE_UserGuide.pdf
 }

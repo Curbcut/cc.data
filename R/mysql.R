@@ -497,11 +497,23 @@ db_read_ttm <- function(mode, DA_ID) {
 
     # Get
     out <-
-      db_query(type = "get", statement = paste("SELECT * FROM", ttm_mode_id))
+      tryCatch(
+        db_query(type = "get", statement = paste("SELECT * FROM", ttm_mode_id)),
+        error = function(e) {
+          # If table is inexistant, create it as empty
+          if (grepl("Table '.*' doesn't exist", e)) return(tibble::tibble())
+          stop(e)
+        })
+
+    # Add self
+    self <- tibble::tibble(DA_ID = ID)
+    self[[as.character(ID)]] <- 0
+    out <- rbind(self, out[, names(out) != "row_names"])
+
     pb()
 
     # Return
-    out[, names(out) != "row_names"]
+    return(out)
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   # Return a traveltime-matrix style data.frame

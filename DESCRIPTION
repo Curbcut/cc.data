@@ -32,8 +32,9 @@ Suggests:
     aws.s3,
     gtfsrouter,
     gtfstools,
-    rgeos
-License: MIT + file LICENSE
+    rgeos,
+    matchr
+License: AGPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3

@@ -2,6 +2,6 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^README\.Rmd$
-^calculated_ignore$
+^calculated_ignore
 data-raw
 ^data-raw$

@@ -12,19 +12,34 @@
 #' @export
 accessibility_DA_location <- function(DA_table) {
 
-  if (all(names(DA_table) == c("ID", "geometry"))) {
+  if (!requireNamespace("matchr", quietly = TRUE)) {
+    stop(
+      "Package \"matchr\" must be installed to use this function. UPGo-McGill/matchr.",
+      call. = FALSE
+    )
+  }
+
+  if (!all(names(DA_table) == c("ID", "geometry"))) {
     stop("`DA_table` must have only the columns `ID` and `geometry`.")
   }
 
   # Read DMTI data from bucket ----------------------------------------------
 
-  `TKTK PUT IN BUCKET AND EXTRACT FROM THERE`
+  # Prepare to grab poi data from the bucket
+  files <- bucket_list_content("curbcut.amenities")$Key
+  txt_shp <- files[grepl("poi/.*(txt$|zip$)", files)]
+  all_years <- unique(stringr::str_extract(txt_shp, "\\d{4}"))
+  years <- all_years[which(all_years == max(all_years))]
+  pois <- txt_shp[grepl(years, txt_shp)]
 
-  poi_1 <- sf::read_sf("calculated_ignore/poi/poi_2021_1.shp")
-  poi_2 <- sf::read_sf("calculated_ignore/poi/poi_2021_2.shp")
+  # Read the shapefiles
+  poi <- lapply(pois, \(f) {
+    bucket_read_object_zip_shp(object = f, bucket = "curbcut.amenities")
+  })
+  poi <- Reduce(rbind, poi)
 
-  poi <- rbind(poi_1, poi_2)
-  poi <- sf::st_transform(poi, crs = sf::st_crs(DA_table)$input)
+  # Transform
+  poi <- sf::st_transform(poi, crs = 3347)
 
   # Filter out NAs and empty geometries
   poi <- poi[!is.na(poi$SIC_1), ]
@@ -36,7 +51,7 @@ accessibility_DA_location <- function(DA_table) {
   # Create the retail dictionary
   retail_general <- tibble::tibble(
     var = "retail_general",
-    major_group = list("53"),
+    type = list("53"),
     title = "General Merchandise Stores",
     short = "General",
     exp = paste0("retail stores which sell a number of lines of merchandise, ",
@@ -45,7 +60,7 @@ accessibility_DA_location <- function(DA_table) {
 
   retail_apparel <- tibble::tibble(
     var = "retail_apparel",
-    major_group = list("56"),
+    type = list("56"),
     title = "Apparel And Accessory Stores",
     short = "Apparel",
     exp = paste0("retail stores primarily engaged in selling new clothing, ",
@@ -55,7 +70,7 @@ accessibility_DA_location <- function(DA_table) {
 
   retail_furniture <- tibble::tibble(
     var = "retail_furniture",
-    major_group = list("57"),
+    type = list("57"),
     title = "Home Furniture, Furnishings, And Equipment Stores",
     short = "Furniture",
     exp = paste0("retail stores selling goods used for furnishing the home, ",
@@ -66,7 +81,7 @@ accessibility_DA_location <- function(DA_table) {
 
   retail_eating <- tibble::tibble(
     var = "retail_eating",
-    major_group = list("58"),
+    type = list("58"),
     title = "Eating And Drinking Places",
     short = "Eating",
     exp = paste0("retail establishments selling prepared foods and drinks ",
@@ -77,7 +92,7 @@ accessibility_DA_location <- function(DA_table) {
 
   retail_misc <- tibble::tibble(
     var = "retail_misc",
-    major_group = list("59"),
+    type = list("59"),
     title = "Miscellaneous Retail",
     short = "Retail",
     exp = paste0("retail establishments such as drug stores, liquor stores, ",
@@ -91,7 +106,7 @@ accessibility_DA_location <- function(DA_table) {
 
   retail_total <- tibble::tibble(
     var = "retail_total",
-    major_group = list(unlist(retail_dict$major_group)),
+    type = list(unlist(retail_dict$type)),
     title = "Retail Trade",
     short = "Retail",
     exp = paste0("establishments engaged in selling merchandise for personal ",
@@ -104,12 +119,12 @@ accessibility_DA_location <- function(DA_table) {
   retail_dict$theme <- "retail"
 
   # Subset the POI for just the retail
-  poi_retail <- poi[poi$SIC_MJ_GRP %in% unlist(retail_dict$major_group), ]
+  poi_retail <- poi[poi$SIC_MJ_GRP %in% unlist(retail_dict$type), ]
 
   # How many points per variables are there in each DA
   retail <- sapply(retail_dict$var, \(var) {
 
-    mjr_groups <- retail_dict$major_group[retail_dict$var == var][[1]]
+    mjr_groups <- retail_dict$type[retail_dict$var == var][[1]]
 
     points <- poi_retail[poi_retail$SIC_MJ_GRP %in% mjr_groups, ]
 
@@ -135,7 +150,7 @@ accessibility_DA_location <- function(DA_table) {
   # Create the finance dictionary
   finance_depository <- tibble::tibble(
     var = "finance_depository",
-    major_group = list("60"),
+    type = list("60"),
     title = "Depository Institutions",
     short = "Depository",
     exp = paste0("institutions that are engaged in deposit banking or closely ",
@@ -143,7 +158,7 @@ accessibility_DA_location <- function(DA_table) {
 
   finance_nondepository <- tibble::tibble(
     var = "finance_nondepository",
-    major_group = list("61"),
+    type = list("61"),
     title = "Non-depository Credit Institutions",
     short = "Credit",
     exp = paste0("establishments engaged in extending credit in the form of ",
@@ -153,7 +168,7 @@ accessibility_DA_location <- function(DA_table) {
 
   finance_total <- tibble::tibble(
     var = "finance_total",
-    major_group = list(unlist(finance_dict$major_group)),
+    type = list(unlist(finance_dict$type)),
     title = "Financial Institutions",
     short = "Finance",
     exp = paste0("establishments operating primarily in the fields of finance ",
@@ -166,12 +181,12 @@ accessibility_DA_location <- function(DA_table) {
   finance_dict$theme <- "finance"
 
   # Subset the POI for just the finance
-  poi_finance <- poi[poi$SIC_MJ_GRP %in% unlist(finance_dict$major_group), ]
+  poi_finance <- poi[poi$SIC_MJ_GRP %in% unlist(finance_dict$type), ]
 
   # How many points per variables are there in each DA
   finance <- sapply(finance_dict$var, \(var) {
 
-    mjr_groups <- finance_dict$major_group[finance_dict$var == var][[1]]
+    mjr_groups <- finance_dict$type[finance_dict$var == var][[1]]
 
     points <- poi_finance[poi_finance$SIC_MJ_GRP %in% mjr_groups, ]
 
@@ -196,7 +211,7 @@ accessibility_DA_location <- function(DA_table) {
   # Create the food dictionary
   food_grocery <- tibble::tibble(
     var = "food_grocery",
-    industry = list("5411"),
+    type = list("5411"),
     title = "Grocery Stores",
     short = "Groceries",
     exp = paste0("stores, commonly known as supermarkets, food stores, and ",
@@ -204,7 +219,7 @@ accessibility_DA_location <- function(DA_table) {
 
   food_meat <- tibble::tibble(
     var = "food_meat",
-    industry = list("5421"),
+    type = list("5421"),
     title = "Meat and Fish Markets",
     short = "Meat",
     exp = paste0("establishments primarily engaged in the retail sale of ",
@@ -213,8 +228,8 @@ accessibility_DA_location <- function(DA_table) {
   )
 
   food_fruit <- tibble::tibble(
-    var = "food_furniture",
-    industry = list("5431"),
+    var = "food_fruit",
+    type = list("5431"),
     title = "Fruit and Vegetable Markets",
     short = "Fruit/Veg.",
     exp = paste0("establishments primarily engaged in the retail sale of ",
@@ -223,7 +238,7 @@ accessibility_DA_location <- function(DA_table) {
 
   food_dairy <- tibble::tibble(
     var = "food_dairy",
-    industry = list("5451"),
+    type = list("5451"),
     title = "Dairy Products Stores",
     short = "Dairy",
     exp = paste0("establishments primarily engaged in the retail sale of ",
@@ -232,7 +247,7 @@ accessibility_DA_location <- function(DA_table) {
 
   food_bakeries <- tibble::tibble(
     var = "food_bakeries",
-    industry = list("5461"),
+    type = list("5461"),
     title = "Retail Bakeries",
     short = "Bakeries",
     exp = paste0("establishments primarily engaged in the retail sale of ",
@@ -241,7 +256,7 @@ accessibility_DA_location <- function(DA_table) {
 
   food_misc <- tibble::tibble(
     var = "food_misc",
-    industry = list("5499"),
+    type = list("5499"),
     title = "Miscellaneous Food Stores",
     short = "Food",
     exp = paste0("establishments primarily engaged in the retail sale of ",
@@ -254,7 +269,7 @@ accessibility_DA_location <- function(DA_table) {
 
   food_total <- tibble::tibble(
     var = "food_total",
-    industry = list(unlist(food_dict$industry)),
+    type = list(unlist(food_dict$type)),
     title = "Food Stores",
     short = "Food",
     exp = paste0("retail stores primarily engaged in selling food for home ",
@@ -267,12 +282,12 @@ accessibility_DA_location <- function(DA_table) {
 
   # Subset the POI for just the food
   poi$sic_short <- gsub("0000$", "", poi$SIC_1)
-  poi_food <- poi[poi$sic_short %in% unlist(food_dict$industry), ]
+  poi_food <- poi[poi$sic_short %in% unlist(food_dict$type), ]
 
   # How many points per variables are there in each DA
   food <- sapply(food_dict$var, \(var) {
 
-    industries <- food_dict$industry[food_dict$var == var][[1]]
+    industries <- food_dict$type[food_dict$var == var][[1]]
 
     points <- poi_food[poi_food$sic_short %in% industries, ]
 
@@ -322,8 +337,8 @@ accessibility_DA_location <- function(DA_table) {
                                   "nursing and residential care facilities"] <-
     "Nursing and residential care facilities"
 
-  # Create the food dictionary
-  healthcare_grocery <- tibble::tibble(
+  # Create the healthcare dictionary
+  healthcare_ambulatory <- tibble::tibble(
     var = "healthcare_ambulatory",
     type = list("Ambulatory health care services"),
     title = "Ambulatory health care services",
@@ -354,7 +369,7 @@ accessibility_DA_location <- function(DA_table) {
                  "nursing home)")
   )
 
-  healthcare_dict <- rbind(healthcare_grocery, healthcare_hospitals,
+  healthcare_dict <- rbind(healthcare_ambulatory, healthcare_hospitals,
                            healthcare_nursing)
 
   healthcare_total <- tibble::tibble(
@@ -400,7 +415,8 @@ accessibility_DA_location <- function(DA_table) {
     content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
     csv_file <- content[grepl("\\.csv", content)]
     utils::unzip(file, files = csv_file, exdir = tempdir())
-    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file)))
+    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file),
+                                     fileEncoding = "latin1"))
   }
 
   # Grab from bucket
@@ -412,64 +428,72 @@ accessibility_DA_location <- function(DA_table) {
     tibble::as_tibble()
 
   # Transform to SF
-  educational$longitude <- suppressWarnings(as.numeric(educational$longitude))
-  educational <- educational[!is.na(educational$longitude), ]
-  educational$latitude <- suppressWarnings(as.numeric(educational$latitude))
-  educational <- educational[!is.na(educational$latitude), ]
-  educational <- sf::st_as_sf(educational, coords = c("longitude", "latitude"),
+  educational$Longitude <- suppressWarnings(as.numeric(educational$Longitude))
+  educational <- educational[!is.na(educational$Longitude), ]
+  educational$Latitude <- suppressWarnings(as.numeric(educational$Latitude))
+  educational <- educational[!is.na(educational$Latitude), ]
+  educational <- sf::st_as_sf(educational, coords = c("Longitude", "Latitude"),
                              crs = 4326) |>
     sf::st_transform(3347)
 
-  educational$odhf_facility_type[educational$odhf_facility_type ==
-                                  "nursing and residential care facilities"] <-
-    "Nursing and residential care facilities"
+  # Create the educational dictionary
+  educational_kindergarten <- tibble::tibble(
+    var = "educational_kindergarten",
+    type = list(c("ISCED010", "ISCED020")),
+    title = "Early childhood and/or kindergarten education",
+    short = "Kindergarten",
+    exp = paste0("establishments supporting education programmes designed to ",
+                 "support early development in preparation for participation ",
+                 "in school and society for children below the age to start ",
+                 "primary education"))
 
-  # Create the food dictionary
-  educational_grocery <- tibble::tibble(
-    var = "educational_ambulatory",
-    type = list("Ambulatory health care services"),
-    title = "Ambulatory health care services",
-    short = "Ambulatory",
-    exp = paste0("establishments primarily engaged in providing health care ",
-                 "services, directly or indirectly, to ambulatory patients (",
-                 "Example: medical clinic, mental health center)"))
-
-  educational_hospitals <- tibble::tibble(
-    var = "educational_hospitals",
-    type = list("Hospitals"),
-    title = "Hospitals",
-    short = "Hospitals",
-    exp = paste0("establishments, licensed as hospitals, primarily engaged ",
-                 "in providing diagnostic and medical treatment services, and ",
-                 "specialized accommodation services to in-patients (Example: ",
-                 "emergency department, general hospital)")
+  educational_elementary <- tibble::tibble(
+    var = "educational_elementary",
+    type = list("ISCED1"),
+    title = "Elementary education",
+    short = "Elementary",
+    exp = paste0("establishments supporting education programmes typically ",
+                 "designed to provide students with fundamental skills in ",
+                 "reading, writing and mathematics and to establish a solid ",
+                 "foundation for learning")
   )
 
-  educational_nursing <- tibble::tibble(
-    var = "educational_nursing",
-    type = list("Nursing and residential care facilities"),
-    title = "Nursing and residential care facilities",
-    short = "Nursing",
-    exp = paste0("establishments primarily engaged in providing residential ",
-                 "care combined with either nursing, supervisory or other ",
-                 "types of care as required by the residents (Example: ",
-                 "nursing home)")
+  educational_secondary <- tibble::tibble(
+    var = "educational_secondary",
+    type = list(c("ISCED2", "ISCED3")),
+    title = "Secondary education",
+    short = "Secondary",
+    exp = paste0("establishments supporting education programmes building on ",
+                 "primary education, typically with a more subject-oriented ",
+                 "curriculum, and preparing for tertiary education and/or ",
+                 "providing skills relevant to employment")
   )
 
-  educational_dict <- rbind(educational_grocery, educational_hospitals,
-                           educational_nursing)
+  educational_post <- tibble::tibble(
+    var = "educational_post",
+    type = list("ISCED4Plus"),
+    title = "Post-secondary education",
+    short = "Post-secondary",
+    exp = paste0("establishments supporting education programmes that build on ",
+                 "secondary education and prepare for labour market entry and/or ",
+                 "tertiary education, and/or provide intermediate to advanced ",
+                 "academic and/or professional knowledge, skills and ",
+                 "competencies leading to degrees or qualifications")
+  )
+
+  educational_dict <- rbind(educational_kindergarten, educational_elementary,
+                            educational_secondary, educational_post)
 
   educational_total <- tibble::tibble(
     var = "educational_total",
     type = list(unlist(educational_dict$type)),
-    title = "educational facilities",
-    short = "educational",
-    exp = paste0("physical site at which the primary activity is the ",
-                 "provision of educational"))
+    title = "Educational facilities",
+    short = "Educational",
+    exp = paste0("educational facilities"))
 
   educational_dict <- rbind(educational_dict, educational_total)
-  educational_dict$source <- "Canadian Open Database of educational Facilities (ODHF)"
-  educational_dict$date <- "2020"
+  educational_dict$source <- "Canadian Open Database of Educational Facilities (ODEF)"
+  educational_dict$date <- "2022"
   educational_dict$theme <- "educational"
 
 
@@ -478,15 +502,18 @@ accessibility_DA_location <- function(DA_table) {
 
     types <- educational_dict$type[educational_dict$var == var][[1]]
 
-    points <- educational[educational$odhf_facility_type %in% types, ]
+    # Rows that fit with one or multiple types
+    points <- rowSums(sapply(types, \(type) educational[[type]] == 1)) > 0
+    points <- educational[points, ]
 
     points_per_DA <- lengths(sf::st_intersects(DA_table, points))
 
     out <- tibble::tibble(ID = DA_table$ID)
     out[[var]] <- points_per_DA
 
-    points <- sf::st_join(points, DA_table)[c("ID", "facility_name", "odhf_facility_type")]
-    names(points) <- c("DA_ID", "name", "type", "geometry")
+    points <- sf::st_join(points, DA_table)[c("ID", "Facility_Name")]
+    names(points) <- c("DA_ID", "name", "geometry")
+    points$type <- var
 
     return(list(DA = out,
                 points = points))
@@ -496,43 +523,236 @@ accessibility_DA_location <- function(DA_table) {
   # educational_points <- Reduce(merge, lapply(educational, `[[`, "points"))
 
 
+  # Cultural facilities -----------------------------------------------------
+
+  read_method <- function(file) {
+    content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
+    csv_file <- content[grepl("\\.csv", content)]
+    csv_file <- csv_file[!grepl("Data_Sources", csv_file)]
+    utils::unzip(file, files = csv_file, exdir = tempdir())
+    suppressWarnings(utils::read.csv(paste0(tempdir(), "\\", csv_file)))
+  }
+
+  cultural <-
+    bucket_read_object(object = "open_db_cultural_facilities.zip",
+                       bucket = "curbcut.amenities",
+                       objectext = ".zip",
+                       method = read_method) |>
+    tibble::as_tibble()
+
+
+  # Transform to SF
+  cultural$Longitude <- suppressWarnings(as.numeric(cultural$Longitude))
+  cultural <- cultural[!is.na(cultural$Longitude), ]
+  cultural$Latitude <- suppressWarnings(as.numeric(cultural$Latitude))
+  cultural <- cultural[!is.na(cultural$Latitude), ]
+  cultural <- sf::st_as_sf(cultural, coords = c("Longitude", "Latitude"),
+                              crs = 4326) |>
+    sf::st_transform(3347)
+
+
+  # Create the cultural dictionary
+  cultural_artcentre <- tibble::tibble(
+    var = "cultural_artcentre",
+    type = list(c("art or cultural centre")),
+    title = "Art or cultural centre",
+    short = "Art/cultural",
+    exp = paste0("establishments primarily engaged in promoting culture and arts"))
+
+  cultural_gallery <- tibble::tibble(
+    var = "cultural_gallery",
+    type = list("gallery"),
+    title = "Gallery",
+    short = "Gallery",
+    exp = paste0("establishments primarily engaged in the display of artistic works")
+  )
+
+  cultural_heritage <- tibble::tibble(
+    var = "cultural_heritage",
+    type = list(c("heritage or historic site")),
+    title = "Heritage or historic site",
+    short = "Heritage",
+    exp = paste0("sites of cultural, artistic, or historic significance")
+  )
+
+  cultural_library <- tibble::tibble(
+    var = "cultural_library",
+    type = list("library or archives"),
+    title = "Library or archive",
+    short = "Library",
+    exp = paste0("establishments primarily engaged in the display, curation, ",
+                 "and sharing of primarily written material such as ",
+                 "manuscripts, periodicals, and other items such as maps or images")
+  )
+
+  cultural_museum <- tibble::tibble(
+    var = "cultural_museum",
+    type = list("museum"),
+    title = "Museum",
+    short = "Museum",
+    exp = paste0("establishments primarily engaged in the display, curation, ",
+                 "and sharing of collections of artifacts, fine arts, and ",
+                 "other objects of artistic, cultural, or historical importance")
+  )
+
+  cultural_theatre <- tibble::tibble(
+    var = "cultural_theatre",
+    type = list("theatre/performance and concert hall"),
+    title = "Theatre/performance and concert hall",
+    short = "Theatre",
+    exp = paste0("establishments primarily engaged in the public performance ",
+                 "of artistic or cultural works")
+  )
+
+  cultural_misc <- tibble::tibble(
+    var = "cultural_misc",
+    type = list(c("miscellaneous", "festival site", "artist")),
+    title = "Miscellaneous cultural facilities",
+    short = "Miscellaneous",
+    exp = paste0("establishments associated in some way with promoting or ",
+                 "providing culture or arts that do not fall into any of the ",
+                 "above categories")
+  )
+
+  cultural_dict <- rbind(cultural_artcentre, cultural_gallery,
+                         cultural_heritage, cultural_library, cultural_museum,
+                         cultural_theatre, cultural_misc)
+
+  cultural_total <- tibble::tibble(
+    var = "cultural_total",
+    type = list(unlist(cultural_dict$type)),
+    title = "Cultural facilities",
+    short = "Cultural",
+    exp = paste0("establishments associated with promoting or providing culture or arts"))
+
+  cultural_dict <- rbind(cultural_dict, cultural_total)
+  cultural_dict$source <- "Canadian Open Database of Cultural and Art Facilities (ODCAF)"
+  cultural_dict$date <- "2020"
+  cultural_dict$theme <- "cultural"
+
+
+  # How many points per variables are there in each DA
+  cultural <- sapply(cultural_dict$var, \(var) {
+
+    types <- cultural_dict$type[cultural_dict$var == var][[1]]
+
+    points <- cultural[cultural$ODCAF_Facility_Type %in% types, ]
+
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
+
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "Facility_Name", "ODCAF_Facility_Type")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+    return(list(DA = out,
+                points = points))
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  cultural_data <- Reduce(merge, lapply(cultural, `[[`, "DA"))
+  # cultural_points <- Reduce(merge, lapply(cultural, `[[`, "points"))
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  # Green spaces ------------------------------------------------------------
+#
+#   # Grab 2021 parks from OSM
+#   osm_pbf <- "http://download.geofabrik.de/north-america/canada-latest.osm.pbf"
+#   mp_osm <- osmextract::oe_read(osm_pbf, layer = "multipolygons",
+#                                 quiet = FALSE, force_download = FALSE,
+#                                 max_file_size = Inf)
+#
+#   # Include all green spaces from parks to wood
+#   parks <- mp_osm[!is.na(mp_osm$leisure) & mp_osm$leisure == "park", ]
+#   woods <- mp_osm[!is.na(mp_osm$natural) & mp_osm$natural == "wood", ]
+#   rm(mp_osm)
+#
+#   # Add the mont royal to the parks
+#   mont_royal <- woods[grepl("mont-royal", tolower(woods$name)), ]
+#   parks <- rbind(parks["osm_id"], mont_royal["osm_id"])
+#
+#   # Treat polygons for no overlapping features
+#   woods <- accessibility_polygons_helper(woods)
+#   parks <- accessibility_polygons_helper(parks)
+#
+#   # total <- rbind(woods, parks)
+#   # total <- unique(total["geometry"])
+#   # total$ID <- seq_along(total$geometry)
+#   # total <- accessibility_polygons_helper(total)
+#
+#   # Intersect and link every DA to the park/wood/total ID
+#   intersected <- sapply(sf::st_intersects(DA_table, woods), c)
+#   greenspace_wood <- tibble::tibble(DA_ID = DA_table$ID,
+#                  greenspace_parks = intersected)
+#
+#   intersected <- sapply(sf::st_intersects(DA_table, parks), c)
+#   greenspace_parks <- tibble::tibble(DA_ID = DA_table$ID,
+#                           greenspace_wood = intersected)
+#
+#   # intersected <- sapply(sf::st_intersects(DA_table, total), c)
+#   # greenspace_total <- tibble::tibble(DA_ID = DA_table$ID,
+#   #                         greenspace_total = intersected)
+#   greenspace <-
+#     Reduce(merge,
+#            list(greenspace_wood, greenspace_parks)) |> #, greenspace_total)) |>
+#     tibble::as_tibble()
+#
+#   # Get all areas in a list, which will need to go in the SQL db
+#   woods$area <- get_area(woods$geometry)
+#   parks$area <- get_area(parks$geometry)
+#   # total$area <- get_area(total$geometry)
+#   woods <- sf::st_drop_geometry(woods)
+#   parks <- sf::st_drop_geometry(parks)
+#   # total <- sf::st_drop_geometry(total)
+#   greenspace_polygons <- list(greenspace_wood = woods,
+#                               greenspace_parks = parks)#,
+#                               # greenspace_total = total)
+#
+#   # Make the green space dictionary
+#   greenspace_parks <- tibble::tibble(
+#     var = "greenspace_parks",
+#     type = list("Park"),
+#     title = "Parks",
+#     short = "Parks",
+#     exp = paste0("areas of open space for recreational use, usually designed and in semi-natural state with grassy areas"))
+#
+#   greenspace_wood <- tibble::tibble(
+#     var = "greenspace_wood",
+#     type = list("Wood"),
+#     title = "Woods",
+#     short = "Woods",
+#     exp = paste0("tree-covered areas"))
+#
+#   # greenspace_total <- tibble::tibble(
+#   #   var = "greenspace_total",
+#   #   type = list(c("Parks", "Wood")),
+#   #   title = "Green space",
+#   #   short = "Green space",
+#   #   exp = paste0("areas of open space for recreational use and tree-covered areas"))
+#
+#   greenspace_dict <- rbind(greenspace_parks, greenspace_wood)#, greenspace_total)
 
 
   # Return all the measures and the dictionary ------------------------------
 
   access <- Reduce(merge, list(retail_data, finance_data, food_data,
-                               healthcare_data, ...))
-  points <- Reduce(merge, list(retail_points, finance_points, food_points,
-                               healthcare_points, ...))
-  dict <- Reduce(merge, list(retail_dict, finance_dict, food_dict,
-                             healthcare_dict, ...))
+                               healthcare_data, educational_data, cultural_data))#, ...))
+  names(access)[1] <- "DA_ID"
+  # polygon_dict <- greenspace
+  # polygons <- c(greenspace_polygons)
+  # points <- Reduce(merge, list(retail_points, finance_points, food_points,
+  #                              healthcare_points))#, ...))
+  dict <- Reduce(rbind, list(retail_dict, finance_dict, food_dict,
+                             healthcare_dict, educational_dict, cultural_dict))#greenspace_dict, ...))
   themes <- unique(dict$theme)
 
-  return(list(data = access, dict = dict, points = points, themes))
-
+  return(list(data = access,
+              #polygon_dict = polygon_dict,
+              #polygons = polygons,
+              dict = dict,
+              #points = points,
+              themes = themes))
 
 }
 
@@ -542,4 +762,41 @@ accessibility_DA_location <- function(DA_table) {
 #' @export
 list_accessibility_themes <- function() {
   cc.data::accessibility_themes
+}
+
+#' Accessibility Polygons Helper Function
+#'
+#' This function processes input polygons and groups them if they are touching
+#' or intersecting. The grouped polygons are then returned as a single
+#' POLYGON object.
+#'
+#' @param polygons <`sf`> An object of class \code{sf} containing the input
+#' polygons to be processed.
+#'
+#' @return An object of class \code{sf} with the processed polygons, where
+#' touching or intersecting polygons are merged into a single POLYGON object.
+accessibility_polygons_helper <- function(polygons) {
+  # Separate everything by polygons
+  polygons <- sf::st_transform(polygons, 3347)
+  polygons <- sf::st_cast(polygons, "MULTIPOLYGON")
+  polygons <- sf::st_cast(polygons, "POLYGON")
+  polygons <- sf::st_make_valid(polygons)
+
+  # Calculate intersection matrix to merge all touching polygons
+  intersects <- sf::st_intersects(polygons, remove_self = FALSE)
+  polygons_groupings <- matchr:::reduce_int(intersects)
+
+  polygons_groups <- future.apply::future_lapply(polygons_groupings, \(x) {
+    sf::st_union(polygons[x, ])
+  })
+
+  # Go back to polygons
+  out_polygons <- tibble::tibble(ID = seq_along(polygons_groups))
+  out_polygons$geometry <- sapply(polygons_groups, c)
+  out_polygons <- sf::st_as_sf(out_polygons, crs = 3347)
+  out_polygons <- sf::st_cast(out_polygons, "MULTIPOLYGON")
+  polygons <- sf::st_cast(out_polygons, "POLYGON")
+
+  return(polygons)
+
 }

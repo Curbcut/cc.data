@@ -128,7 +128,14 @@ census_interpolate <- function(data_raw,
       add_vars <- tibble::as_tibble(Reduce(merge, add_vars))
 
       # Merge additive and average variables
-      out <- tibble::as_tibble(merge(add_vars, avg_vars, by = "ID"))
+      out <- if (nrow(add_vars) == 0) {
+        avg_vars
+      } else if (nrow(avg_vars) == 0) {
+        add_vars
+      } else {
+        merge(add_vars, avg_vars, by = "ID")
+      }
+      out <- tibble::as_tibble(out)
 
       # Switch NaN or Inf to NA
       out[out == "NaN"] <- NA
