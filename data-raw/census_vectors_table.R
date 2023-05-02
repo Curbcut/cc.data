@@ -82,7 +82,7 @@ census_vectors_housing <-
   ) |>
   tibble::add_row(
     var_code = "housing_rent",
-    type = list(c("dollar", "avg")),
+    type = list(c("dollar")),
     theme = "Housing",
     vec_2021 = list("v_CA21_4318"),
     vec_2016 = list("v_CA16_4901"),
@@ -122,7 +122,7 @@ census_vectors_housing <-
   ) |>
   tibble::add_row(
     var_code = "housing_value",
-    type = list(c("dollar", "avg")),
+    type = list(c("dollar")),
     theme = "Housing",
     vec_2021 = list("v_CA21_4312"),
     vec_2016 = list("v_CA16_4896"),
@@ -428,7 +428,7 @@ usethis::use_data(census_vectors_housing, overwrite = TRUE)
 census_vectors_income <-
   tibble::tibble(
     var_code = "inc_median_income",
-    type = list(c("dollar", "median")),
+    type = list(c("dollar")),
     theme = "Income",
     vec_2021 = list("v_CA21_906"),
     vec_2016 = list("v_CA16_2397"),
