@@ -66,21 +66,41 @@ build_canale <- function(years = cc.data::census_years[2:length(cc.data::census_
     })
   })
 
-  # Calculate the mean and standard deviation
-  unlisted_tw_values <- lapply(DA_table_tw, `[[`, "three_ways") |> unlist()
-  mean_data <- mean(unlisted_tw_values, na.rm = TRUE)
-  sd_data <- stats::sd(unlisted_tw_values, na.rm = TRUE)
-
-  # Calculate the z-score for each data point
-  DA_table_tw <- mapply(\(x, year) {
-    df <- DA_table
-    x <- x[order(x$ID, df$ID), ]
-    df[[paste0("int_d_", year)]] <- (x$three_ways - mean_data) / sd_data
+  DA_table_tw_yr <- lapply(seq_along(DA_table_tw), \(i) {
+    df <- DA_table_tw[[i]]
+    df$year <- years[[i]]
     df
-  }, DA_table_tw, names(DA_table_tw), SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  })
 
-  int_d <- Reduce(\(x, y) merge(x, y, by = "ID"),
-                  lapply(DA_table_tw, sf::st_drop_geometry))
+  DA_table_tw_yr <- Reduce(rbind, DA_table_tw_yr)
+  DA_table_tw_yr$int_d <- ecdf(DA_table_tw_yr$three_ways)(DA_table_tw_yr$three_ways)
+
+  DA_table_tw_yr <- lapply(seq_along(years), \(i) {
+    out <- DA_table_tw_yr[DA_table_tw_yr$year == years[[i]], ]
+    out <- out[c(1, 4)]
+    names(out)[2] <- paste0("int_d_", years[[i]])
+    return(out)
+  })
+
+  int_d <- Reduce(merge, DA_table_tw_yr) |>
+    tibble::as_tibble()
+
+
+  # # Calculate the mean and standard deviation
+  # unlisted_tw_values <- lapply(DA_table_tw, `[[`, "three_ways") |> unlist()
+  # mean_data <- mean(unlisted_tw_values, na.rm = TRUE)
+  # sd_data <- stats::sd(unlisted_tw_values, na.rm = TRUE)
+  #
+  # # Calculate the z-score for each data point
+  # DA_table_tw <- mapply(\(x, year) {
+  #   df <- DA_table
+  #   x <- x[order(x$ID, df$ID), ]
+  #   df[[paste0("int_d_", year)]] <- (x$three_ways - mean_data) / sd_data
+  #   df
+  # }, DA_table_tw, names(DA_table_tw), SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  #
+  # int_d <- Reduce(\(x, y) merge(x, y, by = "ID"),
+  #                 lapply(DA_table_tw, sf::st_drop_geometry))
 
 
   # Dwelling density measure ------------------------------------------------
@@ -155,22 +175,46 @@ build_canale <- function(years = cc.data::census_years[2:length(cc.data::census_
     })
   })
 
-  # Calculate the mean and standard deviation
-  unlisted_d_values <- lapply(dwellings, `[[`, "density") |> unlist()
-  mean_data <- mean(unlisted_d_values, na.rm = TRUE)
-  sd_data <- stats::sd(unlisted_d_values, na.rm = TRUE)
 
-  # Calculate the z-score for each data point
-  dwellings_z <- mapply(\(x, year) {
-    df <- DA_table
-    x <- x[order(x$ID, df$ID), ]
-    df[[paste0("dwl_d_", year)]] <- (x$density - mean_data) / sd_data
+  dwellings_yr <- lapply(seq_along(dwellings), \(i) {
+    df <- dwellings[[i]]
+    df$year <- years[[i]]
     df
-  }, dwellings, years, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  })
 
-  # Merge
-  dwl_d <- Reduce(\(x, y) merge(x, y, by = "ID"),
-                  lapply(dwellings_z, sf::st_drop_geometry))
+  dwellings_yr <- Reduce(rbind, dwellings_yr)
+  dwellings_yr$dwl_d <- ecdf(dwellings_yr$density)(dwellings_yr$density)
+
+  dwellings_yr <- lapply(seq_along(years), \(i) {
+    out <- dwellings_yr[dwellings_yr$year == years[[i]], ]
+    out <- out[c(1, 4)]
+    names(out)[2] <- paste0("dwl_d_", years[[i]])
+    return(out)
+  })
+
+  dwl_d <- Reduce(merge, dwellings_yr) |>
+    tibble::as_tibble()
+
+
+
+
+
+  # # Calculate the mean and standard deviation
+  # unlisted_d_values <- lapply(dwellings, `[[`, "density") |> unlist()
+  # mean_data <- mean(unlisted_d_values, na.rm = TRUE)
+  # sd_data <- stats::sd(unlisted_d_values, na.rm = TRUE)
+  #
+  # # Calculate the z-score for each data point
+  # dwellings_z <- mapply(\(x, year) {
+  #   df <- DA_table
+  #   x <- x[order(x$ID, df$ID), ]
+  #   df[[paste0("dwl_d_", year)]] <- (x$density - mean_data) / sd_data
+  #   df
+  # }, dwellings, years, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  #
+  # # Merge
+  # dwl_d <- Reduce(\(x, y) merge(x, y, by = "ID"),
+  #                 lapply(dwellings_z, sf::st_drop_geometry))
 
   # Points of interest measure ----------------------------------------------
 
@@ -258,22 +302,42 @@ build_canale <- function(years = cc.data::census_years[2:length(cc.data::census_
     return(df)
   }, simplify = FALSE, USE.NAMES = TRUE)
 
-  # Calculate the mean and standard deviation
-  unlisted_p_values <- lapply(pois, `[[`, "poi_15min") |> unlist()
-  mean_data <- mean(unlisted_p_values, na.rm = TRUE)
-  sd_data <- stats::sd(unlisted_p_values, na.rm = TRUE)
 
-  # Calculate the z-score for each data point
-  poi_z <- mapply(\(x, year) {
-    df <- DA_table
-    x <- x[order(x$ID, df$ID), ]
-    df[[paste0("poi_", year)]] <- (x$poi_15min - mean_data) / sd_data
+  pois_yr <- lapply(seq_along(pois), \(i) {
+    df <- pois[[i]]
+    df$year <- years[[i]]
     df
-  }, pois, years, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  })
 
-  # Merge
-  poi <- Reduce(\(x, y) merge(x, y, by = "ID"),
-                  lapply(poi_z, sf::st_drop_geometry))
+  pois_yr <- Reduce(rbind, pois_yr)
+  pois_yr$poi <- ecdf(pois_yr$poi_15min)(pois_yr$poi_15min)
+
+  pois_yr <- lapply(seq_along(years), \(i) {
+    out <- pois_yr[pois_yr$year == years[[i]], ]
+    out <- out[c(1, 4)]
+    names(out)[2] <- paste0("poi_", years[[i]])
+    return(out)
+  })
+
+  poi <- Reduce(merge, pois_yr) |>
+    tibble::as_tibble()
+
+  # # Calculate the mean and standard deviation
+  # unlisted_p_values <- lapply(pois, `[[`, "poi_15min") |> unlist()
+  # mean_data <- mean(unlisted_p_values, na.rm = TRUE)
+  # sd_data <- stats::sd(unlisted_p_values, na.rm = TRUE)
+  #
+  # # Calculate the z-score for each data point
+  # poi_z <- mapply(\(x, year) {
+  #   df <- DA_table
+  #   x <- x[order(x$ID, df$ID), ]
+  #   df[[paste0("poi_", year)]] <- (x$poi_15min - mean_data) / sd_data
+  #   df
+  # }, pois, years, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  #
+  # # Merge
+  # poi <- Reduce(\(x, y) merge(x, y, by = "ID"),
+  #                 lapply(poi_z, sf::st_drop_geometry))
 
 
   # Sum the three z index for the final score -------------------------------

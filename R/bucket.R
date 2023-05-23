@@ -128,16 +128,19 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
   all_objects <- all_objects[!all_objects %in% exclude]
 
   # Download the bucket and place it in the destination folder
-  out <- sapply(all_objects, \(object) {
-    print(object)
-    aws.s3::save_object(
-      region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
-      key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
-      secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-      object = object,
-      bucket = bucket,
-      file = paste(destination_folder, object)
-    ) |> suppressMessages()
+  progressr::with_progress({
+    pb <- progressr::progressor(length(all_objects))
+    out <- sapply(all_objects, \(object) {
+      pb()
+      aws.s3::save_object(
+        region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+        key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+        secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+        object = object,
+        bucket = bucket,
+        file = paste(destination_folder, object)
+      ) |> suppressMessages()
+    })
   })
 
   return(invisible(NULL))
