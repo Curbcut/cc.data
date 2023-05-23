@@ -130,7 +130,7 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
   # Download the bucket and place it in the destination folder
   progressr::with_progress({
     pb <- progressr::progressor(length(all_objects))
-    out <- sapply(all_objects, \(object) {
+    out <- future.apply::future_sapply(all_objects, \(object) {
       pb()
       aws.s3::save_object(
         region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
