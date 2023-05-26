@@ -59,8 +59,8 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
         )
       f <- file(file_path, "rb")
       new_char <- readBin(f, "raw",
-        n = file.info(file_path)$size,
-        endian = "big"
+                          n = file.info(file_path)$size,
+                          endian = "big"
       )
       close.connection(f)
 
@@ -84,6 +84,24 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
 
     return(invisible(NULL))
   })
+
+  # Create a hash file
+  all_files <- list.files(folder, full.names = TRUE, recursive = TRUE)
+  hash_file <- tibble::tibble(file = all_files)
+  hash_file$hash <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
+
+  hash_temp <- tempfile(fileext = ".qs")
+  qs::qsave(hash_file, hash_temp)
+
+  aws.s3::put_object(
+    region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+    key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+    secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+    file = hash_temp,
+    object = "hash.qs",
+    bucket = bucket
+  ) |> suppressMessages()
+
 }
 
 #' Read a bucket from AWS
@@ -126,6 +144,38 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
     ), `[[`, "Key"
   ))
   all_objects <- all_objects[!all_objects %in% exclude]
+
+  # If there is a hash file in the bucket, only download what is different from the
+  # bucket content
+  if ("hash.qs" %in% all_objects) {
+    # Grab the hash file in the bucket
+    bucket_hash <- tempfile(fileext = "hash.qs")
+    aws.s3::save_object(
+      region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+      key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+      secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+      object = "hash.qs",
+      bucket = bucket,
+      file = bucket_hash
+    ) |> suppressMessages()
+    bucket_hash <- qs::qread(bucket_hash)
+    names(bucket_hash)[2] <- "hash_bucket"
+
+    # Create a hash file of existing files
+    all_files <- list.files(destination_folder, full.names = TRUE, recursive = TRUE)
+    hash_file <- tibble::tibble(file = all_files)
+    hash_file$hash_disk <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
+
+    # Which object isn't the same as what is on disk
+    hash <- merge(bucket_hash, hash_file, all.x = TRUE)
+    retrieve_index <- sapply(seq_along(hash$file), \(x) {
+      identical(hash$hash_bucket[x], hash$hash_disk[x])
+    })
+    retrieve <- hash[!retrieve_index, ]
+
+    retrieve$file <- gsub(destination_folder, "", retrieve$file)
+    all_objects <- retrieve$file
+  }
 
   # Download the bucket and place it in the destination folder
   progressr::with_progress({
