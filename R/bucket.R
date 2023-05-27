@@ -104,19 +104,23 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
 
 }
 
+
+# -------------------------------------------------------------------------
+
 #' Read a bucket from AWS
 #'
 #' Download a whole amazon bucket in a destination folder.
 #'
-#' @param destination_folder <`character`> The folder in which the bucket should
+#' @param destination_folder <`character`> The folder to which the bucket should
 #' be downloaded.
 #' @param bucket <`character`> The name of the bucket from which to download
 #' the objects.
-#' @param exclude <`character`> Files to not download from the bucket. Defaults to
-#' NULL for none (download everything).
+#' @param exclude <`character`> Files to not download from the bucket. Defaults
+#' to NULL for none (download everything).
 #'
-#' @return An error message or nothing if ran succesfully.
+#' @return NULL if successful, and an error message if not.
 #' @export
+
 bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
     stop(
@@ -196,6 +200,9 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
   return(invisible(NULL))
 }
 
+
+# -------------------------------------------------------------------------
+
 #' List bucket contents
 #'
 #' @param bucket <`character`> The name of the bucket from which to download
@@ -203,6 +210,7 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
 #'
 #' @return Returns a df of objects in the bucket
 #' @export
+
 bucket_list_content <- function(bucket) {
 
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
