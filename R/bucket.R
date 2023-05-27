@@ -122,36 +122,37 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
 #' @export
 
 bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
+
+  # Package check
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
-    stop(
-      "Package \"aws.s3\" must be installed to use this function.",
-      call. = FALSE
-    )
+    stop("\"aws.s3\" must be installed to use this function.", call. = FALSE)
   }
 
+  # Credential check
   if (Sys.getenv("CURBCUT_BUCKET_ACCESS_ID") == "") {
-    stop(paste0("You do not have a Curbcut database user access."))
-  }
-
-  # Update destination folder to accept the `/` already present at the end
-  if (!grepl("/$", destination_folder)) {
-    destination_folder <- paste0(destination_folder, "/")
+    stop("You do not have Curbcut database user access.", call. = FALSE)
   }
 
   # Get list of all objects to download
-  all_objects <- unname(sapply(
+  all_objects <-
     aws.s3::get_bucket(
       region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
       key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
       secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-      bucket = bucket
-    ), `[[`, "Key"
-  ))
-  all_objects <- all_objects[!all_objects %in% exclude]
+      bucket = bucket,
+      max = Inf
+    ) |>
+    sapply(`[[`, "Key") |>
+    unname()
 
-  # If there is a hash file in the bucket, only download what is different from the
-  # bucket content
-  if ("hash.qs" %in% all_objects) {
+  # Exclude files
+  to_download <- all_objects[!all_objects %in% exclude]
+  excluded <- length(all_objects) - length(to_download)
+
+  # If there is a hash file in the bucket, only download what is different from
+  # the bucket content
+  if ("hash.qs" %in% to_download) {
+
     # Grab the hash file in the bucket
     bucket_hash <- tempfile(fileext = "hash.qs")
     aws.s3::save_object(
@@ -166,25 +167,40 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
     names(bucket_hash)[2] <- "hash_bucket"
 
     # Create a hash file of existing files
-    all_files <- list.files(destination_folder, full.names = TRUE, recursive = TRUE)
+    all_files <- list.files(destination_folder, recursive = TRUE)
+    all_files <- file.path(destination_folder, all_files)
     hash_file <- tibble::tibble(file = all_files)
-    hash_file$hash_disk <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
+    hash_file$hash_disk <- future.apply::future_sapply(
+      hash_file$file, rlang::hash_file)
 
-    # Which object isn't the same as what is on disk
+    # Find objects which don't match between disk and bucket
     hash <- merge(bucket_hash, hash_file, all.x = TRUE)
-    retrieve_index <- sapply(seq_along(hash$file), \(x) {
-      identical(hash$hash_bucket[x], hash$hash_disk[x])
-    })
+    retrieve_index <- mapply(identical, hash$hash_bucket, hash$hash_disk,
+                             USE.NAMES = FALSE)
     retrieve <- hash[!retrieve_index, ]
+    retrieve$file <- gsub(paste0(destination_folder, "/*"), "", retrieve$file)
+    hashed <- length(to_download) - nrow(retrieve)
+    to_download <- retrieve$file
 
-    retrieve$file <- gsub(destination_folder, "", retrieve$file)
-    all_objects <- retrieve$file
+    # Report download plan
+    cat(prettyNum(excluded, big.mark = ","), " files excluded. ",
+        prettyNum(hashed, big.mark = ","), " files unchanged. ",
+        prettyNum(length(to_download), big.mark = ","),
+        " files will be downloaded.\n", sep = "")
+
+  } else {
+
+    # Report download plan
+    cat("No hash file detected. ", prettyNum(excluded, big.mark = ","),
+        " files excluded. ", prettyNum(length(to_download), big.mark = ","),
+        " files will be downloaded.\n", sep = "")
+
   }
 
   # Download the bucket and place it in the destination folder
   progressr::with_progress({
-    pb <- progressr::progressor(length(all_objects))
-    out <- future.apply::future_sapply(all_objects, \(object) {
+    pb <- progressr::progressor(length(to_download))
+    out <- future.apply::future_sapply(to_download, \(object) {
       pb()
       aws.s3::save_object(
         region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
@@ -192,7 +208,7 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
         secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
         object = object,
         bucket = bucket,
-        file = paste0(destination_folder, object)
+        file = file.path(destination_folder, object)
       ) |> suppressMessages()
     })
   })
