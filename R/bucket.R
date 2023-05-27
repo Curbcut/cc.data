@@ -188,7 +188,7 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
         secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
         object = object,
         bucket = bucket,
-        file = paste(destination_folder, object)
+        file = paste0(destination_folder, object)
       ) |> suppressMessages()
     })
   })
