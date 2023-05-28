@@ -115,13 +115,24 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
 #' be downloaded.
 #' @param bucket <`character`> The name of the bucket from which to download
 #' the objects.
+#' @param prune <`character`|`logical`> Should local files not present in the
+#' remote bucket be deleted? Defaults to "ask", which will prompt the user to
+#' confirm in the case that files will be deleted, but can also be set to `TRUE`
+#' or `FALSE` to respectively delete or not delete local files without a prompt.
 #' @param exclude <`character`> Files to not download from the bucket. Defaults
-#' to NULL for none (download everything).
+#' to NULL for none (download everything). Ignored if there is no file hash in
+#' the source bucket.
 #'
 #' @return NULL if successful, and an error message if not.
 #' @export
 
-bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
+bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
+                              exclude = NULL) {
+
+  # Argument check
+  stopifnot(is.character(destination_folder))
+  stopifnot(is.character(bucket))
+  stopifnot(is.character(prune)||is.logical(prune))
 
   # Package check
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
@@ -173,6 +184,52 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
     hash_file$hash_disk <- future.apply::future_sapply(
       hash_file$file, rlang::hash_file)
 
+    # If there are local files not present in the bucket, decide whether to
+    # delete them
+    to_prune <- merge(hash_file, bucket_hash, all.x = TRUE)
+    to_prune <- to_prune[is.na(to_prune$hash_bucket),]
+
+    if (nrow(to_prune) > 0) {
+
+      # Prompt with details about potential pruning
+      if (prune == "ask") {
+        prune_message <- to_prune$file[seq_len(min(nrow(to_prune), 3))]
+        prune_message <- sub(destination_folder, "", prune_message)
+        prune_message <- sub("^/", "", prune_message)
+        prune_message <- paste0("\u2219 ", prune_message, "\n")
+        prune_message <- paste(prune_message, collapse = "")
+        prune_message <- paste0(prettyNum(nrow(to_prune), big.mark = ","),
+                                " files are present in the destination but ",
+                                "not in the source bucket, including:\n",
+                                prune_message,
+                                "Should they be deleted? (y/n)\n")
+        cat(prune_message)
+        prune_prompt <- readline()
+
+        if (prune_prompt %in% c("y", "Y", "yes", "Yes", "YES")) {
+          removed <- file.remove(to_prune$file)
+          cat(prettyNum(sum(removed), big.mark = ","), "files removed. ")
+        } else {
+          cat("Files will not be deleted. ")
+        }
+
+      } else if (prune) {
+
+        removed <- file.remove(to_prune$file)
+        cat(prettyNum(sum(removed), big.mark = ","),
+            "files present in the destination but not in the source bucket",
+            "were removed. ")
+
+      } else if (!prune) {
+
+        cat(prettyNum(nrow(to_prune), big.mark = ","),
+            "files are present in the destination but not in the source bucket",
+            "and were not removed. ")
+
+      }
+
+    }
+
     # Find objects which don't match between disk and bucket
     hash <- merge(bucket_hash, hash_file, all.x = TRUE)
     retrieve_index <- mapply(identical, hash$hash_bucket, hash$hash_disk,
@@ -215,7 +272,6 @@ bucket_get_folder <- function(destination_folder, bucket, exclude = NULL) {
 
   return(invisible(NULL))
 }
-
 
 # -------------------------------------------------------------------------
 
