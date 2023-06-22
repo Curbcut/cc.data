@@ -1,6 +1,6 @@
-#' Build CanALE index for a given year
+#' Build ALP index for a given year
 #'
-#' This function builds the Canadian Active Living Environment (CanALE) index
+#' This function builds the Active Living Potential dataset
 #' for a given year based on three measures: intersection density, dwelling
 #' density, and points of interest (POI) density.
 #'
@@ -14,7 +14,7 @@
 #' @return A data.frame object representing the CanALE index for the given year
 #' and DAs.
 #' @export
-build_canale <- function(years = cc.data::census_years[2:length(cc.data::census_years)],
+build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_years)],
                          DA_table) {
 
   # Intersection density measure --------------------------------------------
@@ -344,25 +344,25 @@ build_canale <- function(years = cc.data::census_years[2:length(cc.data::census_
 
   DA_table <- sf::st_drop_geometry(DA_table)
 
-  canale <- lapply(years, \(year) {
+  alp <- lapply(years, \(year) {
     df <-
       Reduce(\(x, y) merge(x, y, by = "ID"),
              list(int_d[c(1, which(grepl(paste0("int_d_", year), names(int_d))))],
                   dwl_d[c(1, which(grepl(paste0("dwl_d_", year), names(dwl_d))))],
                   poi[c(1, which(grepl(paste0("poi_", year), names(poi))))]))
 
-    df[[paste0("canale_", year)]] <- rowSums(df[2:4])
+    df[[paste0("alp_", year)]] <- rowSums(df[2:4])
     df <- df[c(1,5)]
     df[is.na(df)] <- NA
 
     return(df)
   })
 
-  canale <- tibble::as_tibble(Reduce(merge, canale))
+  alp <- tibble::as_tibble(Reduce(merge, alp))
 
   # Return ------------------------------------------------------------------
 
-  return(canale)
+  return(alp)
 }
 
 #' Get all three+ way intersections in Canadian streets for a given year

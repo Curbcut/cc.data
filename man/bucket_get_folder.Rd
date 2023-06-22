@@ -4,20 +4,26 @@
 \alias{bucket_get_folder}
 \title{Read a bucket from AWS}
 \usage{
-bucket_get_folder(destination_folder, bucket, exclude = NULL)
+bucket_get_folder(destination_folder, bucket, prune = "ask", exclude = NULL)
 }
 \arguments{
-\item{destination_folder}{<\code{character}> The folder in which the bucket should
+\item{destination_folder}{<\code{character}> The folder to which the bucket should
 be downloaded.}
 
 \item{bucket}{<\code{character}> The name of the bucket from which to download
 the objects.}
 
-\item{exclude}{<\code{character}> Files to not download from the bucket. Defaults to
-NULL for none (download everything).}
+\item{prune}{<\code{character}|\code{logical}> Should local files not present in the
+remote bucket be deleted? Defaults to "ask", which will prompt the user to
+confirm in the case that files will be deleted, but can also be set to \code{TRUE}
+or \code{FALSE} to respectively delete or not delete local files without a prompt.}
+
+\item{exclude}{<\code{character}> Files to not download from the bucket. Defaults
+to NULL for none (download everything). Ignored if there is no file hash in
+the source bucket.}
 }
 \value{
-An error message or nothing if ran succesfully.
+NULL if successful, and an error message if not.
 }
 \description{
 Download a whole amazon bucket in a destination folder.

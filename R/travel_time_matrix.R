@@ -71,7 +71,7 @@ tt_local_osrm <- function(dest_folder, mode = "car",
     if (length(z) < 1) Sys.sleep(10) else docker_initiated <- TRUE
   }
 
-  shell(paste0("docker run ", mode, "_osrm"))
+  # shell(paste0("docker run ", mode, "_osrm"))
 
 }
 
