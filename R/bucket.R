@@ -46,7 +46,7 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
   out <- sapply(files, \(file_path) {
     object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
 
-    # Read the file from the bucket and compare it to the one on the local machine
+    # Read the file from the bucket and compare it to the local one
     upload <- if (object_name %in% existing_files) {
       existing_char <-
         aws.s3::get_object(
@@ -132,7 +132,7 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
   # Argument check
   stopifnot(is.character(destination_folder))
   stopifnot(is.character(bucket))
-  stopifnot(is.character(prune)||is.logical(prune))
+  stopifnot(is.character(prune) || is.logical(prune))
 
   # Package check
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
@@ -235,7 +235,8 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
     retrieve_index <- mapply(identical, hash$hash_bucket, hash$hash_disk,
                              USE.NAMES = FALSE)
     retrieve <- hash[!retrieve_index, ]
-    retrieve$file <- gsub(paste0(destination_folder, "/*"), "", retrieve$file)
+    retrieve$file <- gsub(paste0("^", destination_folder, "/*"), "",
+                          retrieve$file)
     hashed <- length(to_download) - nrow(retrieve)
     to_download <- retrieve$file
 
