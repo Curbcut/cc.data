@@ -199,7 +199,7 @@ db_write_table_helper <- function(df, tb_name, primary_key = NULL, index = NULL,
                                "PRIMARY KEY",
                                paste0("(", primary_key , "))")))
 
-    # Append the table's data by waves of 25k rows
+    # Append the table's data by waves of x rows
     waves <- split(df, 1:ceiling(nrow(df) / rows_per_append_wave)) |>
       suppressWarnings()
 
@@ -263,8 +263,8 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
     hexes <-
       lapply(seq_len(nrow(df_no_geo)), \(x) {
         hex <- sf::st_as_binary(df$geometry[x], hex = TRUE)
-        if (nchar(hex) > 60000) {
-          split_every <- 60000
+        if (nchar(hex) > 50000) {
+          split_every <- 50000
           start <- 0:(ceiling(nchar(hex) / split_every) - 1) * split_every + 1
           end <- 1:(ceiling(nchar(hex) / split_every)) * split_every
           hex <- mapply(
@@ -305,62 +305,71 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
   # split the df until it's split small enough to fit.
   succeed <- FALSE
   split_df <- 2
-  while (!succeed) {
+  attempt_count <- 0
+  max_attempts <- 5
+
+  while (!succeed & attempt_count < max_attempts) {
+
+    attempt_count <- attempt_count + 1
 
     tryCatch({
+      if (ncol(df_no_geo) > 1017) {
+        ind <- suppressWarnings(split(seq_len(ncol(df_no_geo)), 1:split_df))
 
-    if (ncol(df_no_geo) > 1017) {
-      ind <- suppressWarnings(split(seq_len(ncol(df_no_geo)), 1:split_df))
+        # Split the dataframe and keep `ID` in all
+        out_df <- lapply(ind, \(i) df_no_geo[, unique(c(1, i))])
 
-      # Split the dataframe and keep `ID` in all
-      out_df <- lapply(ind, \(i) df_no_geo[, unique(c(1, i))])
+        # Split the table names
+        new_tb_name <- paste0(tb_name, "_part", 1:split_df)
+      } else {
+        out_df <- list(df_no_geo)
+        new_tb_name <- tb_name
+      }
 
-      # Split the table names
-      new_tb_name <- paste0(tb_name, "_part", 1:split_df)
-    } else {
-      out_df <- list(df_no_geo)
-      new_tb_name <- tb_name
-    }
+      # Remove if existing table
+      if (length(new_tb_name) > 1) {
+        all_tb <- db_list_tables()
+        shared_name <- all_tb[grepl(tb_name, all_tb)]
+        to_delete <- shared_name[grepl("_part\\d*$", shared_name)]
+        sapply(to_delete, \(x) db_query("remove", x))
+      } else db_query("remove", tb_name)
 
-    # Remove if existing table
-    if (length(new_tb_name) > 1) {
-      all_tb <- db_list_tables()
-      shared_name <- all_tb[grepl(tb_name, all_tb)]
-      to_delete <- shared_name[grepl("_part\\d*$", shared_name)]
-      sapply(to_delete, \(x) db_query("remove", x))
-    } else db_query("remove", tb_name)
+      # Save all the tables
+      mapply(\(df, name) {
+        db_write_table_helper(df = df, tb_name = name,
+                              primary_key = primary_key,
+                              index = index,
+                              rows_per_append_wave = rows_per_append_wave)
+      }, out_df, new_tb_name)
 
-    # Save all the tables
-    mapply(\(df, name) {
-      db_write_table_helper(df = df, tb_name = name,
-                            primary_key = primary_key,
-                            index = index,
-                            rows_per_append_wave = rows_per_append_wave)
-    }, out_df, new_tb_name)
-
-    succeed <<- TRUE
-    break
+      succeed <<- TRUE
+      break
 
     }, error = function(e) {
       split_df <<- split_df * 2
-      if (!grepl("Row size too large", e)) stop(print(e))
+      if (!grepl("Row size too large", e)) {
+        if (attempt_count >= max_attempts) {
+          stop(print(e))
+        }
+      }
     })
   }
+
 
   return(invisible(NULL))
 }
 
 #' Write the list of processed census data to the MySQL database
 #'
-#' @param processed_census <`named list`> The finalized process data
-#' normally coming out of the final processing function:
-#' \code{\link[cc.data]{census_reduce_years}}
+#' @param processed_census_full_geos <`named list`> The finalized process data
+#' normally coming out of the final processing, with the full geometries using:
+#' \code{\link[cc.data]{census_full_geos}}
 #'
 #' @return Returns an error or nothing if ran successfully. All tables in the
-#' list fed to `processed_census` are written to the MySQL database with
+#' list fed to `processed_census_full_geos` are written to the MySQL database with
 #' the spatial features dropped.
 #' @export
-db_write_processed_data <- function(processed_census) {
+db_write_processed_data <- function(processed_census_full_geos) {
 
   # Territories sf to filter out from the db
   terr <- data.table::rbindlist(lapply(c(60, 61, 62), \(x) {
@@ -375,10 +384,10 @@ db_write_processed_data <- function(processed_census) {
   terr <- sf::st_transform(terr, 3347)
 
   out <-
-    sapply(names(processed_census), \(scale) {
+    sapply(names(processed_census_full_geos), \(scale) {
       tb_name <- paste("processed", scale, sep = "_")
 
-      tb <- processed_census[[scale]]
+      tb <- processed_census_full_geos[[scale]]
 
       # Cut the Canada's three territories. They are huge DAs, leading to hundreds
       # of geometry columns in the database. Filter out to respect the MySQL cell
