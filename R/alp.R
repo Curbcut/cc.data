@@ -73,7 +73,7 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   DA_table_tw_yr <- Reduce(rbind, DA_table_tw_yr)
-  DA_table_tw_yr$int_d <- ecdf(DA_table_tw_yr$three_ways)(DA_table_tw_yr$three_ways)
+  DA_table_tw_yr$int_d <- stats::ecdf(DA_table_tw_yr$three_ways)(DA_table_tw_yr$three_ways)
 
   DA_table_tw_yr <- lapply(seq_along(years), \(i) {
     out <- DA_table_tw_yr[DA_table_tw_yr$year == years[[i]], ]
@@ -183,7 +183,7 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   dwellings_yr <- Reduce(rbind, dwellings_yr)
-  dwellings_yr$dwl_d <- ecdf(dwellings_yr$density)(dwellings_yr$density)
+  dwellings_yr$dwl_d <- stats::ecdf(dwellings_yr$density)(dwellings_yr$density)
 
   dwellings_yr <- lapply(seq_along(years), \(i) {
     out <- dwellings_yr[dwellings_yr$year == years[[i]], ]
@@ -310,7 +310,7 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   pois_yr <- Reduce(rbind, pois_yr)
-  pois_yr$poi <- ecdf(pois_yr$poi_15min)(pois_yr$poi_15min)
+  pois_yr$poi <- stats::ecdf(pois_yr$poi_15min)(pois_yr$poi_15min)
 
   pois_yr <- lapply(seq_along(years), \(i) {
     out <- pois_yr[pois_yr$year == years[[i]], ]

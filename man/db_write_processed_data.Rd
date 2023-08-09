@@ -4,16 +4,16 @@
 \alias{db_write_processed_data}
 \title{Write the list of processed census data to the MySQL database}
 \usage{
-db_write_processed_data(processed_census)
+db_write_processed_data(processed_census_full_geos)
 }
 \arguments{
-\item{processed_census}{<\verb{named list}> The finalized process data
-normally coming out of the final processing function:
-\code{\link[cc.data]{census_reduce_years}}}
+\item{processed_census_full_geos}{<\verb{named list}> The finalized process data
+normally coming out of the final processing, with the full geometries using:
+\code{\link[cc.data]{census_full_geos}}}
 }
 \value{
 Returns an error or nothing if ran successfully. All tables in the
-list fed to \code{processed_census} are written to the MySQL database with
+list fed to \code{processed_census_full_geos} are written to the MySQL database with
 the spatial features dropped.
 }
 \description{

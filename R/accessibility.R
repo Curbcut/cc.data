@@ -307,6 +307,99 @@ accessibility_DA_location <- function(DA_table) {
   # food_points <- Reduce(merge, lapply(food, `[[`, "points"))
 
 
+
+  # Amusement and Recreation Services --------------------------------------
+
+  # Create the recreation dictionary
+  recreation_dance <- tibble::tibble(
+    var = "recreation_dance",
+    type = list("791"),
+    title = "Dance Studios, Schools, And Halls",
+    short = "Dance Studios",
+    exp = paste0("establishments primarily engaged in operating dance studios, ",
+                 "schools, and public dance halls or ballrooms"))
+
+  recreation_theatrical <- tibble::tibble(
+    var = "recreation_theatrical",
+    type = list(c("792", "783")),
+    title = "Theatrical Producers",
+    short = "Meat",
+    exp = paste0("Establishments primarily engaged in providing live theatrical ",
+                 "presentations and motion pictures")
+  )
+
+  recreation_physical <- tibble::tibble(
+    var = "recreation_physical",
+    type = list("793"),
+    title = "Bowling Centers",
+    short = "Bowling",
+    exp = paste0("establishments primarily engaged in operating reducing and ",
+                 "other health clubs, spas, and similar facilities featuring ",
+                 "exercise and other active physical fitness conditioning")
+  )
+
+  recreation_bowling <- tibble::tibble(
+    var = "recreation_bowling",
+    type = list("7991"),
+    title = "Physical Fitness Facilities",
+    short = "Fitness",
+    exp = paste0("establishments known to the public as bowling centers or lanes")
+  )
+
+  recreation_misc <- tibble::tibble(
+    var = "recreation_misc",
+    type = list(c("7941", "7948", "7992", "7993", "7996", "7997", "7999")),
+    title = "Miscellaneous Amusement And Recreation",
+    short = "Recreation",
+    exp = paste0("establishments primarily engaged in the operation of sports, ",
+                 "amusement, and recreation services, not elsewhere classified, ",
+                 "such as bathing beaches, swimming pools, public golf courses, ",
+                 "musement parks, ...")
+  )
+
+
+  recreation_dict <- rbind(recreation_dance, recreation_theatrical, recreation_physical, recreation_bowling,
+                           recreation_misc)
+
+  recreation_total <- tibble::tibble(
+    var = "recreation_total",
+    type = list(unlist(recreation_dict$type)),
+    title = "Recreation Services",
+    short = "Recreation",
+    exp = paste0("establishments engaged in providing amusement or entertainment services"))
+
+  recreation_dict <- rbind(recreation_dict, recreation_total)
+  recreation_dict$source <- "DMTI"
+  recreation_dict$date <- "2022"
+  recreation_dict$theme <- "recreation"
+
+  # Subset the POI for just the recreation
+  poi$sic_short <- gsub("0000$", "", poi$SIC_1)
+  poi_recreation <- poi[poi$sic_short %in% unlist(recreation_dict$type), ]
+
+  # How many points per variables are there in each DA
+  recreation <- sapply(recreation_dict$var, \(var) {
+
+    industries <- recreation_dict$type[recreation_dict$var == var][[1]]
+
+    points <- poi_recreation[poi_recreation$sic_short %in% industries, ]
+
+    points_per_DA <- lengths(sf::st_intersects(DA_table, points))
+
+    out <- tibble::tibble(ID = DA_table$ID)
+    out[[var]] <- points_per_DA
+
+    points <- sf::st_join(points, DA_table)[c("ID", "NAME", "SIC_1")]
+    names(points) <- c("DA_ID", "name", "type", "geometry")
+
+    return(list(DA = out,
+                points = points))
+  }, simplify = FALSE, USE.NAMES = TRUE)
+
+  recreation_data <- Reduce(merge, lapply(recreation, `[[`, "DA"))
+  # recreation_points <- Reduce(merge, lapply(recreation, `[[`, "points"))
+
+
   # Healthcare services -----------------------------------------------------
 
   read_method <- function(file) {
@@ -736,14 +829,14 @@ accessibility_DA_location <- function(DA_table) {
 
   # Return all the measures and the dictionary ------------------------------
 
-  access <- Reduce(merge, list(retail_data, finance_data, food_data,
+  access <- Reduce(merge, list(retail_data, finance_data, food_data, recreation_data,
                                healthcare_data, educational_data, cultural_data))#, ...))
   names(access)[1] <- "DA_ID"
   # polygon_dict <- greenspace
   # polygons <- c(greenspace_polygons)
   # points <- Reduce(merge, list(retail_points, finance_points, food_points,
   #                              healthcare_points))#, ...))
-  dict <- Reduce(rbind, list(retail_dict, finance_dict, food_dict,
+  dict <- Reduce(rbind, list(retail_dict, finance_dict, food_dict, recreation_dict,
                              healthcare_dict, educational_dict, cultural_dict))#greenspace_dict, ...))
   themes <- unique(dict$theme)
 
