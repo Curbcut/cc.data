@@ -263,8 +263,8 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
     hexes <-
       lapply(seq_len(nrow(df_no_geo)), \(x) {
         hex <- sf::st_as_binary(df$geometry[x], hex = TRUE)
-        if (nchar(hex) > 50000) {
-          split_every <- 50000
+        if (nchar(hex) > 45000) {
+          split_every <- 45000
           start <- 0:(ceiling(nchar(hex) / split_every) - 1) * split_every + 1
           end <- 1:(ceiling(nchar(hex) / split_every)) * split_every
           hex <- mapply(
@@ -369,7 +369,7 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
 #' list fed to `processed_census_full_geos` are written to the MySQL database with
 #' the spatial features dropped.
 #' @export
-db_write_processed_data <- function(processed_census_full_geos) {
+db_write_processed_data <- function(processed_census) {
 
   # Territories sf to filter out from the db
   terr <- data.table::rbindlist(lapply(c(60, 61, 62), \(x) {
@@ -384,16 +384,24 @@ db_write_processed_data <- function(processed_census_full_geos) {
   terr <- sf::st_transform(terr, 3347)
 
   out <-
-    sapply(names(processed_census_full_geos), \(scale) {
+    sapply(names(processed_census), \(scale) {
       tb_name <- paste("processed", scale, sep = "_")
 
-      tb <- processed_census_full_geos[[scale]]
+      tb <- processed_census[[scale]]
 
       # Cut the Canada's three territories. They are huge DAs, leading to hundreds
       # of geometry columns in the database. Filter out to respect the MySQL cell
       # limit.
       tb_centroids <- suppressWarnings(sf::st_point_on_surface(tb))
       tb <- tb[!as.vector(sf::st_intersects(tb_centroids, terr, sparse = FALSE)), ]
+
+      # Filter out very large areas to respect the MySQL cell limit
+      tb$area <- get_area(tb)
+      very_large_geos <- which(tb$area >= 1e11)
+      if (length(very_large_geos) > 0) {
+        tb <- tb[-very_large_geos, ]
+      }
+      tb$area <- NULL
 
       db_write_table(df = tb, tb_name = tb_name, primary_key = "ID",
                      rows_per_append_wave = 100)

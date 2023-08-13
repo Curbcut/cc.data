@@ -1,3 +1,70 @@
+#' Read and Process Spatial Data
+#'
+#' This function reads and processes spatial data related to postal codes and specific
+#' data values, mostly data coming from CANUE. It performs a series of transformations
+#' and aggregations, resulting in a tibble with the average values grouped by DA ID.
+#'
+#' @param DA_table <`sf data.frame`> A \code{DA} sf data.frame
+#' @param bucket <`character`> The bucket from which to grab the data. Defaults
+#' to `"curbcut.rawdata"`.
+#' @param bucket_object <`character`> The object in the bucket to grab and read
+#' data values from. e.g. `"no2_2016.csv"`.
+#' @param objectext <`character`> Extension of the bucket_object. Defaults to `".csv"`.
+#' @param col_val <`character`> The name of the column which holds the data in the
+#' bucket_object.
+#' @param value_name <`character`> The name of the column of the output value.
+#' e.g. `"NO2"`.
+#'
+#'
+#' @return A tibble containing the processed data, including the aggregated values.
+#'
+#' @export
+read_and_process_data_canue <- function(DA_table, bucket = "curbcut.rawdata",
+                                         bucket_object, objectext = ".csv", col_val,
+                                         value_name) {
+  # Read Postal Code
+  pc_data <- bucket_read_object(object = "postal_codes202103.csv",
+                                bucket = "curbcut.rawdata",
+                                objectext = ".csv",
+                                method = utils::read.csv) |>
+    tibble::as_tibble()
+
+  pc_data <- sf::st_as_sf(pc_data, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+  pc_data$POSTAL_CODE <- gsub(" ", "", pc_data$POSTAL_CODE)
+  pc_data <- pc_data[c("POSTAL_CODE", "geometry")]
+  names(pc_data)[1] <- "postalcode"
+
+  # Read data from bucket
+  from_bucket <- bucket_read_object(object = bucket_object,
+                                    bucket = bucket,
+                                    objectext = objectext,
+                                    method = utils::read.csv)
+  from_bucket <- tibble::as_tibble(from_bucket)
+  names(from_bucket)[grepl("postalcode", names(from_bucket))] <- "postalcode"
+  data_values <- merge(from_bucket, pc_data)
+  data_values <- tibble::as_tibble(data_values)
+  data_values <- sf::st_as_sf(data_values)
+
+
+  # Manipulate
+  data_values <- data_values[col_val]
+  names(data_values)[1] <- value_name
+  data_values <- data_values[data_values[[value_name]] != -9999, ]
+
+  data_values <- sf::st_transform(data_values, 3347)
+  data_values <- sf::st_join(data_values, DA_table)
+  data_values <- sf::st_drop_geometry(data_values)
+
+  data_values <- stats::aggregate(as.formula(paste(value_name, "~ ID")),
+                                  data = data_values,
+                                  mean, na.rm = TRUE)
+  data_values <- tibble::as_tibble(data_values)
+  names(data_values)[1] <- "DA_ID"
+
+  # Return
+  return(data_values)
+}
+
 #' Process raw Canbics data from the AWS bucket
 #'
 #' @return Returns the Canbics dataset processed country-wide.
@@ -38,91 +105,85 @@ canbics_process <- function() {
 #' @export
 no2_process <- function(DA_table) {
 
-  # Read NO2 from bucket ----------------------------------------------------
-
-  no2_data <- bucket_read_object(object = "no2_2016.csv",
-                                 bucket = "curbcut.rawdata",
-                                 objectext = ".csv",
-                                 method = utils::read.csv) |>
-    tibble::as_tibble()
-
-  pc <- bucket_read_object(object = "postal_codes202103.csv",
-                           bucket = "curbcut.rawdata",
-                           objectext = ".csv",
-                           method = utils::read.csv) |>
-    tibble::as_tibble()
-  pc <- sf::st_as_sf(pc, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
-  pc$POSTAL_CODE <- gsub(" ", "", pc$POSTAL_CODE)
-  pc <- pc[c("POSTAL_CODE", "geometry")]
-  names(pc)[1] <- "postalcode16"
-
-  no2_data <- sf::st_as_sf(tibble::as_tibble(merge(no2_data, pc)))
-
-  # Manipulate --------------------------------------------------------------
-
-  no2_data <- no2_data["no2lur16_02"]
-  names(no2_data)[1] <- "NO2"
-  no2_data <- no2_data[no2_data$NO2 != -9999, ]
-
-  no2_data <- sf::st_transform(no2_data, 3347)
-  no2_data <- sf::st_join(no2_data, DA_table)
-  no2_data <- sf::st_drop_geometry(no2_data)
-
-  no2_data <- stats::aggregate(NO2 ~ ID, data = no2_data, mean, na.rm = TRUE)
-  no2_data <- tibble::as_tibble(no2_data)
-  names(no2_data)[1] <- "DA_ID"
-
-  # Return ------------------------------------------------------------------
-
-  return(no2_data)
+  read_and_process_data_canue(DA_table = DA_table,
+                        bucket_object = "no2_2016.csv",
+                        col_val = "no2lur16_02",
+                        value_name = "NO2")
 
 }
 
+#' Process Land Surface Temperature Data Across Years
+#'
+#' This function processes land surface temperature data across specified years by reading
+#' the data using the \code{read_and_process_data_canue} function. It performs
+#' a series of transformations and merges the data across different years
+#' resulting in a tibble with the land surface values grouped by DA ID.
+#'
+#' @param DA_table <`sf data.frame`> A \code{DA} sf data.frame that contains
+#' the Dissemination Area (DA) information for spatial joins.
+#'
+#' @return A tibble containing the processed land surface data, including the merged
+#' values across the specified years.
+#' @export
+lst_process <- function(DA_table) {
 
-#' Process raw NDVI data from the AWS bucket
+  progressr::with_progress({
+    pb <- progressr::progressor(length(15:21))
+
+    # Grab all the years from the bucket
+    out <- future.apply::future_lapply(15:21, \(x) {
+      out <- read_and_process_data_canue(
+        DA_table = DA_table,
+        bucket_object = sprintf("land_surface_temp/wtlst_ava_%s.csv", x),
+        col_val = sprintf("wtlst%s_01", x),
+        value_name = sprintf("lst_20%s", x))
+      pb()
+      return(out)
+    })
+  })
+
+  # Merge on the same tibble
+  merged <- Reduce(\(x, y) merge(x, y, by = "DA_ID", all = TRUE), out)
+  merged <- tibble::as_tibble(merged)
+
+  return(merged)
+
+}
+
+#' Process Modis - Greeness Data Across Years
 #'
-#' @param DA_table <`sf data.frame`> A \code{DA} sf data.frame
+#' This function processes Modis - Greeness data across specified years by reading
+#' the data using the \code{read_and_process_data_canue} function. It performs
+#' a series of transformations and merges the data across different years
+#' resulting in a tibble with the land surface values grouped by DA ID.
 #'
-#' @return Returns the NDVI dataset processed country-wide.
+#' @param DA_table <`sf data.frame`> A \code{DA} sf data.frame that contains
+#' the Dissemination Area (DA) information for spatial joins.
+#'
+#' @return A tibble containing the processed land surface data, including the merged
+#' values across the specified years.
 #' @export
 ndvi_process <- function(DA_table) {
 
-  # Read NDVI from bucket ----------------------------------------------------
+  progressr::with_progress({
+    pb <- progressr::progressor(length(0:22))
 
-  ndvi_data <- bucket_read_object(object = "ndvi_2019.csv",
-                                 bucket = "curbcut.rawdata",
-                                 objectext = ".csv",
-                                 method = utils::read.csv) |>
-    tibble::as_tibble()
+    # Grab all the years from the bucket
+    out <- future.apply::future_lapply(sprintf("%02d", 0:22), \(x) {
+      out <- read_and_process_data_canue(
+        DA_table = DA_table,
+        bucket_object = sprintf("ndvi_modis/grmod_amx_%s.csv", x),
+        col_val = sprintf("grmod%s_06", x),
+        value_name = sprintf("ndvi_20%s", x))
+      pb()
+      return(out)
+    })
+  })
 
-  pc <- bucket_read_object(object = "postal_codes202103.csv",
-                           bucket = "curbcut.rawdata",
-                           objectext = ".csv",
-                           method = utils::read.csv) |>
-    tibble::as_tibble()
-  pc <- sf::st_as_sf(pc, coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
-  pc$POSTAL_CODE <- gsub(" ", "", pc$POSTAL_CODE)
-  pc <- pc[c("POSTAL_CODE", "geometry")]
-  names(pc)[1] <- "postalcode19"
+  # Merge on the same tibble
+  merged <- Reduce(\(x, y) merge(x, y, by = "DA_ID", all = TRUE), out)
+  merged <- tibble::as_tibble(merged)
 
-  ndvi_data <- sf::st_as_sf(tibble::as_tibble(merge(ndvi_data, pc)))
-
-  # Manipulate --------------------------------------------------------------
-
-  ndvi_data <- ndvi_data["grlan19_01"]
-  names(ndvi_data)[1] <- "NDVI"
-  ndvi_data <- ndvi_data[ndvi_data$NDVI != -9999, ]
-
-  ndvi_data <- sf::st_transform(ndvi_data, 3347)
-  ndvi_data <- sf::st_join(ndvi_data, DA_table)
-  ndvi_data <- sf::st_drop_geometry(ndvi_data)
-
-  ndvi_data <- stats::aggregate(NDVI ~ ID, data = ndvi_data, mean, na.rm = TRUE)
-  ndvi_data <- tibble::as_tibble(ndvi_data)
-  names(ndvi_data)[1] <- "DA_ID"
-
-  # Return ------------------------------------------------------------------
-
-  return(ndvi_data)
+  return(merged)
 
 }

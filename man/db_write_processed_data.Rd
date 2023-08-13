@@ -4,7 +4,7 @@
 \alias{db_write_processed_data}
 \title{Write the list of processed census data to the MySQL database}
 \usage{
-db_write_processed_data(processed_census_full_geos)
+db_write_processed_data(processed_census)
 }
 \arguments{
 \item{processed_census_full_geos}{<\verb{named list}> The finalized process data
