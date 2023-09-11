@@ -1161,6 +1161,172 @@ census_vectors_age <-
     parent = FALSE
   )
 
+
+# Function to always subset the vectors which match the parent
+get_rows_from_parent <- function(vecs, parent_vec) {
+  df <- vecs[vecs$parent_vector == parent_vec, ]
+  df[!is.na(df$vector), ]
+}
+
+# Function to get the age vectors by year from the census dataset
+recent_census <- function(census_dataset) {
+
+  vecs <- cancensus::list_census_vectors(census_dataset)
+  vec_total <- vecs[grepl("Age", vecs$label), ]$vector[1]
+
+  # Extracting rows related to total age
+  total_age <- get_rows_from_parent(vecs, vec_total)
+
+  # Iterate through each category and sub-category of ages
+  all_ages <- lapply(total_age$vector, \(bcat) {
+
+    mid_cat <- get_rows_from_parent(vecs, bcat)
+    out <- lapply(mid_cat$vector, \(mcat) {
+      get_rows_from_parent(vecs, mcat)
+    })
+
+    # Additional level of depth in some cases
+    out <- lapply(out, \(t) {
+      if (sum(grepl(" to ", t$label)) > 0) {
+        w <- which(grepl(" to ", t$label))
+        for (i in w) {
+          outt <- lapply(t$vector[w], \(lcat) {
+            get_rows_from_parent(vecs, lcat)
+          })
+        }
+        Reduce(rbind, c(outt, list(t[-w,])))
+      } else {
+        t
+      }
+    })
+
+    Reduce(rbind, out)
+
+  })
+
+  Reduce(rbind, all_ages)
+}
+
+older_census <- function(census_dataset, vec) {
+  vecs <- cancensus::list_census_vectors(census_dataset)
+
+  # Using the vectors of Total - Age, get its children
+  total_age <- get_rows_from_parent(vecs, vec)
+
+  total_age_2006 <- lapply(total_age$vector, \(ta) {
+    get_rows_from_parent(vecs, ta)
+  })
+
+  # MALE AND FEMALE
+  total_age_2006
+}
+
+total_age_2021 <- recent_census("CA21")
+total_age_2016 <- recent_census("CA16")
+total_age_2011 <- get_rows_from_parent(cancensus::list_census_vectors("CA11"), "v_CA11F_5")
+total_age_2006 <- older_census("CA06", "v_CA06_2")
+total_age_2001 <- older_census("CA01", "v_CA01_5")
+total_age_1996 <- older_census("CA1996", "v_CA1996_5")
+
+
+# Function to clean up the dataframe
+cleanup <- function(df, year) {
+  t <- df[c("vector", "label")]
+  t$label <- gsub(" to |-", ":", t$label)
+  t$label <- gsub(" years| years and over|\\+", "", t$label)
+  t$year <- year
+  t
+}
+
+# Function to handle and clean older data
+handle_older_data <- function(data) {
+  mapply(function(z, year) {
+    out <- if (!is.data.frame(z)) lapply(z, cleanup, year) else cleanup(z, year)
+    binded <- Reduce(rbind, out)
+    listed <- if (!is.data.frame(z)) lapply(unique(binded$label), function(x) binded$vector[binded$label == x]) else z$vector
+    if (!is.data.frame(z)) out <- out[[1]]
+    out$vector <- listed
+    out
+  }, data, c("2011", "2006", "2001", "1996"), SIMPLIFY = FALSE)
+}
+
+older <- list(total_age_2011, total_age_2006, total_age_2001, total_age_1996)
+names(older) <- c("2011", "2006", "2001", "1996")
+cleaned_older <- handle_older_data(older)
+
+# Processing recent data and structuring into the desired format
+recent <- mapply(\(x, year) {
+
+  categories <- lapply(cleaned_older$`2011`$label, \(z) eval(parse(text = z)))
+  second_penultimate_vecs <- lapply(categories[2:(length(categories)-1)], \(c) x$vector[x$label %in% c])
+  first <- list(x$vector[1:5])
+  last <- list(x$vector[which(x$label == 85):nrow(x)])
+  tibble::tibble(vector = c(first, second_penultimate_vecs, last),
+                 label = cleaned_older$`2011`$label,
+                 year = year)
+
+}, list(total_age_2021, total_age_2016), c("2021", "2016"), SIMPLIFY = FALSE)
+
+names(recent) <- c("2021", "2016")
+
+# Bind
+final <- c(recent, cleaned_older)
+
+# Create age page tibble
+categories <- unique(final[[1]]$label)
+
+vectors_table <- lapply(categories, \(cat) {
+
+  var_code <- gsub(":", "_", cat)
+  var_code <- sprintf("age_%s", var_code)
+
+  vec_2021 <- final$`2021`$vector[final$`2021`$label == cat]
+  vec_2016 <- final$`2016`$vector[final$`2016`$label == cat]
+  vec_2011 <- final$`2011`$vector[final$`2011`$label == cat]
+  vec_2006 <- final$`2006`$vector[final$`2006`$label == cat]
+  vec_2001 <- final$`2001`$vector[final$`2001`$label == cat]
+  vec_1996 <- final$`1996`$vector[final$`1996`$label == cat]
+
+
+  if (grepl(":", cat)) {
+    two_digts <- strsplit(cat, ":")[[1]]
+    var_title <- sprintf("Aged between %s and %s (%%)", two_digts[1], two_digts[2])
+    var_short <-  sprintf("%s yo", gsub(":", "-",  cat))
+    explanation <-  sprintf("the percentage of the population aged between %s and %s years old", two_digts[1], two_digts[2])
+    exp_q5 <-  sprintf("are aged between %s and %s years old", two_digts[1], two_digts[2])
+  } else {
+    var_title <-  "Aged 85 and above (%)"
+    var_short  <-  "85+ yo"
+    explanation <-  "the percentage of the population aged 85 and above"
+    exp_q5 <-  "are aged 85 and above"
+  }
+
+  tibble::tibble(
+    var_code = var_code,
+    type = list("pct"),
+    theme = "Age",
+    vec_2021 = vec_2021,
+    vec_2016 = vec_2016,
+    vec_2011 = vec_2011,
+    vec_2006 = vec_2006,
+    vec_2001 = vec_2001,
+    vec_1996 = vec_1996,
+    var_title = var_title,
+    var_short = var_short,
+    explanation = explanation,
+    exp_q5 = exp_q5,
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
+    parent = FALSE
+  )
+
+})
+
+census_vectors_age_page <- Reduce(rbind, vectors_table)
+
+census_vectors_age <- rbind(census_vectors_age, census_vectors_age_page)
+
+
 #### PARENT VECTOR `POPULATION` ALREADY PART OF `LANGUAGE`
 
 # verify_parents(vectors_df = census_vectors_age,

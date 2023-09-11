@@ -55,7 +55,7 @@ read_and_process_data_canue <- function(DA_table, bucket = "curbcut.rawdata",
   data_values <- sf::st_join(data_values, DA_table)
   data_values <- sf::st_drop_geometry(data_values)
 
-  data_values <- stats::aggregate(as.formula(paste(value_name, "~ ID")),
+  data_values <- stats::aggregate(stats::as.formula(paste(value_name, "~ ID")),
                                   data = data_values,
                                   mean, na.rm = TRUE)
   data_values <- tibble::as_tibble(data_values)

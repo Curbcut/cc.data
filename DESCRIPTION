@@ -27,7 +27,9 @@ Imports:
     stringr,
     rvest,
     methods,
-    sp
+    sp,
+    dplyr,
+    terra
 Suggests:
     aws.s3,
     gtfsrouter,

@@ -212,10 +212,11 @@ accessibility_DA_location <- function(DA_table) {
   food_grocery <- tibble::tibble(
     var = "food_grocery",
     type = list("5411"),
-    title = "Grocery Stores",
+    title = "Grocery and Convenience Stores",
     short = "Groceries",
     exp = paste0("stores, commonly known as supermarkets, food stores, and ",
-                 "grocery stores"))
+                 "grocery stores")
+  )
 
   food_meat <- tibble::tibble(
     var = "food_meat",

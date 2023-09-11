@@ -6,3 +6,4 @@
 data-raw/*.csv
 build.R
 calculated_ignore/
+.rcookies
