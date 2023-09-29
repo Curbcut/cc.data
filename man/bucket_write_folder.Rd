@@ -4,7 +4,7 @@
 \alias{bucket_write_folder}
 \title{Write a folder to an AWS bucket}
 \usage{
-bucket_write_folder(folder, bucket, exclude = NULL)
+bucket_write_folder(folder, bucket, prune = "ask")
 }
 \arguments{
 \item{folder}{<\code{character}> The folder that should be entirely uploaded to
@@ -13,8 +13,10 @@ the bucket.}
 \item{bucket}{<\code{character}> The name of the bucket in which the entire folder
 should be uploaded.}
 
-\item{exclude}{<\code{character}> Files to not upload to the bucket. Defaults to
-NULL for none.}
+\item{prune}{<\code{character}|\code{logical}> Should local files not present in the
+remote bucket be deleted? Defaults to "ask", which will prompt the user to
+confirm in the case that files will be deleted, but can also be set to \code{TRUE}
+or \code{FALSE} to respectively delete or not delete local files without a prompt.}
 }
 \value{
 An error message or nothing if ran succesfully.

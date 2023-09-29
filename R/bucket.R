@@ -10,12 +10,14 @@
 #' the bucket.
 #' @param bucket <`character`> The name of the bucket in which the entire folder
 #' should be uploaded.
-#' @param exclude <`character`> Files to not upload to the bucket. Defaults to
-#' NULL for none.
+#' @param prune <`character`|`logical`> Should local files not present in the
+#' remote bucket be deleted? Defaults to "ask", which will prompt the user to
+#' confirm in the case that files will be deleted, but can also be set to `TRUE`
+#' or `FALSE` to respectively delete or not delete local files without a prompt.
 #'
 #' @return An error message or nothing if ran succesfully.
 #' @export
-bucket_write_folder <- function(folder, bucket, exclude = NULL) {
+bucket_write_folder <- function(folder, bucket, prune = "ask") {
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
     stop(
       "Package \"aws.s3\" must be installed to use this function.",
@@ -29,49 +31,100 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
 
   # List of every files in the folder
   files <- list.files(folder, recursive = TRUE, full.names = TRUE)
-  # Exclude files to exclude
-  files <- files[!files %in% exclude]
 
   # Get list of all existing files to not upload unmodified files
-  existing_files <- unname(sapply(
+  all_objects <-
     aws.s3::get_bucket(
       region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
       key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
       secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-      bucket = bucket
-    ), `[[`, "Key"
-  ))
+      bucket = bucket,
+      max = Inf
+    ) |>
+    sapply(`[[`, "Key") |>
+    unname()
 
-  # Iterate over all files to upload them to the bucket
-  out <- sapply(files, \(file_path) {
-    object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
+  # If the hash exists in the bucket
+  if ("hash.qs" %in% all_objects) {
 
-    # Read the file from the bucket and compare it to the local one
-    upload <- if (object_name %in% existing_files) {
-      existing_char <-
-        aws.s3::get_object(
-          region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
-          key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
-          secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-          object = object_name,
-          bucket = bucket,
-          as = "raw"
-        )
-      f <- file(file_path, "rb")
-      new_char <- readBin(f, "raw",
-                          n = file.info(file_path)$size,
-                          endian = "big"
-      )
-      close.connection(f)
+    # Create a hash file of local files
+    all_files <- list.files(folder, full.names = TRUE, recursive = TRUE)
+    hash_file <- tibble::tibble(file = all_files)
+    hash_file$hash_disk <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
 
-      !identical(existing_char, new_char)
-    } else {
-      TRUE
+    # Grab the hash file in the bucket
+    bucket_hash <- tempfile(fileext = "hash.qs")
+    aws.s3::save_object(
+      region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+      key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+      secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+      object = "hash.qs",
+      bucket = bucket,
+      file = bucket_hash
+    ) |> suppressMessages()
+    bucket_hash <- qs::qread(bucket_hash)
+    names(bucket_hash)[2] <- "hash_bucket"
+
+    # Are the files that are present in the bucket, and not locally? If so,
+    # we ask if we want to delete them from the bucket.
+    to_prune <- merge(bucket_hash, hash_file, all.x = TRUE)
+    to_prune <- to_prune[is.na(to_prune$hash_disk), ]
+
+    if (nrow(to_prune) > 0) {
+
+      # Prompt with details about potential pruning
+      if (prune == "ask") {
+        prune_message <- to_prune$file[seq_len(min(nrow(to_prune), 15))]
+        prune_message <- sub(folder, "", prune_message)
+        prune_message <- sub("^/", "", prune_message)
+        prune_message <- paste0("\u2219 ", prune_message, "\n")
+        prune_message <- paste(prune_message, collapse = "")
+        prune_message <- paste0(prettyNum(nrow(to_prune), big.mark = ","),
+                                " files are present in the bucket but ",
+                                "not in the local folder, including:\n",
+                                prune_message,
+                                "Should they be deleted from the bucket? (y/n)\n")
+        cat(prune_message)
+        prune_prompt <- readline()
+
+        if (prune_prompt %in% c("y", "Y", "yes", "Yes", "YES")) {
+          aws.s3::delete_object(object = gsub(sprintf("%s||%s/", folder, folder) , "", to_prune$file),
+                                bucket = bucket)
+          cat("Files succesfully removed. ")
+        } else {
+          cat("Files will not be deleted. ")
+        }
+
+      } else if (prune) {
+
+        aws.s3::delete_object(object = gsub(sprintf("%s||%s/", folder, folder) , "", to_prune$file),
+                              bucket = bucket)
+        cat("Files present in the bucket but not locally were removed. ")
+
+      } else if (!prune) {
+
+        cat("Files present in the bucket but not locally were not removed. ")
+
+      }
+
     }
 
-    # If the file does not already exist or is not the same as the one on the
-    # bucket, upload.
-    if (upload) {
+    # Find objects which don't match between disk and bucket
+    hash <- merge(hash_file, bucket_hash, all.x = TRUE)
+    send_index <- mapply(identical, hash$hash_disk, hash$hash_bucket,
+                         USE.NAMES = FALSE)
+    send <- hash[!send_index, ]
+    send$file <- gsub(paste0("^", folder, "/*"), "", send$file)
+    hashed <- length(files) - nrow(send)
+    to_send <- send$file
+
+    # Report sending plan
+    cat(prettyNum(hashed, big.mark = ","), " files unchanged. ",
+        prettyNum(length(to_send), big.mark = ","),
+        " files will be uploaded to the bucket\n", sep = "")
+
+    sapply(to_send, \(file_path) {
+      object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
       aws.s3::put_object(
         region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
         key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
@@ -80,12 +133,30 @@ bucket_write_folder <- function(folder, bucket, exclude = NULL) {
         object = object_name,
         bucket = bucket
       ) |> suppressMessages()
-    }
+      return(invisible(NULL))
+    })
 
-    return(invisible(NULL))
-  })
+  } else {
 
-  # Create a hash file
+    # Report download plan
+    cat("No hash file detected. ", prettyNum(length(files), big.mark = ","),
+        " files will be uploaded to the bucket.\n", sep = "")
+
+    sapply(files, \(file_path) {
+      object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
+      aws.s3::put_object(
+        region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+        key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+        secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+        file = file_path,
+        object = object_name,
+        bucket = bucket
+      ) |> suppressMessages()
+      return(invisible(NULL))
+    })
+  }
+
+  # Create a hash file of all the local files
   all_files <- list.files(folder, full.names = TRUE, recursive = TRUE)
   hash_file <- tibble::tibble(file = all_files)
   hash_file$hash <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
