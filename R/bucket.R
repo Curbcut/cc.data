@@ -30,7 +30,7 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
   }
 
   # List of every files in the folder
-  files <- list.files(folder, recursive = TRUE, full.names = TRUE)
+  files <- list.files(folder, full.names = TRUE, recursive = TRUE)
 
   # Get list of all existing files to not upload unmodified files
   all_objects <-
@@ -48,8 +48,7 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
   if ("hash.qs" %in% all_objects) {
 
     # Create a hash file of local files
-    all_files <- list.files(folder, full.names = TRUE, recursive = TRUE)
-    hash_file <- tibble::tibble(file = all_files)
+    hash_file <- tibble::tibble(file = files)
     hash_file$hash_disk <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
 
     # Grab the hash file in the bucket
@@ -123,17 +122,21 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
         prettyNum(length(to_send), big.mark = ","),
         " files will be uploaded to the bucket\n", sep = "")
 
-    sapply(to_send, \(file_path) {
-      object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
-      aws.s3::put_object(
-        region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
-        key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
-        secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-        file = file_path,
-        object = object_name,
-        bucket = bucket
-      ) |> suppressMessages()
-      return(invisible(NULL))
+    progressr::with_progress({
+      pb <- progressr::progressor(length(to_send))
+      sapply(to_send, \(file_path) {
+        object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
+        aws.s3::put_object(
+          region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+          key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+          secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+          file = file_path,
+          object = object_name,
+          bucket = bucket
+        ) |> suppressMessages()
+        pb()
+        return(invisible(NULL))
+      })
     })
 
   } else {
@@ -142,17 +145,21 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
     cat("No hash file detected. ", prettyNum(length(files), big.mark = ","),
         " files will be uploaded to the bucket.\n", sep = "")
 
-    sapply(files, \(file_path) {
-      object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
-      aws.s3::put_object(
-        region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
-        key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
-        secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-        file = file_path,
-        object = object_name,
-        bucket = bucket
-      ) |> suppressMessages()
-      return(invisible(NULL))
+    progressr::with_progress({
+      pb <- progressr::progressor(length(files))
+      sapply(files, \(file_path) {
+        object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
+        aws.s3::put_object(
+          region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+          key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+          secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+          file = file_path,
+          object = object_name,
+          bucket = bucket
+        ) |> suppressMessages()
+        pb()
+        return(invisible(NULL))
+      })
     })
   }
 
