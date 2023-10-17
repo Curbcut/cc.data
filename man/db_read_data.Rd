@@ -4,7 +4,14 @@
 \alias{db_read_data}
 \title{Read a table in the MySQL database}
 \usage{
-db_read_data(table, columns = "*", column_to_select = "ID", IDs, crs = 3347)
+db_read_data(
+  table,
+  columns = "*",
+  column_to_select = "ID",
+  IDs,
+  crs = 3347,
+  keep_geometry = TRUE
+)
 }
 \arguments{
 \item{table}{<\code{character}> The table name in the MySQL database. To list all
@@ -20,6 +27,9 @@ should be selected. Defaults to \code{ID}.}
 
 \item{crs}{<\code{numeric}> EPSG coordinate reference system to which the data
 should be transformed.}
+
+\item{keep_geometry}{<\code{logical}> Should the geometry column be kept? Defaults
+to \code{TRUE}. Much faster if they are not kept.}
 }
 \value{
 A tibble or an sf tibble depending if geometry is available.

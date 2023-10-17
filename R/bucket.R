@@ -124,7 +124,7 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
 
     progressr::with_progress({
       pb <- progressr::progressor(length(to_send))
-      sapply(to_send, \(file_path) {
+      future.apply::future_sapply(to_send, \(file_path) {
         object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
         aws.s3::put_object(
           region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
@@ -147,7 +147,7 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
 
     progressr::with_progress({
       pb <- progressr::progressor(length(files))
-      sapply(files, \(file_path) {
+      future.apply::future_sapply(files, \(file_path) {
         object_name <- gsub(paste0(".*", folder, "/"), "", file_path)
         aws.s3::put_object(
           region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),

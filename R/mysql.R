@@ -625,68 +625,80 @@ db_read_data_helper <- function(table, columns = "*", column_to_select = "ID",
 #' @param IDs <`character vector`> A character vector of all IDs to retrieve.
 #' @param crs <`numeric`> EPSG coordinate reference system to which the data
 #' should be transformed.
+#' @param keep_geometry <`logical`> Should the geometry column be kept? Defaults
+#' to `TRUE`. Much faster if they are not kept.
 #'
 #' @return A tibble or an sf tibble depending if geometry is available.
 #' @export
 db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
-                         crs = 3347) {
+                         crs = 3347, keep_geometry = TRUE) {
 
   all_tb <- db_list_tables()
   shared_name <- all_tb[grepl(table, all_tb)]
   to_retrieve <- shared_name[grepl("_part\\d*$", shared_name)]
 
   df <- if (length(to_retrieve) == 0) {
-    db_read_data_helper(table = table, columns = columns,
-                        column_to_select = column_to_select,
-                        IDs = IDs)
+    out <- db_read_data_helper(table = table, columns = columns,
+                               column_to_select = column_to_select,
+                               IDs = IDs)
+    # Ensure all out are unique
+    unique(out)
   } else {
     dfs <- lapply(to_retrieve, \(x) {
-      db_read_data_helper(table = x, columns = columns,
-                          column_to_select = column_to_select,
-                          IDs = IDs)
+      out <- db_read_data_helper(table = x, columns = columns,
+                                 column_to_select = column_to_select,
+                                 IDs = IDs)
+      # Ensure all out are unique
+      unique(out)
     })
     Reduce(\(x, y) base::merge(x, y, by = "ID", all = TRUE), dfs) |>
       tibble::as_tibble()
   }
 
   # If it is geometry, convert it to sf
-  if (sum(grepl("geometry", names(df))) > 0) {
-    dfs <- suppressWarnings(split(df, 1:100))
+  if (keep_geometry) {
+    if (sum(grepl("geometry", names(df))) > 0) {
+      dfs <- suppressWarnings(split(df, 1:100))
 
-    pb <- progressr::progressor(steps = length(dfs))
-    dfs <- future.apply::future_lapply(dfs, \(df) {
+      pb <- progressr::progressor(steps = length(dfs))
+      dfs <- future.apply::future_lapply(dfs, \(df) {
 
-      geo_cols_logic <- grepl("geometry_", names(df))
-      geo_columns <- names(df)[geo_cols_logic]
+        geo_cols_logic <- grepl("geometry_", names(df))
+        geo_columns <- names(df)[geo_cols_logic]
 
-      # Order the geo columns
-      ind <- as.numeric(gsub("geometry_", "", geo_columns)) |> order()
-      geo_columns <- geo_columns[ind]
-      col_order <- c(names(df)[!geo_cols_logic], geo_columns)
-      df <- df[, col_order]
+        # Order the geo columns
+        ind <- as.numeric(gsub("geometry_", "", geo_columns)) |> order()
+        geo_columns <- geo_columns[ind]
+        col_order <- c(names(df)[!geo_cols_logic], geo_columns)
+        df <- df[, col_order]
 
-      df$geometry <-
-        lapply(seq_len(nrow(df)), \(x) {
-          df[, geo_columns][is.na(df[, geo_columns])] <- ""
-          paste0(df[x, geo_columns], collapse = "")
-        })
+        df$geometry <-
+          lapply(seq_len(nrow(df)), \(x) {
+            df[, geo_columns][is.na(df[, geo_columns])] <- ""
+            paste0(df[x, geo_columns], collapse = "")
+          })
 
-      df <- df[, !grepl("geometry_", names(df))]
+        df <- df[, !grepl("geometry_", names(df))]
 
-      df$geometry <-
-        sapply(seq_along(df$geometry), \(x) {
-          wkb::hex2raw(df$geometry[x])[[1]] |>
-            sf::st_as_sfc(crs = 3347)
-        })
+        df$geometry <-
+          sapply(seq_along(df$geometry), \(x) {
+            wkb::hex2raw(df$geometry[x])[[1]] |>
+              sf::st_as_sfc(crs = 3347)
+          })
 
-      pb()
-      df
-    }, future.seed = NULL)
+        pb()
+        df
+      }, future.seed = NULL)
 
-    df <- data.table::rbindlist(dfs)
-    df <- sf::st_as_sf(tibble::as_tibble(df), crs = 3347)
-    df <- sf::st_transform(df, crs)
+      df <- data.table::rbindlist(dfs)
+      df <- sf::st_as_sf(tibble::as_tibble(df), crs = 3347)
+      df <- sf::st_transform(df, crs)
 
+    }
+  }
+
+  if (!keep_geometry) {
+    df <- df[-which(grepl("geometry", names(df)))]
   }
 
   return(df)
