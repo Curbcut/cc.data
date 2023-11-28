@@ -75,7 +75,7 @@ tt_local_osrm <- function(dest_folder, mode = "car",
 
 }
 
-#' Create a travel time matrix using Disseination Blocks
+#' Create a travel time matrix using Disseination Areas
 #'
 #' @param DA_table_centroids <`sf data.frame`> A \code{DA} point sf data.frame
 #' @param max_dist <`numeric`> The maximum distance used to calculate or not

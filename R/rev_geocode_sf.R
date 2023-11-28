@@ -22,7 +22,7 @@
 #' @return An `sf` data.frame combining all the `.qs` files in `prov_folder` with
 #' all spatial features reverse geocoded.
 #' @export
-rev_geocode_sf <- function(prov_folder, nb_batches = 100, nb_sf_process = 400) {
+rev_geocode_building <- function(prov_folder, nb_batches = 100, nb_sf_process = 400) {
 
   if (!grepl("/$", prov_folder)) prov_folder <- paste0(prov_folder, "/")
 

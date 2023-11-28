@@ -142,7 +142,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   retail_data <- Reduce(merge, lapply(retail, `[[`, "DA"))
-  # retail_points <- Reduce(merge, lapply(retail, `[[`, "points"))
+  retail_points <- lapply(retail, `[[`, "points")
 
 
   # Financial institutions --------------------------------------------------
@@ -203,7 +203,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   finance_data <- Reduce(merge, lapply(finance, `[[`, "DA"))
-  # finance_points <- Reduce(merge, lapply(finance, `[[`, "points"))
+  finance_points <- lapply(finance, `[[`, "points")
 
 
   # Food stores -------------------------------------------------------------
@@ -305,7 +305,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   food_data <- Reduce(merge, lapply(food, `[[`, "DA"))
-  # food_points <- Reduce(merge, lapply(food, `[[`, "points"))
+  food_points <- lapply(food, `[[`, "points")
 
 
 
@@ -398,7 +398,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   recreation_data <- Reduce(merge, lapply(recreation, `[[`, "DA"))
-  # recreation_points <- Reduce(merge, lapply(recreation, `[[`, "points"))
+  recreation_points <- lapply(recreation, `[[`, "points")
 
 
   # Healthcare services -----------------------------------------------------
@@ -500,7 +500,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   healthcare_data <- Reduce(merge, lapply(healthcare, `[[`, "DA"))
-  # healthcare_points <- Reduce(merge, lapply(healthcare, `[[`, "points"))
+  healthcare_points <- lapply(healthcare, `[[`, "points")
 
 
   # Education facilities ----------------------------------------------------
@@ -614,7 +614,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   educational_data <- Reduce(merge, lapply(educational, `[[`, "DA"))
-  # educational_points <- Reduce(merge, lapply(educational, `[[`, "points"))
+  educational_points <- lapply(educational, `[[`, "points")
 
 
   # Cultural facilities -----------------------------------------------------
@@ -745,7 +745,7 @@ accessibility_DA_location <- function(DA_table) {
   }, simplify = FALSE, USE.NAMES = TRUE)
 
   cultural_data <- Reduce(merge, lapply(cultural, `[[`, "DA"))
-  # cultural_points <- Reduce(merge, lapply(cultural, `[[`, "points"))
+  cultural_points <- lapply(cultural, `[[`, "points")
 
 
 
@@ -841,11 +841,15 @@ accessibility_DA_location <- function(DA_table) {
                              healthcare_dict, educational_dict, cultural_dict))#greenspace_dict, ...))
   themes <- unique(dict$theme)
 
+  # All points
+  points <- c(retail_points, finance_points, food_points, recreation_points,
+              healthcare_points, educational_points, cultural_points)
+
   return(list(data = access,
               #polygon_dict = polygon_dict,
               #polygons = polygons,
               dict = dict,
-              #points = points,
+              points = points,
               themes = themes))
 
 }
@@ -892,5 +896,79 @@ accessibility_polygons_helper <- function(polygons) {
   polygons <- sf::st_cast(out_polygons, "POLYGON")
 
   return(polygons)
+
+}
+
+
+#' Upload mapbox vector tileset for access points
+#'
+#' @param points <`named list`> Where the name is the variable (e.g. retail_general)
+#' and the content is a data.frame of points.
+#' @param username <`character`> Mapbox account username.
+#' @param access_token <`character`> Private access token to the Mapbox account.
+#'
+#' @return Uploads all the list to a mapbox vector tileset with "access_" to the
+#' ID (access_retail_general).
+#' @export
+accessibility_mv_points <- function(points, username, access_token) {
+
+  mapply(\(v, pnt) {
+
+    tile_id <- paste0("access_", v)
+
+    # Transform to 4326
+    pnt <- sf::st_transform(pnt, 4326)
+
+    # Replace non-UTF-8 characters with a safe character (empty string)
+    pnt$name <- stringi::stri_replace_all_regex(pnt$name, "[^\x01-\x7F]", "")
+    # Ensure that the encoding is UTF-8
+    pnt$name <- stringi::stri_encode(pnt$name, to = "UTF-8")
+
+    # Delete tilesource and tile if already existing
+    cc.buildr::tileset_delete_tileset_source(
+      tile_id, username = username, access_token = access_token
+    )
+    cc.buildr::tileset_delete_tileset(
+      tile_id, username = username, access_token = access_token
+    )
+
+    # Upload tile source
+    tryCatch(cc.buildr::tileset_upload_tile_source(
+      df = pnt,
+      id = tile_id,
+      username = username,
+      access_token = access_token
+    ), error = function(e) {
+      cc.buildr::tileset_upload_tile_source_large(
+        df = pnt,
+        id = tile_id,
+        username = username,
+        access_token = access_token
+      )
+    })
+
+    # Create the recipe
+    recipe <- cc.buildr::tileset_create_recipe(
+      layer_names = v,
+      source = paste0("mapbox://tileset-source/", username, "/", tile_id),
+      minzoom = 13,
+      maxzoom = 15,
+      recipe_name = tile_id
+    )
+
+    # Publish tileset
+    cc.buildr::tileset_create_tileset(
+      tileset = tile_id,
+      recipe = recipe,
+      username = username,
+      access_token = access_token
+    )
+    cc.buildr::tileset_publish_tileset(
+      tileset = tile_id,
+      username = username,
+      access_token = access_token
+    )
+
+  }, names(points), points)
 
 }

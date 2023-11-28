@@ -29,13 +29,14 @@ Imports:
     methods,
     sp,
     dplyr,
-    terra
+    terra,
 Suggests:
     aws.s3,
     gtfsrouter,
     gtfstools,
     rgeos,
-    matchr
+    matchr,
+    Curbcut/cc.buildr
 License: AGPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

@@ -153,7 +153,7 @@ rev_geocode_create_local_nominatim()
 Using a combination of the [National Open Database of Addresses](https://www.statcan.gc.ca/en/lode/databases/oda) and the local instance of Nominatim, we reverse geocode all the buildings in the country. This takes an even harder toll on memory usage, as the local Nominatim instance also uses a lot of computational power to serve the reverse geocoding. 
 
 ```r
-buildings_rev_geo <- rev_geocode_sf(prov_folder = buildings_folder)
+buildings_rev_geo <- rev_geocode_building(prov_folder = buildings_folder)
 ```
 
 ##### Buildings upload to Amazon Aurora Serverless - MySQL

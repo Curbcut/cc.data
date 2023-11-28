@@ -225,7 +225,7 @@ Nominatim instance also uses a lot of computational power to serve the
 reverse geocoding.
 
 ``` r
-buildings_rev_geo <- rev_geocode_sf(prov_folder = buildings_folder)
+buildings_rev_geo <- rev_geocode_building(prov_folder = buildings_folder)
 ```
 
 ##### Buildings upload to Amazon Aurora Serverless - MySQL
