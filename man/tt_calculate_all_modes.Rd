@@ -7,7 +7,8 @@
 tt_calculate_all_modes(
   dest_folder,
   DA_table,
-  routing_server = "http://localhost:5000/"
+  routing_server = "http://localhost:5000/",
+  osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf"
 )
 }
 \arguments{
@@ -20,6 +21,9 @@ and process the necessary data for the travel time matrix calculations.}
 a server has been initiated using \code{\link[cc.data]{tt_local_osrm}},
 the default URL will be \verb{http://localhost:5000/}. Other services can be used
 like \verb{http://router.project-osrm.org/}.}
+
+\item{osm_pbf}{<\code{character}> Link to the wanted version of OSM. Defaults to
+Canada.}
 }
 \value{
 Returns a list of three each holding a data.frame where the first

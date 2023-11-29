@@ -7,7 +7,7 @@
 tt_local_osrm(
   dest_folder,
   mode = "car",
-  canada_osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf"
+  osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf"
 )
 }
 \arguments{
@@ -18,8 +18,8 @@ and process the necessary data for the travel time matrix calculations.}
 are the profiles:
 \href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}}
 
-\item{canada_osm_pbf}{<\code{character}> Link to the wanted version of Canada's OSM
-file.}
+\item{osm_pbf}{<\code{character}> Link to the wanted version of OSM. Defaults to
+Canada.}
 }
 \value{
 Opens a terminal from which the docker image is created.

@@ -314,7 +314,7 @@ accessibility_DA_location <- function(DA_table) {
   # Create the recreation dictionary
   recreation_dance <- tibble::tibble(
     var = "recreation_dance",
-    type = list("791"),
+    type = list("7911"),
     title = "Dance Studios, Schools, And Halls",
     short = "Dance Studios",
     exp = paste0("establishments primarily engaged in operating dance studios, ",
@@ -322,7 +322,7 @@ accessibility_DA_location <- function(DA_table) {
 
   recreation_theatrical <- tibble::tibble(
     var = "recreation_theatrical",
-    type = list(c("792", "783")),
+    type = list(c("7922")),
     title = "Theatrical Producers",
     short = "Meat",
     exp = paste0("Establishments primarily engaged in providing live theatrical ",
@@ -331,9 +331,9 @@ accessibility_DA_location <- function(DA_table) {
 
   recreation_physical <- tibble::tibble(
     var = "recreation_physical",
-    type = list("793"),
-    title = "Bowling Centers",
-    short = "Bowling",
+    type = list("7991"),
+    title = "Physical Fitness Facilities",
+    short = "Fitness",
     exp = paste0("establishments primarily engaged in operating reducing and ",
                  "other health clubs, spas, and similar facilities featuring ",
                  "exercise and other active physical fitness conditioning")
@@ -341,9 +341,9 @@ accessibility_DA_location <- function(DA_table) {
 
   recreation_bowling <- tibble::tibble(
     var = "recreation_bowling",
-    type = list("7991"),
-    title = "Physical Fitness Facilities",
-    short = "Fitness",
+    type = list("7933"),
+    title = "Bowling Centers",
+    short = "Bowling",
     exp = paste0("establishments known to the public as bowling centers or lanes")
   )
 

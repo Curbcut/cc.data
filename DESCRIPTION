@@ -35,7 +35,8 @@ Suggests:
     gtfsrouter,
     gtfstools,
     rgeos,
-    matchr,
+    matchr
+Remotes:
     Curbcut/cc.buildr
 License: AGPL (>= 3)
 Encoding: UTF-8

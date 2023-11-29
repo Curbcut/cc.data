@@ -2,7 +2,7 @@
 % Please edit documentation in R/travel_time_matrix.R
 \name{tt_calculate}
 \alias{tt_calculate}
-\title{Create a travel time matrix using Disseination Blocks}
+\title{Create a travel time matrix using Disseination Areas}
 \usage{
 tt_calculate(
   DA_table_centroids,
@@ -28,5 +28,5 @@ like \verb{http://router.project-osrm.org/}.}
 The travel time matrix
 }
 \description{
-Create a travel time matrix using Disseination Blocks
+Create a travel time matrix using Disseination Areas
 }

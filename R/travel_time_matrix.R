@@ -9,13 +9,13 @@
 #' @param mode <`character`> Options are `bicycle`, `car` and `foot`. Here
 #' are the profiles:
 #' \href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}
-#' @param canada_osm_pbf <`character`> Link to the wanted version of Canada's OSM
-#' file.
+#' @param osm_pbf <`character`> Link to the wanted version of OSM. Defaults to
+#' Canada.
 #'
 #' @return Opens a terminal from which the docker image is created.
 #' @export
 tt_local_osrm <- function(dest_folder, mode = "car",
-                          canada_osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf") {
+                          osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf") {
 
   # Error catch
   if (!mode %in% c("bicycle", "car", "foot"))
@@ -36,7 +36,7 @@ tt_local_osrm <- function(dest_folder, mode = "car",
   # Download Canada osm pbf
   osm_link <- osmextract::oe_download(
     file_basename = "canada.osm.pbf",
-    file_url = canada_osm_pbf,
+    file_url = osm_pbf,
     download_directory = dest_folder,
     quiet = FALSE,
     max_file_size = Inf)
@@ -175,13 +175,16 @@ tt_calculate <- function(DA_table_centroids, max_dist = 120000,
 #' a server has been initiated using \code{\link[cc.data]{tt_local_osrm}},
 #' the default URL will be `http://localhost:5000/`. Other services can be used
 #' like `http://router.project-osrm.org/`.
+#' @param osm_pbf <`character`> Link to the wanted version of OSM. Defaults to
+#' Canada.
 #'
 #' @return Returns a list of three each holding a data.frame where the first
 #' column is the DA ID, and all others are all IDs. Every cell is the trip duration
 #' from and to DAs in seconds.
 #' @export
 tt_calculate_all_modes <- function(dest_folder, DA_table,
-                                   routing_server = "http://localhost:5000/") {
+                                   routing_server = "http://localhost:5000/",
+                                   osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf") {
 
   # Error checking
   if (!"ID" %in% names(DA_table))
@@ -207,7 +210,7 @@ tt_calculate_all_modes <- function(dest_folder, DA_table,
   if (!file.exists(foot_folder)) dir.create(foot_folder)
   if (!grepl("/$", foot_folder)) dest_folder <- paste0(foot_folder, "/")
   # Build the docker image for car routing
-  tt_local_osrm(dest_folder = foot_folder, mode = "foot")
+  tt_local_osrm(dest_folder = foot_folder, mode = "foot", osm_pbf = osm_pbf)
   # Create the travel time matrix
   foot <- tt_calculate(DA_table_centroids = DA_table, max_dist = 10000,
                        routing_server = routing_server)
@@ -221,7 +224,7 @@ tt_calculate_all_modes <- function(dest_folder, DA_table,
   if (!file.exists(bicycle_folder)) dir.create(bicycle_folder)
   if (!grepl("/$", bicycle_folder)) dest_folder <- paste0(bicycle_folder, "/")
   # Build the docker image for car routing
-  tt_local_osrm(dest_folder = bicycle_folder, mode = "bicycle")
+  tt_local_osrm(dest_folder = bicycle_folder, mode = "bicycle", osm_pbf = osm_pbf)
   # Create the travel time matrix
   bicycle <- tt_calculate(DA_table_centroids = DA_table, max_dist = 30000,
                           routing_server = routing_server)
@@ -235,7 +238,7 @@ tt_calculate_all_modes <- function(dest_folder, DA_table,
   if (!file.exists(car_folder)) dir.create(car_folder)
   if (!grepl("/$", car_folder)) dest_folder <- paste0(car_folder, "/")
   # Build the docker image for car routing
-  tt_local_osrm(dest_folder = car_folder, mode = "car")
+  tt_local_osrm(dest_folder = car_folder, mode = "car", osm_pbf = osm_pbf)
   # Create the travel time matrix
   car <- tt_calculate(DA_table_centroids = DA_table, max_dist = 120000,
                       routing_server = routing_server)
