@@ -15,7 +15,7 @@
 #' @return Opens a terminal from which the docker image is created.
 #' @export
 tt_local_osrm <- function(dest_folder, mode = "car",
-                          osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf") {
+                          osm_pbf = "https://download.geofabrik.de/north-america/canada-latest.osm.pbf") {
 
   # Error catch
   if (!mode %in% c("bicycle", "car", "foot"))

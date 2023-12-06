@@ -15,22 +15,22 @@
 #' and DAs.
 #' @export
 build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_years)],
-                         DA_table) {
+                      DA_table) {
 
   # Intersection density measure --------------------------------------------
 
-  # three_ways <- sapply(years, get_all_three_plus_ways,
-  #                      simplify = FALSE, USE.NAMES = TRUE)
-  # names(three_ways) <- years
-  # qs::qsave(three_ways, "calculated_ignore/canale/three_ways.qs")
-  three_ways <- qs::qread("calculated_ignore/canale/three_ways.qs")
+  three_ways <- sapply(years, get_all_three_plus_ways,
+                       simplify = FALSE, USE.NAMES = TRUE)
+  names(three_ways) <- years
+  # qs::qsave(three_ways, "calculated_ignore/alp/three_ways.qs")
+  # three_ways <- qs::qread("calculated_ignore/alp/three_ways.qs")
 
-  # sql_table_list <- cc.data::db_list_tables()
-  # non_missing_ids <-
-  #   DA_table$ID[paste0("ttm_foot_", DA_table$ID) %in% sql_table_list]
-  # ttm_foot <- db_read_ttm(mode = "foot", DA_ID = non_missing_ids)
-  # qs::qsave(ttm_foot, "calculated_ignore/canale/ttm_foot.qs")
-  ttm_foot <- qs::qread("calculated_ignore/canale/ttm_foot.qs")
+  sql_table_list <- cc.data::db_list_tables()
+  non_missing_ids <-
+    DA_table$ID[paste0("ttm_foot_", DA_table$ID) %in% sql_table_list]
+  ttm_foot <- db_read_ttm(mode = "foot", DA_ID = non_missing_ids)
+  # qs::qsave(ttm_foot, "calculated_ignore/alp/ttm_foot.qs")
+  # ttm_foot <- qs::qread("calculated_ignore/alp/ttm_foot.qs")
   ttm_foot <- ttm_foot[names(ttm_foot) %in% DA_table$ID]
 
   # Subset only the DAs in a 15 minutes walk
@@ -73,34 +73,18 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   DA_table_tw_yr <- Reduce(rbind, DA_table_tw_yr)
-  DA_table_tw_yr$int_d <- stats::ecdf(DA_table_tw_yr$three_ways)(DA_table_tw_yr$three_ways)
+  DA_table_tw_yr_fin <- DA_table_tw_yr
+  DA_table_tw_yr_fin$int_d <- stats::ecdf(DA_table_tw_yr$three_ways)(DA_table_tw_yr$three_ways)
 
-  DA_table_tw_yr <- lapply(seq_along(years), \(i) {
-    out <- DA_table_tw_yr[DA_table_tw_yr$year == years[[i]], ]
+  DA_table_tw_yr_fin <- lapply(seq_along(years), \(i) {
+    out <- DA_table_tw_yr_fin[DA_table_tw_yr_fin$year == years[[i]], ]
     out <- out[c(1, 4)]
     names(out)[2] <- paste0("int_d_", years[[i]])
     return(out)
   })
 
-  int_d <- Reduce(merge, DA_table_tw_yr) |>
+  int_d <- Reduce(merge, DA_table_tw_yr_fin) |>
     tibble::as_tibble()
-
-
-  # # Calculate the mean and standard deviation
-  # unlisted_tw_values <- lapply(DA_table_tw, `[[`, "three_ways") |> unlist()
-  # mean_data <- mean(unlisted_tw_values, na.rm = TRUE)
-  # sd_data <- stats::sd(unlisted_tw_values, na.rm = TRUE)
-  #
-  # # Calculate the z-score for each data point
-  # DA_table_tw <- mapply(\(x, year) {
-  #   df <- DA_table
-  #   x <- x[order(x$ID, df$ID), ]
-  #   df[[paste0("int_d_", year)]] <- (x$three_ways - mean_data) / sd_data
-  #   df
-  # }, DA_table_tw, names(DA_table_tw), SIMPLIFY = FALSE, USE.NAMES = TRUE)
-  #
-  # int_d <- Reduce(\(x, y) merge(x, y, by = "ID"),
-  #                 lapply(DA_table_tw, sf::st_drop_geometry))
 
 
   # Dwelling density measure ------------------------------------------------
@@ -183,38 +167,19 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   dwellings_yr <- Reduce(rbind, dwellings_yr)
-  dwellings_yr$dwl_d <- stats::ecdf(dwellings_yr$density)(dwellings_yr$density)
+  dwellings_yr_fin <- dwellings_yr
+  dwellings_yr_fin$dwl_d <- stats::ecdf(dwellings_yr$density)(dwellings_yr$density)
 
-  dwellings_yr <- lapply(seq_along(years), \(i) {
-    out <- dwellings_yr[dwellings_yr$year == years[[i]], ]
+  dwellings_yr_fin <- lapply(seq_along(years), \(i) {
+    out <- dwellings_yr_fin[dwellings_yr_fin$year == years[[i]], ]
     out <- out[c(1, 4)]
     names(out)[2] <- paste0("dwl_d_", years[[i]])
     return(out)
   })
 
-  dwl_d <- Reduce(merge, dwellings_yr) |>
+  dwl_d <- Reduce(merge, dwellings_yr_fin) |>
     tibble::as_tibble()
 
-
-
-
-
-  # # Calculate the mean and standard deviation
-  # unlisted_d_values <- lapply(dwellings, `[[`, "density") |> unlist()
-  # mean_data <- mean(unlisted_d_values, na.rm = TRUE)
-  # sd_data <- stats::sd(unlisted_d_values, na.rm = TRUE)
-  #
-  # # Calculate the z-score for each data point
-  # dwellings_z <- mapply(\(x, year) {
-  #   df <- DA_table
-  #   x <- x[order(x$ID, df$ID), ]
-  #   df[[paste0("dwl_d_", year)]] <- (x$density - mean_data) / sd_data
-  #   df
-  # }, dwellings, years, SIMPLIFY = FALSE, USE.NAMES = TRUE)
-  #
-  # # Merge
-  # dwl_d <- Reduce(\(x, y) merge(x, y, by = "ID"),
-  #                 lapply(dwellings_z, sf::st_drop_geometry))
 
   # Points of interest measure ----------------------------------------------
 
@@ -249,32 +214,12 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
     # Grab the major groups (from the SIC code)
     poi$sic_major_group <- stringr::str_extract(poi[[sic_col]], "^\\d{2}")
 
-    # Get a list of all the major group that we want to keep as amenities
-    list_items <- rvest::read_html("https://www.osha.gov/data/sic-manual") |>
-      rvest::html_elements("li")
-    filtered_list_items <-
-      list_items[stringr::str_detect(rvest::html_text(list_items), "Division")]
-
-    divisions <- lapply(filtered_list_items, \(li) {
-      # Extract the title of the <li>
-      title <- rvest::html_text(rvest::html_element(li, "a"))
-      # Extract the <ul> elements for the current <li>
-      ul_elements <- rvest::html_elements(li, "a")
-      ul_vec <- sapply(ul_elements, \(x) {
-        stringr::str_extract(rvest::html_text(x), "(?<=Major Group )\\d{2}")
-      })
-      ul_vec <- ul_vec[!is.na(ul_vec)]
-      # Return
-      tibble::tibble(division = title,
-                     major_groups = as.numeric(ul_vec))
-    })
-    divisions <- tibble::as_tibble(data.table::rbindlist(divisions))
-
-    # Filter in only the amenities we are interested in
-    amenities <- c("Division G: Retail Trade",
-                   "Division H: Finance, Insurance, And Real Estate",
-                   "Division I: Services")
-    major_groups <- divisions$major_groups[divisions$division %in% amenities]
+    # # Filter in only the amenities we are interested in
+    # amenities <- c("Division G: Retail Trade",
+    #                "Division H: Finance, Insurance, And Real Estate",
+    #                "Division I: Services")
+    # major_groups <- divisions$major_groups[divisions$division %in% amenities]
+    major_groups <- c(41, 52:89)
     # Manually add missing major groups
     major_groups <- c(major_groups, 41)
     poi <- poi[poi$sic_major_group %in% major_groups, ]
@@ -292,7 +237,10 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
     # a 15 minutes walk
     df <- sf::st_drop_geometry(df)
     df$poi_15min <- future.apply::future_sapply(df$ID, \(x) {
-      das_15min <- ttm_foot[[which(names(ttm_foot) == x)]]$DA_ID
+      tt <- which(names(ttm_foot) == x)
+      # If there are no travel times, just use the POIs of self
+      if (length(tt) == 0) return(df$poi[df$ID == x])
+      das_15min <- ttm_foot[[tt]]$DA_ID
 
       sum(df$poi[df$ID %in% das_15min])
     })
@@ -310,34 +258,18 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   pois_yr <- Reduce(rbind, pois_yr)
-  pois_yr$poi <- stats::ecdf(pois_yr$poi_15min)(pois_yr$poi_15min)
+  pois_yr_fin <- pois_yr
+  pois_yr_fin$poi <- stats::ecdf(pois_yr_fin$poi_15min)(pois_yr_fin$poi_15min)
 
-  pois_yr <- lapply(seq_along(years), \(i) {
-    out <- pois_yr[pois_yr$year == years[[i]], ]
+  pois_yr_fin <- lapply(seq_along(years), \(i) {
+    out <- pois_yr_fin[pois_yr_fin$year == years[[i]], ]
     out <- out[c(1, 4)]
     names(out)[2] <- paste0("poi_", years[[i]])
     return(out)
   })
 
-  poi <- Reduce(merge, pois_yr) |>
+  poi <- Reduce(merge, pois_yr_fin) |>
     tibble::as_tibble()
-
-  # # Calculate the mean and standard deviation
-  # unlisted_p_values <- lapply(pois, `[[`, "poi_15min") |> unlist()
-  # mean_data <- mean(unlisted_p_values, na.rm = TRUE)
-  # sd_data <- stats::sd(unlisted_p_values, na.rm = TRUE)
-  #
-  # # Calculate the z-score for each data point
-  # poi_z <- mapply(\(x, year) {
-  #   df <- DA_table
-  #   x <- x[order(x$ID, df$ID), ]
-  #   df[[paste0("poi_", year)]] <- (x$poi_15min - mean_data) / sd_data
-  #   df
-  # }, pois, years, SIMPLIFY = FALSE, USE.NAMES = TRUE)
-  #
-  # # Merge
-  # poi <- Reduce(\(x, y) merge(x, y, by = "ID"),
-  #                 lapply(poi_z, sf::st_drop_geometry))
 
 
   # Sum the three z index for the final score -------------------------------
@@ -358,11 +290,26 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
     return(df)
   })
 
-  alp <- tibble::as_tibble(Reduce(merge, alp))
+  alp_final <- tibble::as_tibble(Reduce(merge, alp))
+
+
+#   # Create a statistical model ----------------------------------------------
+#
+#   formod <- Reduce(merge, list(DA_table_tw_yr, dwellings_yr, pois_yr))
+#   alp_formod <- mapply(\(df, year) {
+#     names(df)[2] <- "alp"
+#     df$year <- year
+#     df
+#   }, alp, years, SIMPLIFY = FALSE)
+#   alp_formod <- Reduce(rbind, alp_formod)
+#   formod <- merge(formod, alp_formod)
+#   formod <- formod[!is.na(formod$alp), ]
+#
+#   lm(alp ~ three_ways + density + poi_15min, data = formod) |> summary()
 
   # Return ------------------------------------------------------------------
 
-  return(alp)
+  return(alp_final)
 }
 
 #' Get all three+ way intersections in Canadian streets for a given year
