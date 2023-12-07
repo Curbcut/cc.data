@@ -34,5 +34,9 @@ filtering and transformation but does not return a value.
 This function reads the master polygon of a region and extracts NDVI data
 for specified years. The process involves extracting the bounding box of the
 master polygon, retrieving features related to the specified region, and
-filtering the NDVI points based on tile information.
+filtering the NDVI points based on tile information. It saves the yearly NDVI
+values in the \code{output_path/year} with centroid of every 30m cells as the ID.
+The satellite is very precise, and every raster is exactly the same centroid
+value, which can be used as an ID. We keep geometry for the latest year,
+and remove it from other years.
 }

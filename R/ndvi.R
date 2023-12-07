@@ -216,11 +216,12 @@ ndvi_get_features <- function(years = ndvi_years(),
 #' directory. This allows to have complete control over permissions and other attributes
 #' when paralleling. Temporary files are not removed otherwise, and the usual temporary
 #' folder becomes to heavy.
+#' @param remove_NAs <`logical`> Should NA raster get removed?
 #'
 #' @return An `sf` object containing the NDVI points. The result includes the NDVI
 #' values for each valid raster layer, and it is filtered to exclude poor quality
 #' pixels.
-ndvi_features_to_point <- function(features, temp_folder = tempdir()) {
+ndvi_features_to_point <- function(features, temp_folder = tempdir(), remove_NAs = TRUE) {
   # Function to process each item
   process_item <- function(item) {
     # Determine which NDVI bands to use based on collection
@@ -420,18 +421,34 @@ ndvi_features_to_point <- function(features, temp_folder = tempdir()) {
   ndvi_filtered_stacks <- terra::rast(ndvi_filtered)
 
   # Only keep layers with non-NA values
-  lyrn <- 1:terra::nlyr(ndvi_filtered_stacks)
-  valid_layers <- sapply(lyrn, function(i) {
-    !all(is.na(terra::values(ndvi_filtered_stacks[[i]])))
-  })
-
-  ndvi_filtered_stacks <- ndvi_filtered_stacks[[which(valid_layers)]]
+  if (remove_NAs) {
+    lyrn <- 1:terra::nlyr(ndvi_filtered_stacks)
+    valid_layers <- sapply(lyrn, function(i) {
+      !all(is.na(terra::values(ndvi_filtered_stacks[[i]])))
+    })
+    ndvi_filtered_stacks <- ndvi_filtered_stacks[[which(valid_layers)]]
+  }
 
   # Switch to sf points
-  ndvi_points <- terra::as.points(ndvi_filtered_stacks, na.all = TRUE)
+  ndvi_points <- terra::as.points(ndvi_filtered_stacks, na.rm = remove_NAs, na.all = remove_NAs)
   ndvi_points <- sf::st_as_sf(ndvi_points)
 
-  ndvi_points$ndvi <- rowMeans(sf::st_drop_geometry(ndvi_points), na.rm = TRUE)
+  na_count_per_row <- rowSums(is.na(ndvi_points))
+  at_least_two <- na_count_per_row > 2
+  at_least_two <- ndvi_points[at_least_two, ]
+
+  # Function to calculate the mean after dropping min and max
+  mean_without_min_max <- function(row) {
+    # Remove NA values if needed
+    row <- na.omit(row)
+    # Remove the minimum and maximum values
+    row <- row[row != min(row) & row != max(row)]
+    # Calculate the mean of the remaining values
+    mean(row)
+  }
+
+  # Apply the function to each row (after dropping geometry if it's an sf object)
+  ndvi_points$ndvi <- apply(sf::st_drop_geometry(ndvi_points), 1, mean_without_min_max)
   ndvi_points <- ndvi_points["ndvi"]
 
   return(ndvi_points)
@@ -582,7 +599,11 @@ ndvi_import <- function(years = ndvi_years(),
 #' This function reads the master polygon of a region and extracts NDVI data
 #' for specified years. The process involves extracting the bounding box of the
 #' master polygon, retrieving features related to the specified region, and
-#' filtering the NDVI points based on tile information.
+#' filtering the NDVI points based on tile information. It saves the yearly NDVI
+#' values in the `output_path/year` with centroid of every 30m cells as the ID.
+#' The satellite is very precise, and every raster is exactly the same centroid
+#' value, which can be used as an ID. We keep geometry for the latest year,
+#' and remove it from other years.
 #'
 #' @param master_polygon <`sf polygon`> The master polygon of the region.
 #' @param years <`character vector`> A vector specifying the years for which
@@ -607,8 +628,9 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   roi <- terra::ext(zone)
   zone_bbox <- paste(roi[1], roi[3], roi[2], roi[4], sep = ',')
 
-
   lapply(rev(years), \(year) {
+
+    latest_year <- year == max(years)
 
     dir.create(sprintf("%s%s", output_path, year)) |> suppressWarnings()
 
@@ -637,8 +659,9 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
     if (!overwrite) {
       all_files <- list.files(sprintf("%s%s", output_path, year))
+      all_files <- gsub(".qs", "", all_files)
       if (length(all_files) != 0) {
-        unique_tile <- unique_tile[!grepl(paste0(unique_tile, collapse = "|"), all_files)]
+        unique_tile <- unique_tile[!unique_tile %in% all_files]
       }
     }
 
@@ -648,8 +671,54 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
       lapply(unique_tile, \(tile) {
         tile_features <- searches_features[grepl(tile, searches_features$id), ]
-        ndvi_points <- ndvi_features_to_point(features = tile_features,
-                                              temp_folder = temp_folder)
+        ndvi_points <- ndvi_features_to_point(
+          features = tile_features,
+          temp_folder = temp_folder,
+          remove_NAs = if (latest_year) FALSE else TRUE)
+
+        # Remove geometry features except for the most recent year
+        coords <- sf::st_coordinates(ndvi_points)
+        if (!latest_year) ndvi_points <- sf::st_drop_geometry(ndvi_points)
+
+        # For the most recent year, switch from points to gemetries
+        if (latest_year) {
+          # Function to create a grid cell from a centroid
+          create_grid_cell <- function(centroid, size) {
+            # Calculate half of the grid size
+            half_size <- size / 2
+
+            # Extract longitude and latitude
+            lon <- centroid[1]
+            lat <- centroid[2]
+
+            # Calculate corner coordinates
+            xmin <- lon - half_size
+            xmax <- lon + half_size
+            ymin <- lat - half_size
+            ymax <- lat + half_size
+
+            # Create a POLYGON from these coordinates
+            sf::st_polygon(list(matrix(c(xmin, ymin,
+                                         xmin, ymax,
+                                         xmax, ymax,
+                                         xmax, ymin,
+                                         xmin, ymin),
+                                       ncol = 2, byrow = TRUE)))
+          }
+
+          # Create the grid cells
+          ndvi_points_crs <- sf::st_crs(ndvi_points)
+          geoms <- lapply(ndvi_points$geometry, create_grid_cell, size = 30)
+          geometry <- sf::st_sfc(geoms, crs = ndvi_points_crs)
+          grid_sf <- sf::st_sf(geometry)
+          ndvi_points <- grid_sf
+        }
+
+        # Keep the ID (centroid)
+        ndvi_points$ID <- apply(coords, 1, paste0, collapse = "_")
+        ndvi_points[[sprintf("ndvi_%s", year)]] <- ndvi_points$ndvi
+        ndvi_points$ndvi <- NULL
+
         pb()
         qs::qsave(ndvi_points, file = sprintf("%s%s/%s.qs", output_path, year, tile))
       })

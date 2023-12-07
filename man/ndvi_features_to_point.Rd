@@ -4,7 +4,7 @@
 \alias{ndvi_features_to_point}
 \title{Convert HLS Features to Point Data}
 \usage{
-ndvi_features_to_point(features, temp_folder = tempdir())
+ndvi_features_to_point(features, temp_folder = tempdir(), remove_NAs = TRUE)
 }
 \arguments{
 \item{features}{<\code{data.frame}> A data.frame of \code{features} subsets retrieved
@@ -17,6 +17,8 @@ space, it can be a ink to a managed temporary folder in a dedicated
 directory. This allows to have complete control over permissions and other attributes
 when paralleling. Temporary files are not removed otherwise, and the usual temporary
 folder becomes to heavy.}
+
+\item{remove_NAs}{<\code{logical}> Should NA raster get removed?}
 }
 \value{
 An \code{sf} object containing the NDVI points. The result includes the NDVI

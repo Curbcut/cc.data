@@ -16,8 +16,8 @@ census_switch_full_geo <- function(df, scale_name) {
   # From the bucket, grab the geometries of the scale
   new_geos <- bucket_read_object_zip_shp(object = sprintf("%s_shp.zip", scale_name),
                                          bucket = "curbcut.rawdata")
-  new_geos <- new_geos[1]
-  ID <- names(new_geos)[1]
+  ID <- if (scale_name == "CMA") "CMAPUID" else names(new_geos)[1]
+  new_geos <- new_geos[ID]
 
   # Get the current df and merge the new geometries
   df <- sf::st_drop_geometry(df)

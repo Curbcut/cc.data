@@ -7,7 +7,7 @@
 tt_local_osrm(
   dest_folder,
   mode = "car",
-  osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf"
+  osm_pbf = "https://download.geofabrik.de/north-america/canada-latest.osm.pbf"
 )
 }
 \arguments{
