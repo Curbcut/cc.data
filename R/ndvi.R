@@ -678,7 +678,14 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
         # Remove geometry features except for the most recent year
         coords <- sf::st_coordinates(ndvi_points)
-        if (!latest_year) ndvi_points <- sf::st_drop_geometry(ndvi_points)
+
+        # If we're not in the latest year, drop geometry and add necessary columns
+        if (!latest_year) {
+          ndvi_points <- sf::st_drop_geometry(ndvi_points)
+          ndvi_points$ID <- apply(coords, 1, paste0, collapse = "_")
+          ndvi_points[[sprintf("ndvi_%s", year)]] <- ndvi_points$ndvi
+          ndvi_points$ndvi <- NULL
+        }
 
         # For the most recent year, switch from points to gemetries
         if (latest_year) {
@@ -709,15 +716,21 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
           # Create the grid cells
           ndvi_points_crs <- sf::st_crs(ndvi_points)
           geoms <- lapply(ndvi_points$geometry, create_grid_cell, size = 30)
+
+          # Drop geometry to save some memory
+          ndvi_points <- sf::st_drop_geometry(ndvi_points)
+
+          # Make geometry `sf`
           geometry <- sf::st_sfc(geoms, crs = ndvi_points_crs)
           grid_sf <- sf::st_sf(geometry)
+
+          # Keep the ID (centroid)
+          grid_sf$ID <- apply(coords, 1, paste0, collapse = "_")
+          grid_sf[[sprintf("ndvi_%s", year)]] <- ndvi_points$ndvi
+          grid_sf$ndvi <- NULL
+
           ndvi_points <- grid_sf
         }
-
-        # Keep the ID (centroid)
-        ndvi_points$ID <- apply(coords, 1, paste0, collapse = "_")
-        ndvi_points[[sprintf("ndvi_%s", year)]] <- ndvi_points$ndvi
-        ndvi_points$ndvi <- NULL
 
         pb()
         qs::qsave(ndvi_points, file = sprintf("%s%s/%s.qs", output_path, year, tile))

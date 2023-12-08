@@ -951,7 +951,7 @@ accessibility_mv_points <- function(points, username, access_token) {
     recipe <- cc.buildr::tileset_create_recipe(
       layer_names = v,
       source = paste0("mapbox://tileset-source/", username, "/", tile_id),
-      minzoom = 13,
+      minzoom = 12,
       maxzoom = 15,
       recipe_name = tile_id
     )
