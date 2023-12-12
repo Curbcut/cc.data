@@ -93,8 +93,6 @@ ndvi_get_items <- function(year, limit = 25, zone_bbox, collections) {
 
   # Using future_lapply to parallelize the retrieval process
   if (total_pages > 0) {
-    progressr::with_progress({
-      pb <- progressr::progressor(total_pages)
       more_retrievals <- future.apply::future_lapply(seq_len(total_pages), \(page_number) {
         search_body <- list(limit = limit,
                             page = page_number,
@@ -106,12 +104,9 @@ ndvi_get_items <- function(year, limit = 25, zone_bbox, collections) {
             httr::content(as = "text") |>
             jsonlite::fromJSON()
           , error = function(e) return(NULL))
-
-        pb()
         return(search_req)
       })
       retrievals <- c(retrievals, more_retrievals)
-    })
   }
 
   return(retrievals)
@@ -216,12 +211,12 @@ ndvi_get_features <- function(years = ndvi_years(),
 #' directory. This allows to have complete control over permissions and other attributes
 #' when paralleling. Temporary files are not removed otherwise, and the usual temporary
 #' folder becomes to heavy.
-#' @param remove_NAs <`logical`> Should NA raster get removed?
+#' @param year <`numeric`> Which years are the features from?
 #'
 #' @return An `sf` object containing the NDVI points. The result includes the NDVI
 #' values for each valid raster layer, and it is filtered to exclude poor quality
 #' pixels.
-ndvi_features_to_point <- function(features, temp_folder = tempdir(), remove_NAs = TRUE) {
+ndvi_features_to_point <- function(features, temp_folder = tempdir(), year) {
   # Function to process each item
   process_item <- function(item) {
     # Determine which NDVI bands to use based on collection
@@ -420,38 +415,58 @@ ndvi_features_to_point <- function(features, temp_folder = tempdir(), remove_NAs
 
   ndvi_filtered_stacks <- terra::rast(ndvi_filtered)
 
-  # Only keep layers with non-NA values
-  if (remove_NAs) {
-    lyrn <- 1:terra::nlyr(ndvi_filtered_stacks)
-    valid_layers <- sapply(lyrn, function(i) {
-      !all(is.na(terra::values(ndvi_filtered_stacks[[i]])))
-    })
-    ndvi_filtered_stacks <- ndvi_filtered_stacks[[which(valid_layers)]]
+  # 1. Count NA values per cell across layers
+  na_count_per_cell <- apply(terra::values(ndvi_filtered_stacks), 1, function(x) sum(is.na(x)))
+
+  # 2. Identify cells with at least two NAs
+  valid_cells <- na_count_per_cell > 2
+
+  # 3. Function to calculate the mean after dropping min and max
+  mean_without_min_max <- function(x) {
+    x <- na.omit(x)  # Remove NA values
+    x <- x[x > 0 & x < 1]
+    x <- x[x != min(x) & x != max(x)]  # Remove min and max
+    if (length(x) > 0) mean(x) else NA  # Calculate mean or return NA if no data left
   }
 
-  # Switch to sf points
-  ndvi_points <- terra::as.points(ndvi_filtered_stacks, na.rm = remove_NAs, na.all = remove_NAs)
-  ndvi_points <- sf::st_as_sf(ndvi_points)
+  # 4. Apply the function to each cell, excluding those with at least two NAs
+  mean_values <- apply(terra::values(ndvi_filtered_stacks)[valid_cells, , drop = FALSE], 1, mean_without_min_max)
 
-  na_count_per_row <- rowSums(is.na(ndvi_points))
-  at_least_two <- na_count_per_row > 2
-  at_least_two <- ndvi_points[at_least_two, ]
+  # 5. Create a new raster for the mean values
+  # Initialize a raster filled with NAs
+  mean_raster <- terra::setValues(ndvi_filtered_stacks[[1]], rep(NA, terra::ncell(ndvi_filtered_stacks)))
 
-  # Function to calculate the mean after dropping min and max
-  mean_without_min_max <- function(row) {
-    # Remove NA values if needed
-    row <- na.omit(row)
-    # Remove the minimum and maximum values
-    row <- row[row != min(row) & row != max(row)]
-    # Calculate the mean of the remaining values
-    mean(row)
-  }
+  # Fill in the mean values in the appropriate cells
+  mean_raster[valid_cells] <- mean_values
+  mean_raster[!valid_cells] <- NA
 
-  # Apply the function to each row (after dropping geometry if it's an sf object)
-  ndvi_points$ndvi <- apply(sf::st_drop_geometry(ndvi_points), 1, mean_without_min_max)
-  ndvi_points <- ndvi_points["ndvi"]
+  names(mean_raster) <- sprintf("ndvi_%s", year)
 
-  return(ndvi_points)
+  return(mean_raster)
+
+# # Switch to sf points
+# ndvi_points <- terra::as.points(ndvi_filtered_stacks, na.rm = remove_NAs, na.all = remove_NAs)
+# ndvi_points <- sf::st_as_sf(ndvi_points)
+#
+# na_count_per_row <- rowSums(is.na(ndvi_points))
+# at_least_two <- na_count_per_row > 2
+# at_least_two <- ndvi_points[at_least_two, ]
+#
+# # Function to calculate the mean after dropping min and max
+# mean_without_min_max <- function(row) {
+#   # Remove NA values if needed
+#   row <- na.omit(row)
+#   # Remove the minimum and maximum values
+#   row <- row[row != min(row) & row != max(row)]
+#   # Calculate the mean of the remaining values
+#   mean(row)
+# }
+#
+# # Apply the function to each row (after dropping geometry if it's an sf object)
+# ndvi_points$ndvi <- apply(sf::st_drop_geometry(ndvi_points), 1, mean_without_min_max)
+# ndvi_points <- ndvi_points["ndvi"]
+#
+#   return(ndvi_points)
 }
 
 #' Import NDVI Data for Specific Months and Process It
@@ -628,117 +643,124 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   roi <- terra::ext(zone)
   zone_bbox <- paste(roi[1], roi[3], roi[2], roi[4], sep = ',')
 
-  lapply(rev(years), \(year) {
+  # Get the tiles that must be extracted (they are the same at every year)
+  last_year <- max(years)
 
-    latest_year <- year == max(years)
+  # Retrievel HLS items
+  retrievals <- ndvi_get_items_hls(year = last_year, zone_bbox = zone_bbox)
 
-    dir.create(sprintf("%s%s", output_path, year)) |> suppressWarnings()
+  # Get the features only
+  retrievals_features <- lapply(retrievals, `[[`, "features")
 
-    retrievals <- ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
+  # Identify common columns across all data frames
+  common_columns <- Reduce(intersect, lapply(retrievals_features, colnames))
 
-    # Get the features only
-    retrievals_features <- lapply(retrievals, `[[`, "features")
+  # Select only common columns and bind the data frames
+  searches_features <- dplyr::bind_rows(lapply(retrievals_features, \(df) dplyr::select(df, common_columns)))
+  searches_features <- tibble::as_tibble(searches_features)
 
-    # Identify common columns across all data frames
-    common_columns <- Reduce(intersect, lapply(retrievals_features, colnames))
+  # Extract the tile info
+  # Extract the tile info
+  pattern <- "T[0-9]{2}[A-Z]{3}"
+  unique_tile <- gsub(paste0(".*(", pattern, ").*"), "\\1", unique(searches_features$id))
+  unique_tile <- unique(unique_tile)
 
-    # Select only common columns and bind the data frames
-    searches_features <- dplyr::bind_rows(lapply(retrievals_features, \(df) dplyr::select(df, common_columns)))
-    searches_features <- tibble::as_tibble(searches_features)
+  progressr::with_progress({
+    pb <- progressr::progressor(length(unique_tile) * length(years) + length(unique_tile))
 
-    # Avoid unnecessary noise and reduce the computational load by filtering out
-    # highly cloudy granules.
-    if (filter_cloudy_tiles)
-      searches_features <- searches_features[searches_features$properties$`eo:cloud_cover` < 30, ]
+    tile_data <- lapply(unique_tile, \(tile) {
 
-    # Extract the tile info
-    # Extract the tile info
-    pattern <- "T[0-9]{2}[A-Z]{3}"
-    unique_tile <- gsub(paste0(".*(", pattern, ").*"), "\\1", unique(searches_features$id))
-    unique_tile <- unique(unique_tile)
+      # For every tile, iterate over all the years
+      tile_data <- lapply(rev(years), \(year) {
 
-    if (!overwrite) {
-      all_files <- list.files(sprintf("%s%s", output_path, year))
-      all_files <- gsub(".qs", "", all_files)
-      if (length(all_files) != 0) {
-        unique_tile <- unique_tile[!unique_tile %in% all_files]
-      }
-    }
+        retrievals <- ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
 
-    progressr::with_progress({
+        # Get the features only
+        retrievals_features <- lapply(retrievals, `[[`, "features")
 
-      pb <- progressr::progressor(length(unique_tile))
+        # Identify common columns across all data frames
+        common_columns <- Reduce(intersect, lapply(retrievals_features, colnames))
 
-      lapply(unique_tile, \(tile) {
+        # Select only common columns and bind the data frames
+        searches_features <- dplyr::bind_rows(lapply(retrievals_features, \(df) dplyr::select(df, common_columns)))
+        searches_features <- tibble::as_tibble(searches_features)
+
+        # Avoid unnecessary noise and reduce the computational load by filtering out
+        # highly cloudy granules.
+        if (filter_cloudy_tiles)
+          searches_features <- searches_features[searches_features$properties$`eo:cloud_cover` < 30, ]
+
+        # Which features are part of this tile
         tile_features <- searches_features[grepl(tile, searches_features$id), ]
-        ndvi_points <- ndvi_features_to_point(
-          features = tile_features,
-          temp_folder = temp_folder,
-          remove_NAs = if (latest_year) FALSE else TRUE)
-
-        # Remove geometry features except for the most recent year
-        coords <- sf::st_coordinates(ndvi_points)
-
-        # If we're not in the latest year, drop geometry and add necessary columns
-        if (!latest_year) {
-          ndvi_points <- sf::st_drop_geometry(ndvi_points)
-          ndvi_points$ID <- apply(coords, 1, paste0, collapse = "_")
-          ndvi_points[[sprintf("ndvi_%s", year)]] <- ndvi_points$ndvi
-          ndvi_points$ndvi <- NULL
-        }
-
-        # For the most recent year, switch from points to gemetries
-        if (latest_year) {
-          # Function to create a grid cell from a centroid
-          create_grid_cell <- function(centroid, size) {
-            # Calculate half of the grid size
-            half_size <- size / 2
-
-            # Extract longitude and latitude
-            lon <- centroid[1]
-            lat <- centroid[2]
-
-            # Calculate corner coordinates
-            xmin <- lon - half_size
-            xmax <- lon + half_size
-            ymin <- lat - half_size
-            ymax <- lat + half_size
-
-            # Create a POLYGON from these coordinates
-            sf::st_polygon(list(matrix(c(xmin, ymin,
-                                         xmin, ymax,
-                                         xmax, ymax,
-                                         xmax, ymin,
-                                         xmin, ymin),
-                                       ncol = 2, byrow = TRUE)))
-          }
-
-          # Create the grid cells
-          ndvi_points_crs <- sf::st_crs(ndvi_points)
-          geoms <- lapply(ndvi_points$geometry, create_grid_cell, size = 30)
-
-          # Drop geometry to save some memory
-          ndvi_points <- sf::st_drop_geometry(ndvi_points)
-
-          # Make geometry `sf`
-          geometry <- sf::st_sfc(geoms, crs = ndvi_points_crs)
-          grid_sf <- sf::st_sf(geometry)
-
-          # Keep the ID (centroid)
-          grid_sf$ID <- apply(coords, 1, paste0, collapse = "_")
-          grid_sf[[sprintf("ndvi_%s", year)]] <- ndvi_points$ndvi
-          grid_sf$ndvi <- NULL
-
-          ndvi_points <- grid_sf
-        }
 
         pb()
-        qs::qsave(ndvi_points, file = sprintf("%s%s/%s.qs", output_path, year, tile))
+
+        ndvi_features_to_point(
+          features = tile_features,
+          temp_folder = temp_folder,
+          year = year)
       })
+
+      # Reduce to only one set of raster
+      grd30 <- Reduce(c, tile_data)
+
+      grd60 <- terra::aggregate(grd30, fact = 2,
+                                fun = \(...) mean(..., na.rm = TRUE))
+      grd120 <- terra::aggregate(grd30, fact = 4,
+                                 fun = \(...) mean(..., na.rm = TRUE))
+      grd300 <- terra::aggregate(grd30, fact = 10,
+                                 fun = \(...) mean(..., na.rm = TRUE))
+
+      # Calculate delta directly at the raster scale
+      year_combinations <- t(combn(years, 2))
+      year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
+      for (i in year_combinations) {
+        first_year <- sprintf("ndvi_%s", i[[1]])
+        second_year <- sprintf("ndvi_%s", i[[2]])
+
+        vec <- (grd30[[second_year]] - grd30[[first_year]]) / grd30[[first_year]]
+        grd30[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+        vec <- (grd60[[second_year]] - grd60[[first_year]]) / grd60[[first_year]]
+        grd60[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+        vec <- (grd120[[second_year]] - grd120[[first_year]]) / grd120[[first_year]]
+        grd120[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+        vec <- (grd300[[second_year]] - grd300[[first_year]]) / grd300[[first_year]]
+        grd300[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+      }
+
+      # Save the raster
+      terra::writeRaster(grd30, file = sprintf("%sgrd30_%s.tif", output_path, tile))
+      terra::writeRaster(grd60, file = sprintf("%sgrd60_%s.tif", output_path, tile))
+      terra::writeRaster(grd120, file = sprintf("%sgrd120_%s.tif", output_path, tile))
+      terra::writeRaster(grd300, file = sprintf("%sgrd300_%s.tif", output_path, tile))
+
+      pb()
+
+      return(NULL)
 
     })
 
-    return(NULL)
   })
+
+  # Combine all the rasters
+  avail_files <- list.files(output_path, full.names = TRUE)
+  lapply(c("grd30", "grd60", "grd120", "grd300"), \(x) {
+
+    # Merge all tiles of the same grid size
+    grd_files <- grep(sprintf("%s_", x), avail_files, value = TRUE)
+    grd <- lapply(grd_files, terra::rast)
+    grd <- Reduce(terra::merge, grd)
+
+    # Convert to `sf`
+    out <- terra::as.polygons(grd, dissolve = FALSE)
+    out <- sf::st_as_sf(out)
+
+    qs::qsave(out, file = sprintf("%s%s.qs", output_path, x))
+  })
+
+  return(NULL)
 
 }
