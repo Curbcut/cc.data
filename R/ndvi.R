@@ -423,7 +423,7 @@ ndvi_features_to_point <- function(features, temp_folder = tempdir(), year) {
 
   # 3. Function to calculate the mean after dropping min and max
   mean_without_min_max <- function(x) {
-    x <- na.omit(x)  # Remove NA values
+    x <- stats::na.omit(x)  # Remove NA values
     x <- x[x > 0 & x < 1]
     x <- x[x != min(x) & x != max(x)]  # Remove min and max
     if (length(x) > 0) mean(x) else NA  # Calculate mean or return NA if no data left
@@ -623,18 +623,22 @@ ndvi_import <- function(years = ndvi_years(),
 #' @param master_polygon <`sf polygon`> The master polygon of the region.
 #' @param years <`character vector`> A vector specifying the years for which
 #' NDVI data is to be retrieved. Defaults to the output of \code{ndvi_years()}.
+#' @param output_path <`character`> Path where data should be downloaded
 #' @param temp_folder <`character`> A temporary folder path to store intermediate data.
 #' Defaults to the system's temporary directory. However, to save disk
 #' space, it can be a ink to a managed temporary folder in a dedicated
 #' directory. This allows to have complete control over permissions and other attributes
 #' when paralleling. Temporary files are not removed otherwise, and the usual temporary
 #' folder becomes to heavy.
+#' @param overwrite <`logical`> Should data be overwritten?
+#' @param crs <`numeric`> Current CRS
+#'
 #' @return NULL. The function processes the NDVI points and applies relevant
 #' filtering and transformation but does not return a value.
 #' @export
 ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                                            output_path, temp_folder = tempdir(),
-                                           overwrite = FALSE, filter_cloudy_tiles = TRUE) {
+                                           overwrite = FALSE, crs) {
 
   # Read GeoJSON polygon representing the zone
   zone <- terra::vect(master_polygon)
@@ -647,7 +651,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   last_year <- max(years)
 
   # Retrievel HLS items
-  retrievals <- ndvi_get_items_hls(year = last_year, zone_bbox = zone_bbox)
+  retrievals <- cc.data:::ndvi_get_items_hls(year = last_year, zone_bbox = zone_bbox)
 
   # Get the features only
   retrievals_features <- lapply(retrievals, `[[`, "features")
@@ -665,15 +669,23 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   unique_tile <- gsub(paste0(".*(", pattern, ").*"), "\\1", unique(searches_features$id))
   unique_tile <- unique(unique_tile)
 
+  # All existing files in the output path
+  all_files <- list.files(output_path, full.names = TRUE)
+
   progressr::with_progress({
     pb <- progressr::progressor(length(unique_tile) * length(years) + length(unique_tile))
 
-    tile_data <- lapply(unique_tile, \(tile) {
+    lapply(unique_tile, \(tile) {
 
       # For every tile, iterate over all the years
       tile_data <- lapply(rev(years), \(year) {
+        file_name <- sprintf("%s%s_%s.tif", output_path, tile, year)
+        if (!overwrite & file_name %in% all_files) {
+          pb()
+          return(terra::rast(file_name))
+        }
 
-        retrievals <- ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
+        retrievals <- cc.data:::ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
 
         # Get the features only
         retrievals_features <- lapply(retrievals, `[[`, "features")
@@ -685,21 +697,32 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
         searches_features <- dplyr::bind_rows(lapply(retrievals_features, \(df) dplyr::select(df, common_columns)))
         searches_features <- tibble::as_tibble(searches_features)
 
-        # Avoid unnecessary noise and reduce the computational load by filtering out
-        # highly cloudy granules.
-        if (filter_cloudy_tiles)
-          searches_features <- searches_features[searches_features$properties$`eo:cloud_cover` < 30, ]
-
         # Which features are part of this tile
         tile_features <- searches_features[grepl(tile, searches_features$id), ]
 
-        pb()
-
-        ndvi_features_to_point(
+        out <- cc.data:::ndvi_features_to_point(
           features = tile_features,
           temp_folder = temp_folder,
           year = year)
+
+        # Project it at the correct CRS
+        out <- terra::project(out, sprintf("EPSG:%s", crs))
+
+        # Save the file (save advancements)
+        terra::writeRaster(out, file = file_name, overwrite = TRUE)
+
+        pb()
+
+        out
       })
+
+      # If the files all already exist, return nothing
+      files <- sprintf("%s%s_%s.tif", output_path, c("grd30", "grd60", "grd120", "grd300"),
+                       tile)
+      if (!overwrite & all(files %in% all_files)) {
+        pb()
+        return(NULL)
+      }
 
       # Reduce to only one set of raster
       grd30 <- Reduce(c, tile_data)
@@ -712,30 +735,43 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                                  fun = \(...) mean(..., na.rm = TRUE))
 
       # Calculate delta directly at the raster scale
-      year_combinations <- t(combn(years, 2))
+      year_combinations <- t(utils::combn(years, 2))
       year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
+
       for (i in year_combinations) {
         first_year <- sprintf("ndvi_%s", i[[1]])
         second_year <- sprintf("ndvi_%s", i[[2]])
 
-        vec <- (grd30[[second_year]] - grd30[[first_year]]) / grd30[[first_year]]
+        vec <- terra::values(grd30[[second_year]]) - terra::values(grd30[[first_year]])
+        vec <- vec / terra::values(grd30[[first_year]])
+        vec <- as.numeric(vec)
         grd30[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
 
-        vec <- (grd60[[second_year]] - grd60[[first_year]]) / grd60[[first_year]]
+        vec <- terra::values(grd60[[second_year]]) - terra::values(grd60[[first_year]])
+        vec <- vec / terra::values(grd60[[first_year]])
+        vec <- as.numeric(vec)
         grd60[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
 
-        vec <- (grd120[[second_year]] - grd120[[first_year]]) / grd120[[first_year]]
+        vec <- terra::values(grd120[[second_year]]) - terra::values(grd120[[first_year]])
+        vec <- vec / terra::values(grd120[[first_year]])
+        vec <- as.numeric(vec)
         grd120[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
 
-        vec <- (grd300[[second_year]] - grd300[[first_year]]) / grd300[[first_year]]
+        vec <- terra::values(grd300[[second_year]]) - terra::values(grd300[[first_year]])
+        vec <- vec / terra::values(grd300[[first_year]])
+        vec <- as.numeric(vec)
         grd300[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
       }
 
       # Save the raster
-      terra::writeRaster(grd30, file = sprintf("%sgrd30_%s.tif", output_path, tile))
-      terra::writeRaster(grd60, file = sprintf("%sgrd60_%s.tif", output_path, tile))
-      terra::writeRaster(grd120, file = sprintf("%sgrd120_%s.tif", output_path, tile))
-      terra::writeRaster(grd300, file = sprintf("%sgrd300_%s.tif", output_path, tile))
+      terra::writeRaster(grd30, file = sprintf("%sgrd30_%s.tif", output_path, tile),
+                         overwrite = TRUE)
+      terra::writeRaster(grd60, file = sprintf("%sgrd60_%s.tif", output_path, tile),
+                         overwrite = TRUE)
+      terra::writeRaster(grd120, file = sprintf("%sgrd120_%s.tif", output_path, tile),
+                         overwrite = TRUE)
+      terra::writeRaster(grd300, file = sprintf("%sgrd300_%s.tif", output_path, tile),
+                         overwrite = TRUE)
 
       pb()
 

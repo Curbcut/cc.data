@@ -10,7 +10,7 @@ ndvi_import_from_masterpolygon(
   output_path,
   temp_folder = tempdir(),
   overwrite = FALSE,
-  filter_cloudy_tiles = TRUE
+  crs
 )
 }
 \arguments{
@@ -19,12 +19,18 @@ ndvi_import_from_masterpolygon(
 \item{years}{<\verb{character vector}> A vector specifying the years for which
 NDVI data is to be retrieved. Defaults to the output of \code{ndvi_years()}.}
 
+\item{output_path}{<\code{character}> Path where data should be downloaded}
+
 \item{temp_folder}{<\code{character}> A temporary folder path to store intermediate data.
 Defaults to the system's temporary directory. However, to save disk
 space, it can be a ink to a managed temporary folder in a dedicated
 directory. This allows to have complete control over permissions and other attributes
 when paralleling. Temporary files are not removed otherwise, and the usual temporary
 folder becomes to heavy.}
+
+\item{overwrite}{<\code{logical}> Should data be overwritten?}
+
+\item{crs}{<\code{numeric}> Current CRS}
 }
 \value{
 NULL. The function processes the NDVI points and applies relevant
