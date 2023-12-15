@@ -216,7 +216,8 @@ ndvi_get_features <- function(years = ndvi_years(),
 #' @return An `sf` object containing the NDVI points. The result includes the NDVI
 #' values for each valid raster layer, and it is filtered to exclude poor quality
 #' pixels.
-ndvi_features_to_point <- function(features, temp_folder = tempdir(), year) {
+ndvi_features_to_point <- function(master_polyhon, features,
+                                   temp_folder = tempdir(), year, crs) {
   # Function to process each item
   process_item <- function(item) {
     # Determine which NDVI bands to use based on collection
@@ -396,7 +397,6 @@ ndvi_features_to_point <- function(features, temp_folder = tempdir(), year) {
 
   ndvi_stacks <- terra::rast(ndvi_stack) # Create a stack of NDVI
 
-
   # Quality Filtering -------------------------------------------------------
 
   mask_raster <- list()
@@ -408,25 +408,59 @@ ndvi_features_to_point <- function(features, temp_folder = tempdir(), year) {
   # of the [HLS V2.0 User Guide](https://lpdaac.usgs.gov/documents/1118/HLS_User_Guide_V2.pdf).
   for (i in 1:length(fmask_stack)) {
     mask_raster[[i]] <- fmask_stack[[i]]
-    mask_raster[[i]][!terra::values(mask_raster[[i]]) %in% c(0, 64)] <- NA
-    ndvi_filtered[[i]] <- terra::mask(ndvi_stacks[[i]], mask_raster[[i]], maskvalue=NA )
-    names(ndvi_filtered[[i]]) <- names(ndvi_stacks[[i]])
+    # Identify the values to be replaced (not in 0 or 64)
+    values_to_replace <- !terra::values(mask_raster[[i]]) %in% c(0, 64)
+
+    # Replace these values with -9999 in the mask_raster
+    ndvi_filtered[[i]] <- ndvi_stacks[[i]]
+    ndvi_filtered[[i]][values_to_replace] <- -9999
+
+    # # Apply the modified mask to the ndvi_stacks
+    # # Replace values in ndvi_stacks with -9999 where mask_raster is -9999
+    # ndvi_filtered[[i]] <- terra::cover(ndvi_stacks[[i]], mask_raster[[i]], values-9999)
+    # names(ndvi_filtered[[i]]) <- names(ndvi_stacks[[i]])
   }
 
   ndvi_filtered_stacks <- terra::rast(ndvi_filtered)
 
+  # # Update CRS and filter spatially
+  # ndvi_filtered_stacks <- terra::project(ndvi_filtered_stacks, sprintf("EPSG:%s", crs))
+  # ndvi_filtered_stacks <- terra::crop(ndvi_filtered_stacks, terra::ext(mp))
+  # ndvi_filtered_stacks <- terra::mask(ndvi_filtered_stacks, mp)
+
+  # Project ndvi_filtered_stacks to the desired CRS
+  ndvi_filtered_stacks_crs <- terra::project(ndvi_filtered_stacks, sprintf("EPSG:%s", crs))
+
+  # Save the original extent of ndvi_filtered_stacks
+  original_extent <- terra::ext(ndvi_filtered_stacks_crs)
+
+  # Crop to the extent of mp, then mask
+  ndvi_filtered_stacks_cropped <- terra::crop(ndvi_filtered_stacks_crs, terra::ext(mp))
+  ndvi_filtered_stacks_masked <- terra::mask(ndvi_filtered_stacks_cropped, mp)
+
+  # Extend the masked raster back to its original extent
+  # This step sets values outside mp but within the original extent to NA
+  ndvi_filtered_stacks_ext <- terra::extend(ndvi_filtered_stacks_masked, original_extent)
+
+  ndvi_filtered_stacks <- ndvi_filtered_stacks_ext
+
   # 1. Count NA values per cell across layers
-  na_count_per_cell <- apply(terra::values(ndvi_filtered_stacks), 1, function(x) sum(is.na(x)))
+  invalid_count_per_cell <- apply(terra::values(ndvi_filtered_stacks), 1, function(x) sum(x == -9999, na.rm = T))
 
   # 2. Identify cells with at least two NAs
-  valid_cells <- na_count_per_cell > 2
+  valid_cells <- invalid_count_per_cell > 2
+
+  # NA cells (Which means it's OUTSIDE the current master_polygon)
+  na_count_per_cell <- apply(terra::values(ndvi_filtered_stacks), 1, function(x) sum(is.na(x)))
+  only_NA_cell <- na_count_per_cell == ncol(terra::values(ndvi_filtered_stacks))
 
   # 3. Function to calculate the mean after dropping min and max
   mean_without_min_max <- function(x) {
     x <- stats::na.omit(x)  # Remove NA values
+    x <- x[x != -9999]
     x <- x[x > 0 & x < 1]
     x <- x[x != min(x) & x != max(x)]  # Remove min and max
-    if (length(x) > 0) mean(x) else NA  # Calculate mean or return NA if no data left
+    if (length(x) > 0) mean(x) else -9999  # Calculate mean or return NA if no data left
   }
 
   # 4. Apply the function to each cell, excluding those with at least two NAs
@@ -438,7 +472,8 @@ ndvi_features_to_point <- function(features, temp_folder = tempdir(), year) {
 
   # Fill in the mean values in the appropriate cells
   mean_raster[valid_cells] <- mean_values
-  mean_raster[!valid_cells] <- NA
+  mean_raster[!valid_cells] <- -9999
+  mean_raster[only_NA_cell] <- NA
 
   names(mean_raster) <- sprintf("ndvi_%s", year)
 
@@ -620,7 +655,8 @@ ndvi_import <- function(years = ndvi_years(),
 #' value, which can be used as an ID. We keep geometry for the latest year,
 #' and remove it from other years.
 #'
-#' @param master_polygon <`sf polygon`> The master polygon of the region.
+#' @param master_polygon <`sf polygon`> The master polygon of the region. Should
+#' be cartographic master polygon (DA_carto).
 #' @param years <`character vector`> A vector specifying the years for which
 #' NDVI data is to be retrieved. Defaults to the output of \code{ndvi_years()}.
 #' @param output_path <`character`> Path where data should be downloaded
@@ -641,6 +677,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                                            overwrite = FALSE, crs) {
 
   # Read GeoJSON polygon representing the zone
+  master_polygon <- sf::st_transform(master_polygon, 4326)
   zone <- terra::vect(master_polygon)
 
   # Extract the bounding box of the region of interest
@@ -669,6 +706,9 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   unique_tile <- gsub(paste0(".*(", pattern, ").*"), "\\1", unique(searches_features$id))
   unique_tile <- unique(unique_tile)
 
+  mp <- sf::st_transform(master_polygon, crs = crs)
+  mp <- terra::vect(mp)
+
   # All existing files in the output path
   all_files <- list.files(output_path, full.names = TRUE)
 
@@ -685,7 +725,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
           return(terra::rast(file_name))
         }
 
-        retrievals <- cc.data:::ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
+        retrievals <- ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
 
         # Get the features only
         retrievals_features <- lapply(retrievals, `[[`, "features")
@@ -700,10 +740,12 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
         # Which features are part of this tile
         tile_features <- searches_features[grepl(tile, searches_features$id), ]
 
-        out <- cc.data:::ndvi_features_to_point(
+        out <- ndvi_features_to_point(
+          master_polygon = mp,
           features = tile_features,
           temp_folder = temp_folder,
-          year = year)
+          year = year,
+          crs = crs)
 
         # Project it at the correct CRS
         out <- terra::project(out, sprintf("EPSG:%s", crs))
@@ -722,56 +764,114 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
       if (!overwrite & all(files %in% all_files)) {
         pb()
         return(NULL)
+      } else {
+
+        # Reduce to only one set of raster
+        grd30 <- Reduce(c, tile_data)
+
+        mean_fun_ignore <- \(...) {
+          values <- c(...)
+          if (all(is.na(values))) return(NA)
+          values <- na.omit(values)
+          # Ignore invalid values if more than half of the values is
+          if (sum(values == -9999) == (length(values))) return(-9999)
+          values <- values[values != -9999]
+          mean(values)
+        }
+
+        grd60 <- terra::aggregate(grd30, fact = 2, fun = mean_fun_ignore)
+        grd120 <- terra::aggregate(grd30, fact = 4, fun = mean_fun_ignore)
+        grd300 <- terra::aggregate(grd30, fact = 10, fun = mean_fun_ignore)
+
+        # Calculate delta directly at the raster scale
+        year_combinations <- t(utils::combn(years, 2))
+        year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
+
+        for (i in year_combinations) {
+          first_year <- sprintf("ndvi_%s", i[[1]])
+          second_year <- sprintf("ndvi_%s", i[[2]])
+
+          vec <- terra::values(grd30[[second_year]]) - terra::values(grd30[[first_year]])
+          vec <- vec / terra::values(grd30[[first_year]])
+          vec <- as.numeric(vec)
+          grd30[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+          vec <- terra::values(grd60[[second_year]]) - terra::values(grd60[[first_year]])
+          vec <- vec / terra::values(grd60[[first_year]])
+          vec <- as.numeric(vec)
+          grd60[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+          vec <- terra::values(grd120[[second_year]]) - terra::values(grd120[[first_year]])
+          vec <- vec / terra::values(grd120[[first_year]])
+          vec <- as.numeric(vec)
+          grd120[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+          vec <- terra::values(grd300[[second_year]]) - terra::values(grd300[[first_year]])
+          vec <- vec / terra::values(grd300[[first_year]])
+          vec <- as.numeric(vec)
+          grd300[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+        }
+
+        # Save the raster
+        terra::writeRaster(grd30, file = sprintf("%sgrd30_%s.tif", output_path, tile),
+                           overwrite = TRUE)
+        terra::writeRaster(grd60, file = sprintf("%sgrd60_%s.tif", output_path, tile),
+                           overwrite = TRUE)
+        terra::writeRaster(grd120, file = sprintf("%sgrd120_%s.tif", output_path, tile),
+                           overwrite = TRUE)
+        terra::writeRaster(grd300, file = sprintf("%sgrd300_%s.tif", output_path, tile),
+                           overwrite = TRUE)
       }
 
-      # Reduce to only one set of raster
-      grd30 <- Reduce(c, tile_data)
+      # Switch the rasters to polygons, intersect with the masterpolygon (DA_carto)
+      lapply(c("grd30", "grd60", "grd120", "grd300"), \(x) {
+        grd <- terra::rast(sprintf("%s%s_%s.tif", output_path, x, tile))
 
-      grd60 <- terra::aggregate(grd30, fact = 2,
-                                fun = \(...) mean(..., na.rm = TRUE))
-      grd120 <- terra::aggregate(grd30, fact = 4,
-                                 fun = \(...) mean(..., na.rm = TRUE))
-      grd300 <- terra::aggregate(grd30, fact = 10,
-                                 fun = \(...) mean(..., na.rm = TRUE))
+        grid_sf <- sf::st_make_grid(terra::ext(grd),
+                                    cellsize = terra::res(grd),
+                                    crs = 2950)
 
-      # Calculate delta directly at the raster scale
-      year_combinations <- t(utils::combn(years, 2))
-      year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
+        # Create a tible of SF
+        tb <- tibble::tibble(ID = sprintf("%s_%s", x, seq_along(grid_sf)))
+        tb$geometry <- grid_sf
+        tb <- sf::st_as_sf(tb)
 
-      for (i in year_combinations) {
-        first_year <- sprintf("ndvi_%s", i[[1]])
-        second_year <- sprintf("ndvi_%s", i[[2]])
+        # Is the grid squared? If not, remove the last row
+        cell_size <- terra::res(grd)[[1]]
+        num_cells_x = (sf::st_bbox(tb)$xmax - sf::st_bbox(tb)$xmin) / cell_size
+        num_cells_y = (sf::st_bbox(tb)$ymax - sf::st_bbox(tb)$ymin) / cell_size
+        if (!identical(num_cells_x, num_cells_y)) {
+          supposed_sqrt <- min(c(num_cells_x, num_cells_y))
+          total_rows_to_keep = supposed_sqrt * supposed_sqrt
 
-        vec <- terra::values(grd30[[second_year]]) - terra::values(grd30[[first_year]])
-        vec <- vec / terra::values(grd30[[first_year]])
-        vec <- as.numeric(vec)
-        grd30[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+          tb <- tb[1:total_rows_to_keep, ]
+        }
 
-        vec <- terra::values(grd60[[second_year]]) - terra::values(grd60[[first_year]])
-        vec <- vec / terra::values(grd60[[first_year]])
-        vec <- as.numeric(vec)
-        grd60[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+        # Transport so the polygon is the same order as the raster
+        n <- sqrt(nrow(tb))
+        tb <- tb[as.vector(t(sapply(1:n, \(x) x + n * (n - 1:n)))), ]
 
-        vec <- terra::values(grd120[[second_year]]) - terra::values(grd120[[first_year]])
-        vec <- vec / terra::values(grd120[[first_year]])
-        vec <- as.numeric(vec)
-        grd120[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+        for (n in names(grd)) {
+          tb[[n]] <- terra::values(grd[[n]]) |> as.numeric()
+        }
 
-        vec <- terra::values(grd300[[second_year]]) - terra::values(grd300[[first_year]])
-        vec <- vec / terra::values(grd300[[first_year]])
-        vec <- as.numeric(vec)
-        grd300[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
-      }
+        # Remove NAs (which in this case is outside of the cartographic
+        # master_polygonwater). We only have to look at the most recent year,
+        # as it's a sure thing NA is outside the master_polygon at all years
+        latest_ndvi <- sprintf("ndvi_%s", max(year))
+        na_rows <- is.nan(tb[[latest_ndvi]]) | is.na(tb[[latest_ndvi]])
+        tb <- tb[!na_rows, ]
 
-      # Save the raster
-      terra::writeRaster(grd30, file = sprintf("%sgrd30_%s.tif", output_path, tile),
-                         overwrite = TRUE)
-      terra::writeRaster(grd60, file = sprintf("%sgrd60_%s.tif", output_path, tile),
-                         overwrite = TRUE)
-      terra::writeRaster(grd120, file = sprintf("%sgrd120_%s.tif", output_path, tile),
-                         overwrite = TRUE)
-      terra::writeRaster(grd300, file = sprintf("%sgrd300_%s.tif", output_path, tile),
-                         overwrite = TRUE)
+        # Remove invalid values (for all columns)
+        ndvi_cols <- names(tb)[!names(tb) %in% c("ID", "geometry")]
+
+        for (n in ndvi_cols) {
+          is_invalid <- tb[[n]] == -9999
+          tb[[n]][is_invalid] <- NA
+        }
+
+        qs::qsave(tb, sprintf("%s%s_%s.qs", output_path, x, tile))
+      })
 
       pb()
 
@@ -787,13 +887,11 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
     # Merge all tiles of the same grid size
     grd_files <- grep(sprintf("%s_", x), avail_files, value = TRUE)
-    grd <- lapply(grd_files, terra::rast)
-    grd <- Reduce(terra::merge, grd)
+    grd_files <- grep(".qs$", grd_files, value = TRUE)
+    grd <- lapply(grd_files, qs::qread)
+    grd <- Reduce(rbind, grd)
 
-    # Convert to `sf`
-    out <- terra::as.polygons(grd, dissolve = FALSE)
-    out <- sf::st_as_sf(out)
-
+    # Save the binded files
     qs::qsave(out, file = sprintf("%s%s.qs", output_path, x))
   })
 

@@ -14,7 +14,8 @@ ndvi_import_from_masterpolygon(
 )
 }
 \arguments{
-\item{master_polygon}{<\verb{sf polygon}> The master polygon of the region.}
+\item{master_polygon}{<\verb{sf polygon}> The master polygon of the region. Should
+be cartographic master polygon (DA_carto).}
 
 \item{years}{<\verb{character vector}> A vector specifying the years for which
 NDVI data is to be retrieved. Defaults to the output of \code{ndvi_years()}.}

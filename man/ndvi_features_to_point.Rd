@@ -4,7 +4,13 @@
 \alias{ndvi_features_to_point}
 \title{Convert HLS Features to Point Data}
 \usage{
-ndvi_features_to_point(features, temp_folder = tempdir(), year)
+ndvi_features_to_point(
+  master_polyhon,
+  features,
+  temp_folder = tempdir(),
+  year,
+  crs
+)
 }
 \arguments{
 \item{features}{<\code{data.frame}> A data.frame of \code{features} subsets retrieved
