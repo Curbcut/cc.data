@@ -202,6 +202,7 @@ ndvi_get_features <- function(years = ndvi_years(),
 #' data, along with calculating the Normalized Difference Vegetation Index (NDVI) and
 #' quality filtering.
 #'
+#' @param master_polygon <`sf`> Naster polygon as cartographic (DA_carto)
 #' @param features <`data.frame`> A data.frame of `features` subsets retrieved
 #' from collecetions. The output of \code{\link{ndvi_get_items_hls}}`. It must
 #' include information about collections, granule IDs, cloud cover, bands, and
@@ -216,8 +217,8 @@ ndvi_get_features <- function(years = ndvi_years(),
 #' @return An `sf` object containing the NDVI points. The result includes the NDVI
 #' values for each valid raster layer, and it is filtered to exclude poor quality
 #' pixels.
-ndvi_features_to_point <- function(master_polyhon, features,
-                                   temp_folder = tempdir(), year, crs) {
+ndvi_features_to_point <- function(master_polygon, features,
+                                   temp_folder = tempdir(), year) {
   # Function to process each item
   process_item <- function(item) {
     # Determine which NDVI bands to use based on collection
@@ -423,20 +424,15 @@ ndvi_features_to_point <- function(master_polyhon, features,
 
   ndvi_filtered_stacks <- terra::rast(ndvi_filtered)
 
-  # # Update CRS and filter spatially
-  # ndvi_filtered_stacks <- terra::project(ndvi_filtered_stacks, sprintf("EPSG:%s", crs))
-  # ndvi_filtered_stacks <- terra::crop(ndvi_filtered_stacks, terra::ext(mp))
-  # ndvi_filtered_stacks <- terra::mask(ndvi_filtered_stacks, mp)
-
   # Project ndvi_filtered_stacks to the desired CRS
-  ndvi_filtered_stacks_crs <- terra::project(ndvi_filtered_stacks, sprintf("EPSG:%s", crs))
+  ndvi_filtered_stacks_crs <- terra::project(ndvi_filtered_stacks, sprintf("EPSG:%s", 2950))
 
   # Save the original extent of ndvi_filtered_stacks
   original_extent <- terra::ext(ndvi_filtered_stacks_crs)
 
   # Crop to the extent of mp, then mask
-  ndvi_filtered_stacks_cropped <- terra::crop(ndvi_filtered_stacks_crs, terra::ext(mp))
-  ndvi_filtered_stacks_masked <- terra::mask(ndvi_filtered_stacks_cropped, mp)
+  ndvi_filtered_stacks_cropped <- terra::crop(ndvi_filtered_stacks_crs, terra::ext(master_polygon))
+  ndvi_filtered_stacks_masked <- terra::mask(ndvi_filtered_stacks_cropped, master_polygon)
 
   # Extend the masked raster back to its original extent
   # This step sets values outside mp but within the original extent to NA
@@ -667,14 +663,13 @@ ndvi_import <- function(years = ndvi_years(),
 #' when paralleling. Temporary files are not removed otherwise, and the usual temporary
 #' folder becomes to heavy.
 #' @param overwrite <`logical`> Should data be overwritten?
-#' @param crs <`numeric`> Current CRS
 #'
 #' @return NULL. The function processes the NDVI points and applies relevant
 #' filtering and transformation but does not return a value.
 #' @export
 ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                                            output_path, temp_folder = tempdir(),
-                                           overwrite = FALSE, crs) {
+                                           overwrite = FALSE) {
 
   # Read GeoJSON polygon representing the zone
   master_polygon <- sf::st_transform(master_polygon, 4326)
@@ -706,7 +701,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   unique_tile <- gsub(paste0(".*(", pattern, ").*"), "\\1", unique(searches_features$id))
   unique_tile <- unique(unique_tile)
 
-  mp <- sf::st_transform(master_polygon, crs = crs)
+  mp <- sf::st_transform(master_polygon, crs = 2950)
   mp <- terra::vect(mp)
 
   # All existing files in the output path
@@ -744,11 +739,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
           master_polygon = mp,
           features = tile_features,
           temp_folder = temp_folder,
-          year = year,
-          crs = crs)
-
-        # Project it at the correct CRS
-        out <- terra::project(out, sprintf("EPSG:%s", crs))
+          year = year)
 
         # Save the file (save advancements)
         terra::writeRaster(out, file = file_name, overwrite = TRUE)
