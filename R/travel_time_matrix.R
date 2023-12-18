@@ -153,13 +153,17 @@ tt_calculate <- function(centroids, max_dist = 120000,
                          routing_server = "http://localhost:5001/") {
 
   # Error checking
+  tryCatch(invisible(httr::GET(routing_server)),
+           error = function(e) stop(paste0(
+             "No routing server detected at ", routing_server), call. = FALSE))
   if (sf::st_crs(centroids)$input != "EPSG:4326")
     centroids <- suppressWarnings(sf::st_transform(centroids, 4326))
   if (!"ID" %in% names(centroids))
     stop("`ID` column must exist in `centroids`")
 
   # Split the dataframe in smaller dataframes for faster paralleled calculations
-  list_centroids <- split(centroids, seq_len(nrow(centroids) / 500)) |>
+  list_centroids <- split(centroids, seq_len(nrow(centroids) /
+                                               min(nrow(centroids), 500))) |>
     suppressWarnings()
 
   # Get all IDs on which to iterate, and shuffle it
