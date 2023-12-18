@@ -14,7 +14,7 @@
 #'
 #' @return Opens a terminal from which the docker image is created.
 #' @export
-tt_local_osrm <- function(dest_folder = "test", mode = "car", port = 5001L,
+tt_local_osrm <- function(mode = "car", port = 5001L,
                           osm_pbf = "north-america/canada-latest.osm.pbf") {
 
   # Error catch
@@ -23,11 +23,8 @@ tt_local_osrm <- function(dest_folder = "test", mode = "car", port = 5001L,
   if (!Sys.info()["sysname"] %in% c("Windows", "Darwin"))
     stop("As of now, this function is only adapted for Windows and macOS.")
 
-  # Set destination folder and create if needed
-  if (!file.exists(dest_folder)) dir.create(dest_folder)
-  dest_folder <- paste(dest_folder, mode, sep = "/")
-  if (!file.exists(dest_folder)) dir.create(dest_folder)
-  if (!grepl("/$", dest_folder)) dest_folder <- paste0(dest_folder, "/")
+  # Set destination folder
+  dest_folder <- tempdir()
 
   # Download Canada osm pbf if needed
   if (file.exists(paste0(dest_folder, "geofabrik_canada.osm.pbf"))) {
@@ -117,11 +114,11 @@ tt_local_osrm <- function(dest_folder = "test", mode = "car", port = 5001L,
       'osrm-partition /data/geofabrik_canada.osrm', '\n',
       'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
       'osrm-customize /data/geofabrik_canada.osrm', '\n',
-      'docker run -i -p 5001:5000 --name ', cont_name,
+      'docker run -d -p 5001:5000 --name ', cont_name,
       ' -v "$(pwd):/data" ',
       'ghcr.io/project-osrm/osrm-backend osrm-routed --algorithm mld ',
-      '/data/geofabrik_canada.osrm', '\n'
-    )
+      '/data/geofabrik_canada.osrm', '\n')
+
     system(local_osrm)
 
     while (!docker_initiated) {
