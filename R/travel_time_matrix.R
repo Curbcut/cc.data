@@ -24,7 +24,8 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
     stop("As of now, this function is only adapted for Windows and macOS.")
 
   # Set destination folder
-  dest_folder <- tempdir()
+  dest_folder <- paste0(tempdir(), "/", mode)
+  dir.create(dest_folder)
 
   # Download Canada osm pbf if needed
   if (file.exists(paste0(dest_folder, "geofabrik_canada.osm.pbf"))) {
@@ -48,7 +49,6 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
   # Container name
   cont_name <- paste0('osrm_', mode, '_', gsub('/|\\.|-', "_", osm_pbf))
   cont_name <- sub('_osm_pbf$', '', cont_name)
-  # shell(paste0('docker rm --force ', cont_name))
 
   # Check for running docker container
   if (Sys.info()["sysname"] == "Windows") {
@@ -62,8 +62,7 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
       system(paste0("docker ps -aq -f name=^", cont_name, "$"), intern = TRUE),
       warning = function(w) stop("Docker is not running.", call. = FALSE))
       ) > 0) {
-      system(paste0("docker start ", cont_name))
-      return(message("Container already exists. It's been started."))
+      system(paste0("docker rm --force ", cont_name))
     }
   }
 
@@ -106,7 +105,7 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
   else if (Sys.info()["sysname"] == "Darwin") {
 
     local_osrm <- paste0(
-      'cd ', getwd(), '/',  dest_folder, '\n',
+      'cd ', dest_folder, '\n',
       'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
       'osrm-extract -p /opt/', mode, '.lua /data/geofabrik_canada.osm.pbf',
       '\n',
@@ -114,7 +113,7 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
       'osrm-partition /data/geofabrik_canada.osrm', '\n',
       'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
       'osrm-customize /data/geofabrik_canada.osrm', '\n',
-      'docker run -d -p 5001:5000 --name ', cont_name,
+      'docker run -d -p ', port, ':5000 --name ', cont_name,
       ' -v "$(pwd):/data" ',
       'ghcr.io/project-osrm/osrm-backend osrm-routed --algorithm mld ',
       '/data/geofabrik_canada.osrm', '\n')
