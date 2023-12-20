@@ -926,7 +926,8 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
       mask_reprojected <- terra::project(invalid_mask, "EPSG:2950", method = "near")
 
       # Apply the reprojected mask to reintroduce -9999 values in the reprojected layer
-      terra::values(layer_reprojected)[terra::values(mask_reprojected)] <- -9999
+      terra::values(layer_reprojected)[
+        terra::values(mask_reprojected) & !is.na(terra::values(mask_reprojected))] <- -9999
 
       # Add the reprojected layer to the list
       grd_reprojected_list[[i]] <- layer_reprojected
