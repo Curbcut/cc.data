@@ -31,7 +31,7 @@ folder becomes to heavy.}
 
 \item{overwrite}{<\code{logical}> Should data be overwritten?}
 
-\item{crs}{<\code{numeric}> Current CRS}
+\item{crs}{<\code{numeric}> CRS of the region.}
 }
 \value{
 NULL. The function processes the NDVI points and applies relevant

@@ -5,7 +5,7 @@
 \title{Convert HLS Features to Point Data}
 \usage{
 ndvi_features_to_point(
-  master_polyhon,
+  master_polygon,
   features,
   temp_folder = tempdir(),
   year,
@@ -13,6 +13,8 @@ ndvi_features_to_point(
 )
 }
 \arguments{
+\item{master_polygon}{<\code{sf}> Naster polygon as cartographic (DA_carto)}
+
 \item{features}{<\code{data.frame}> A data.frame of \code{features} subsets retrieved
 from collecetions. The output of \code{\link{ndvi_get_items_hls}}`. It must
 include information about collections, granule IDs, cloud cover, bands, and
@@ -25,6 +27,8 @@ when paralleling. Temporary files are not removed otherwise, and the usual tempo
 folder becomes to heavy.}
 
 \item{year}{<\code{numeric}> Which years are the features from?}
+
+\item{crs}{<\code{numeric}> CRS of the region.}
 }
 \value{
 An \code{sf} object containing the NDVI points. The result includes the NDVI

@@ -109,7 +109,7 @@ census_interpolate <- function(data_raw,
       add_vars <- sapply(add, \(x) {
         ids <- sapply(unique(int$ID), \(id) {
           dat <- add_vars[add_vars$ID == id, ]
-          val <- sum(dat[[x]], dat$area_prop, na.rm = TRUE)
+          val <- sum(dat[[x]], na.rm = TRUE)
           val <- round(val / 5) * 5
           # Only keep output polygons with a majority non-NA inputs
           na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)

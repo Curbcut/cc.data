@@ -73,7 +73,7 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
   # Windows
   if (Sys.info()["sysname"] == "Windows") {
     local_osrm <- paste0(
-      'cd ', gsub("/", "\\\\", paste0(getwd(), "/",  dest_folder)), '\n',
+      'cd ', dest_folder, '\n',
       'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
       'osrm-extract -p /opt/', mode, '.lua /data/geofabrik_canada.osm.pbf',
       '\n',
@@ -81,7 +81,7 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
       'osrm-partition /data/geofabrik_canada.osrm', '\n',
       'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
       'osrm-customize /data/geofabrik_canada.osrm', '\n',
-      'docker run -t -i -p 5001:5000 --name ', mode, '_osrm',
+      'docker run -d -p ', port, ':5000 --name ', cont_name,
       ' -v "${PWD}:/data" ',
       'ghcr.io/project-osrm/osrm-backend osrm-routed --algorithm mld ',
       '/data/geofabrik_canada.osrm', '\n')

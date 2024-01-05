@@ -2,17 +2,15 @@
 % Please edit documentation in R/travel_time_matrix.R
 \name{tt_calculate}
 \alias{tt_calculate}
-\title{Create a travel time matrix using Disseination Areas}
+\title{Create a travel time matrix using Dissemination Areas or Dissemination Blocks}
 \usage{
 tt_calculate(
-  DA_table_centroids,
+  centroids,
   max_dist = 120000,
-  routing_server = "http://localhost:5000/"
+  routing_server = "http://localhost:5001/"
 )
 }
 \arguments{
-\item{DA_table_centroids}{<\verb{sf data.frame}> A \code{DA} point sf data.frame}
-
 \item{max_dist}{<\code{numeric}> The maximum distance used to calculate or not
 the destination time from a point to another. For a 60 minutes maximum, we
 can set the \code{car} default to 120,000 (for 120km/h max), the \code{bicycle} default
@@ -21,12 +19,15 @@ As calculation is very fast, no reason not to let a certain buffer.}
 
 \item{routing_server}{<\code{character}> The base URL of the routing server. If
 a server has been initiated using \code{\link[cc.data]{tt_local_osrm}},
-the default URL will be \verb{http://localhost:5000/}. Other services can be used
+the default URL will be \verb{http://localhost:5001/}. Other services can be used
 like \verb{http://router.project-osrm.org/}.}
+
+\item{DA_table_centroids}{<\verb{sf data.frame}> A \code{DA} or \code{DB} point
+sf data.frame}
 }
 \value{
 The travel time matrix
 }
 \description{
-Create a travel time matrix using Disseination Areas
+Create a travel time matrix using Dissemination Areas or Dissemination Blocks
 }

@@ -5,21 +5,21 @@
 \title{Create a docker local OSRM instance for faster travel time matrix}
 \usage{
 tt_local_osrm(
-  dest_folder,
   mode = "car",
-  osm_pbf = "https://download.geofabrik.de/north-america/canada-latest.osm.pbf"
+  port = 5001L,
+  osm_pbf = "north-america/canada-latest.osm.pbf"
 )
 }
 \arguments{
-\item{dest_folder}{<\code{character}> Destination folder where to download
-and process the necessary data for the travel time matrix calculations.}
-
 \item{mode}{<\code{character}> Options are \code{bicycle}, \code{car} and \code{foot}. Here
 are the profiles:
 \href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}}
 
 \item{osm_pbf}{<\code{character}> Link to the wanted version of OSM. Defaults to
 Canada.}
+
+\item{dest_folder}{<\code{character}> Destination folder where to download
+and process the necessary data for the travel time matrix calculations.}
 }
 \value{
 Opens a terminal from which the docker image is created.

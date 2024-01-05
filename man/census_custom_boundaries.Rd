@@ -7,6 +7,7 @@
 census_custom_boundaries(
   destination,
   DA_IDs,
+  DB_table,
   census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
@@ -24,6 +25,8 @@ be interpolated. e.g. boroughs in Montreal.}
 \item{DA_IDs}{<\verb{named list}> <\verb{character vector}> All the current census'
 DA IDs present in the region. Only those will be extracted from the database
 to do interpolation.}
+
+\item{DB_table}{<\verb{named list}> List of DB tables for all census years.}
 
 \item{census_vectors}{<\verb{character vector}> Should be equal to
 \code{\link[cc.data]{census_vectors}}, or a subset of the character vector to

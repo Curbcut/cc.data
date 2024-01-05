@@ -61,7 +61,7 @@ gtfs_combine <- function(dest_folder = gtfs_download()) {
   }
 
   # Read in the GTFS zip files
-  gtfs_zip <- list.files(tempdir(), full.names = TRUE,
+  gtfs_zip <- list.files(dest_folder, full.names = TRUE,
                          pattern = "gtfs_transit_feed")
   gtfs_zip <- gtfs_zip[sapply(gtfs_zip, \(x) {
     z <- utils::unzip(x, list = TRUE)
@@ -104,7 +104,7 @@ gtfs_extract <- function(gtfs_zip = gtfs_combine(), maximum_walk_time = 800) {
   gtfs <- suppressWarnings(gtfsrouter::extract_gtfs(gtfs_zip, quiet = TRUE))
 
   # Create a transfer table
-  gtfs$transfers <-
+  gtfs <-
     gtfsrouter::gtfs_transfer_table(gtfs = gtfs,
                                     d_limit = maximum_walk_time)
 
@@ -377,7 +377,7 @@ gtfs_traveltime_matrix_final <- function(prep_output) {
       names(all_dest_stops)[3] <- "walk_time_to_dest"
 
       all_dest_stops$transit_plus_dest <-
-        all_dest_stops$duration + all_dest_stops$walk_time_to_dest
+        as.numeric(lubridate::hms(all_dest_stops$duration)) + all_dest_stops$walk_time_to_dest
 
       # Return minimal travel time form this origin stop
       return(as.numeric(min(all_dest_stops$transit_plus_dest)) +

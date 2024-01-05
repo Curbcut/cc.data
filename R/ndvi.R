@@ -6,7 +6,18 @@
 #' @return A numeric vector containing the sequence of years from 2013 to the current year.
 #' @export
 ndvi_years <- function() {
-  2013:as.integer(format(Sys.Date(), "%Y"))
+  # Get the current year and month
+  current_year <- as.integer(format(Sys.Date(), "%Y"))
+  current_month <- as.integer(format(Sys.Date(), "%m"))
+
+  # Check if the current month is past August
+  if (current_month > 8) {
+    year_to_use <- current_year
+  } else {
+    year_to_use <- current_year - 1
+  }
+
+  2013:year_to_use
 }
 
 nasa_earthdata_auth <- function() {
@@ -650,6 +661,9 @@ ndvi_import <- function(years = ndvi_years(),
 ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                                            output_path, temp_folder = tempdir(),
                                            overwrite = FALSE, crs) {
+
+  # If the folder doesn't exist, create itt
+  dir.create(temp_folder, showWarnings = FALSE, recursive = TRUE)
 
   # Read GeoJSON polygon representing the zone
   master_polygon <- sf::st_transform(master_polygon, 4326)
