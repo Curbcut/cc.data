@@ -44,36 +44,44 @@ census_custom_boundaries <-
     # Subset the census vectors if necessary
     census_vectors_table <- census_get_vectors_table(census_vectors)
 
+    # Grab DA tables for all years
+    # Get origin's DA data from the database
+    origins <-
+      lapply(census_years, \(year) {
+        ids_retrieve_from_db <-
+          cc.data::census_DA_years_dict[[paste0("ID_", year)]][
+            cc.data::census_DA_years_dict[[1]] %in% DA_IDs
+          ]
+        ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
+
+        # Open a DB connection and get the necessary data
+        origin <- db_read_data(
+          table = paste0("raw_DA_", year),
+          columns = census_vectors_table$var_code,
+          IDs = ids_retrieve_from_db, keep_geometry = TRUE
+        )
+        sf::st_transform(origin, crs)
+      })
+    names(origins) <- as.character(census_years)
+
     progressr::with_progress({
 
       # Prepare the progress bar
       # Interpolate
       pb <- progressr::progressor(steps = length(destination) * length(census_years))
 
-      interpolated <- future.apply::future_sapply(destination, \(dest) {
+      interpolated <- sapply(destination, \(dest) {
         # In case no interpolation needed
         if (is.null(dest)) {
           return(dest)
         }
-        future.apply::future_sapply(as.character(census_years), \(year) {
+        sapply(as.character(census_years), \(year) {
 
           # Transform to census projection
           dest <- sf::st_transform(dest, crs)
 
           # Get origin's DA data from the database
-          ids_retrieve_from_db <-
-            cc.data::census_DA_years_dict[[paste0("ID_", year)]][
-              cc.data::census_DA_years_dict[[1]] %in% DA_IDs
-            ]
-          ids_retrieve_from_db <- unique(unlist(ids_retrieve_from_db))
-
-          # Open a DB connection and get the necessary data
-          origin <- db_read_data(
-            table = paste0("raw_DA_", year),
-            columns = census_vectors_table$var_code,
-            IDs = ids_retrieve_from_db, keep_geometry = TRUE
-          )
-          origin <- sf::st_transform(origin, crs)
+          origin <- origins[[year]]
 
           # If there are DBs for that year, interpolate to them and use them
           # for following interpolation.
@@ -137,50 +145,47 @@ census_custom_boundaries <-
 
           # Average values
           avg <- names(int)[names(int) %in% agg_type$average]
-          avg_vars <-
-            sapply(avg, \(x) {
-              ids <- sapply(unique(int$ID), \(id) {
-                dat <- add_vars[add_vars$ID == id, ]
-                parent_string <-
-                  cc.data::census_vectors_table$parent_vec[
-                    cc.data::census_vectors_table$var_code == x]
-                val <- weighted_mean(dat[[x]], dat[[parent_string]])
-                # Only keep output polygons with a majority non-NA inputs
-                na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)
-                if (na_pct >= 0.5) val <- NA_real_
+          # Create a function for weighted mean calculation
+          weighted_mean_vectorized <- function(x, weight, group) {
+            tapply(x * weight, group, sum, na.rm = TRUE) / tapply(weight, group, sum, na.rm = TRUE)
+          }
 
-                out <- tibble::tibble(
-                  ID = id,
-                  val = val
-                )
-                names(out)[2] <- x
-                out
-              }, simplify = FALSE)
-              tibble::as_tibble(Reduce(rbind, ids))
-            }, simplify = FALSE)
+          avg_vars <- lapply(avg, function(x) {
+            parent_string <- cc.data::census_vectors_table$parent_vec[cc.data::census_vectors_table$var_code == x]
 
-          avg_vars <- tibble::as_tibble(Reduce(merge, avg_vars))
+            # Calculate weighted mean for each group
+            val <- weighted_mean_vectorized(add_vars[[x]], add_vars[[parent_string]], add_vars$ID)
+
+            # Calculate NA percentage for each group
+            na_pct <- tapply(is.na(add_vars[[x]]) * add_vars$int_area, add_vars$ID, sum) / tapply(add_vars$int_area, add_vars$ID, sum)
+
+            # Replace values with NA where NA percentage is >= 0.5
+            val[na_pct >= 0.5] <- NA_real_
+
+            # Combine results into a tibble
+            tibble::tibble(ID = names(val), !!x := as.numeric(val))
+          })
+
+          # Combine all tibbles into one
+          avg_vars <- Reduce(merge, avg_vars)
 
           # Finalize additive values
-          add_vars <- sapply(add, \(x) {
-            ids <- sapply(unique(int$ID), \(id) {
-              dat <- add_vars[add_vars$ID == id, ]
-              val <- sum(dat[[x]], na.rm = TRUE)
-              # Only keep output polygons with a majority non-NA inputs
-              na_pct <- sum(is.na(dat[[x]]) * dat$int_area) / sum(dat$int_area)
-              if (na_pct >= 0.5) val <- NA_real_
+          add_vars <- lapply(add, function(x) {
+            # Calculate sum for each group
+            val <- tapply(add_vars[[x]], add_vars$ID, sum, na.rm = TRUE)
 
-              out <- tibble::tibble(
-                ID = id,
-                val = val
-              )
-              names(out)[2] <- x
-              out
-            }, simplify = FALSE)
-            tibble::as_tibble(Reduce(rbind, ids))
-          }, simplify = FALSE)
+            # Calculate NA percentage for each group
+            na_pct <- tapply(is.na(add_vars[[x]]) * add_vars$int_area, add_vars$ID, sum) / tapply(add_vars$int_area, add_vars$ID, sum)
 
-          add_vars <- tibble::as_tibble(Reduce(merge, add_vars))
+            # Replace values with NA where NA percentage is >= 0.5
+            val[na_pct >= 0.5] <- NA_real_
+
+            # Combine results into a tibble
+            tibble::tibble(ID = names(val), !!x := as.numeric(val))
+          })
+
+          # Combine all tibbles into one
+          add_vars <- Reduce(merge, add_vars)
 
           # Merge additive and average variables
           out <- if (nrow(add_vars) == 0) {
@@ -200,8 +205,8 @@ census_custom_boundaries <-
           pb()
           tibble::as_tibble(merge(dest["ID"], out, all = TRUE)) |>
             sf::st_as_sf()
-        }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
-      }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+        }, simplify = FALSE, USE.NAMES = TRUE)
+      }, simplify = FALSE, USE.NAMES = TRUE)
     })
 
     normalized <- census_normalize(

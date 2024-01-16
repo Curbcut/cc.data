@@ -356,31 +356,31 @@ ndvi_features_to_point <- function(master_polygon, features,
     return(nir)
   }
 
-  # Process red band rows
+  # # Process red band rows
   # progressr::with_progress({
-  # pb <- progressr::progressor(nrow(search_df))
+  #   pb <- progressr::progressor(nrow(search_df))
 
-  red_bands <- search_df[search_df$band == 'B04',]
-  result_red <- lapply(seq_len(nrow(red_bands)), function(i) {
-    # pb()
-    process_red(band = red_bands[i,])
-  })
-  red_stack <- lapply(result_red, `[[`, 1)
-  date_list <- lapply(result_red, `[[`, 2)
+    red_bands <- search_df[search_df$band == 'B04',]
+    result_red <- lapply(seq_len(nrow(red_bands)), function(i) {
+      # pb()
+      process_red(band = red_bands[i,])
+    })
+    red_stack <- lapply(result_red, `[[`, 1)
+    date_list <- lapply(result_red, `[[`, 2)
 
-  # Process fmask band rows
-  fmask_bands <- search_df[search_df$band == 'Fmask',]
-  fmask_stack <- lapply(seq_len(nrow(fmask_bands)), function(i) {
-    # pb()
-    process_fmask(band = fmask_bands[i,])
-  })
+    # Process fmask band rows
+    fmask_bands <- search_df[search_df$band == 'Fmask',]
+    fmask_stack <- lapply(seq_len(nrow(fmask_bands)), function(i) {
+      # pb()
+      process_fmask(band = fmask_bands[i,])
+    })
 
-  # Process nir band rows
-  nir_bands <- search_df[!search_df$band %in% c('B04', 'Fmask'),]
-  nir_stack <- lapply(seq_len(nrow(nir_bands)), function(i) {
-    # pb()
-    process_nir(band = nir_bands[i,])
-  })
+    # Process nir band rows
+    nir_bands <- search_df[!search_df$band %in% c('B04', 'Fmask'),]
+    nir_stack <- lapply(seq_len(nrow(nir_bands)), function(i) {
+      # pb()
+      process_nir(band = nir_bands[i,])
+    })
 
   # })
 
@@ -766,11 +766,11 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
   # Grab all the tiles and make one raster
   all_files_after_tiles <- list.files(output_path, full.names = TRUE)
-  grd_files <- grep("grd30", all_files_after_tiles, value = TRUE)
+  grd_files <- grep("grd30_", all_files_after_tiles, value = TRUE)
   grd_files <- grep("tif$", grd_files, value = TRUE)
 
-  final_tifs <- sprintf("%s%s.tif", output_path, c("grd30", "grd60", "grd120", "grd300"))
-  if (overwrite | !all(final_tifs %in% list.files(output_path))) {
+  final_tifs <- sprintf("%s%s.tif", output_path, c("grd30", "grd60", "grd120", "grd300", "grd480"))
+  if (overwrite | !all(final_tifs %in% list.files(output_path, full.names = TRUE))) {
 
     # Combine all data
     rasters <- lapply(grd_files, terra::rast)
@@ -797,6 +797,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
     grd60 <- terra::aggregate(grd30, fact = 2, fun = mean_fun_ignore)
     grd120 <- terra::aggregate(grd30, fact = 4, fun = mean_fun_ignore)
     grd300 <- terra::aggregate(grd30, fact = 10, fun = mean_fun_ignore)
+    grd480 <- terra::aggregate(grd30, fact = 16, fun = mean_fun_ignore)
 
     # Calculate delta directly at the raster scale
     year_combinations <- t(utils::combn(years, 2))
@@ -898,6 +899,30 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
       gc()
     }
 
+    for (i in year_combinations) {
+      first_year <- sprintf("ndvi_%s", i[[1]])
+      second_year <- sprintf("ndvi_%s", i[[2]])
+
+      first_year_values <- terra::values(grd480[[first_year]])
+      second_year_values <- terra::values(grd480[[second_year]])
+
+      # Replace -9999 with NA
+      first_year_values[first_year_values == -9999] <- NA
+      second_year_values[second_year_values == -9999] <- NA
+
+      # Perform the calculation
+      vec <- second_year_values - first_year_values
+      vec <- vec / first_year_values
+      vec <- as.numeric(vec)
+
+      # Assign the calculated values back to grd480
+      grd480[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+
+      # Clean up
+      rm(vec)
+      gc()
+    }
+
     # Save the raster
     terra::writeRaster(grd30, file = sprintf("%sgrd30.tif", output_path),
                        overwrite = TRUE)
@@ -907,12 +932,14 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                        overwrite = TRUE)
     terra::writeRaster(grd300, file = sprintf("%sgrd300.tif", output_path),
                        overwrite = TRUE)
+    terra::writeRaster(grd480, file = sprintf("%sgrd480.tif", output_path),
+                       overwrite = TRUE)
 
   }
 
 
   # Switch the rasters to polygons, intersect with the masterpolygon (DA_carto)
-  lapply(c("grd30", "grd60", "grd120", "grd300"), \(x) {
+  lapply(c("grd30", "grd60", "grd120", "grd300", "grd480"), \(x) {
     grd <- terra::rast(sprintf("%s%s.tif", output_path, x))
     output_file <- sprintf("%s%s.qs", output_path, x)
     if (!overwrite & output_file %in% all_files) {
@@ -999,4 +1026,3 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   return(NULL)
 
 }
-

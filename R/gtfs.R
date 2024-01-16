@@ -69,9 +69,51 @@ gtfs_combine <- function(dest_folder = gtfs_download()) {
                  "stop_times", "shapes", "stops"), ".txt") %in% z$Name)
   }, USE.NAMES = FALSE)]
 
-  gtfs <- lapply(gtfs_zip, gtfstools::read_gtfs, files = c(
-    "agency", "routes", "trips", "calendar", "calendar_dates", "stop_times",
-    "shapes", "stops"))
+  # Process each GTFS feed
+  gtfs <- lapply(gtfs_zip, \(zip_path) {
+    # Read in the necessary files from the GTFS feed
+    gtfs_data <- gtfstools::read_gtfs(zip_path, files = c(
+      "agency", "routes", "trips", "calendar", "calendar_dates", "stop_times",
+      "shapes", "stops"))
+
+    # Check if there is exactly one agency; if not, handle accordingly
+    if (nrow(gtfs_data$agency) != 1) {
+      stop("Each GTFS feed must have exactly one agency.", call. = FALSE)
+    }
+
+    # Prepend agency_id to stop_id.
+    agency_id <- gtfs_data$agency$agency_name[1]
+
+    for (i in names(gtfs_data)) {
+      if (!"stop_id" %in% names(gtfs_data[[i]])) next
+
+      gtfs_data[[i]]$stop_id <- paste0(agency_id, "___", gtfs_data[[i]]$stop_id)
+    }
+
+    # Same for route_id
+    for (i in names(gtfs_data)) {
+      if (!"route_id" %in% names(gtfs_data[[i]])) next
+
+      gtfs_data[[i]]$route_id <- paste0(agency_id, "___", gtfs_data[[i]]$route_id)
+    }
+
+    # Same for trip_id
+    for (i in names(gtfs_data)) {
+      if (!"trip_id" %in% names(gtfs_data[[i]])) next
+
+      gtfs_data[[i]]$trip_id <- paste0(agency_id, "___", gtfs_data[[i]]$trip_id)
+    }
+
+    # Same for service_id
+    for (i in names(gtfs_data)) {
+      if (!"service_id" %in% names(gtfs_data[[i]])) next
+
+      gtfs_data[[i]]$service_id <- paste0(agency_id, "___", gtfs_data[[i]]$service_id)
+    }
+
+    return(gtfs_data)
+  })
+
   gtfs <- gtfstools::merge_gtfs(gtfs)
 
   tmp <- tempfile(fileext = ".zip")
