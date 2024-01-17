@@ -296,12 +296,21 @@ ndvi_features_to_point <- function(master_polygon, features,
   download_raster <- function(grandule_id, band_link, band_nm) {
 
     destfile <- paste0(temp_folder, grandule_id, band_nm, ".tif")
+    # If it already exists and is 'big enough' (somtimes a few B get downloaded)
+    if (file.exists(destfile) && (file.info(destfile)$size >= 500)) {
+      return({
+        out <- terra::rast(destfile)
+        list(out, destfile)
+      })
+    }
 
+    # If not, retry grabbing
     httr::RETRY("GET",
                 band_link,
                 httr::write_disk(destfile, overwrite = TRUE),
                 httr::config(netrc = TRUE),
-                httr::authenticate(user = .nasa_earthdata_user, password = .nasa_earthdata_pw))
+                httr::authenticate(user = .nasa_earthdata_user, password = .nasa_earthdata_pw),
+                times = 10)
 
     out <- terra::rast(destfile)
 
@@ -324,12 +333,8 @@ ndvi_features_to_point <- function(master_polygon, features,
     } else {
       paste0('L', as.character(date))
     }
-    # We wrap so we can instantly destroy the file (disk space), or
-    # so we can parallelize if needed
-    red <- terra::wrap(red)
 
-    file.remove(downloaded[[2]])
-    return(list(red, date_code))
+    return(list(red, date_code, destfile = downloaded[[2]]))
   }
 
   # Function to process the fmask band
@@ -338,10 +343,8 @@ ndvi_features_to_point <- function(master_polygon, features,
                                   band_link = band$Asset_Link,
                                   band_nm = "fmask")
     fmask <- downloaded[[1]]
-    fmask <- terra::wrap(fmask)
 
-    file.remove(downloaded[[2]])
-    return(fmask)
+    return(list(fmask, destfile = downloaded[[2]]))
   }
 
   # Function to process the nir band
@@ -350,101 +353,118 @@ ndvi_features_to_point <- function(master_polygon, features,
                                   band_link = band$Asset_Link,
                                   band_nm = "nir")
     nir <- downloaded[[1]]
-    nir <- terra::wrap(nir)
 
-    file.remove(downloaded[[2]])
-    return(nir)
+    return(list(nir, destfile = downloaded[[2]]))
   }
-
-  # # Process red band rows
-  # progressr::with_progress({
-  #   pb <- progressr::progressor(nrow(search_df))
-
-    red_bands <- search_df[search_df$band == 'B04',]
-    result_red <- lapply(seq_len(nrow(red_bands)), function(i) {
-      # pb()
-      process_red(band = red_bands[i,])
-    })
-    red_stack <- lapply(result_red, `[[`, 1)
-    date_list <- lapply(result_red, `[[`, 2)
-
-    # Process fmask band rows
-    fmask_bands <- search_df[search_df$band == 'Fmask',]
-    fmask_stack <- lapply(seq_len(nrow(fmask_bands)), function(i) {
-      # pb()
-      process_fmask(band = fmask_bands[i,])
-    })
-
-    # Process nir band rows
-    nir_bands <- search_df[!search_df$band %in% c('B04', 'Fmask'),]
-    nir_stack <- lapply(seq_len(nrow(nir_bands)), function(i) {
-      # pb()
-      process_nir(band = nir_bands[i,])
-    })
-
-  # })
-
-  red_stack <- lapply(red_stack, terra::unwrap)
-  fmask_stack <- lapply(fmask_stack, terra::unwrap)
-  nir_stack <- lapply(nir_stack, terra::unwrap)
-
-
-  # Calculate NDVI ----------------------------------------------------------
 
   # Define a function to calculate NDVI
-  calculate_NDVI <- function(nir, red){
-    ndvi <- (nir-red)/(nir+red) # NDVI formula
-    return(ndvi)
+  calculate_NDVI <- function(red, nir){
+    ndvi <- (nir-red) / (nir+red) # NDVI formula
+    ndvi[ndvi < 0 | ndvi > 1] <- NA_integer_
+    ndvi[is.infinite(ndvi)] <- NA_integer_
+    return(c(ndvi))
   }
 
-  # Calculate NDVI for each stacked Red and NIR raster and exclude Inf and -Inf values
-  ndvi_stack <- mapply(\(nir, red, date) {
-    nir$ndvi <- calculate_NDVI(as.vector(nir), as.vector(red))
-    ndvi <- nir["ndvi"]
-    ndvi[ndvi == Inf] <- NA
-    ndvi[ndvi == -Inf] <- NA
-    names(ndvi) <- date
-    return(ndvi)
-  }, nir_stack, red_stack, date_list)
+  red_bands <- search_df[search_df$band == 'B04',]
+  fmask_bands <- search_df[search_df$band == 'Fmask',]
+  nir_bands <- search_df[!search_df$band %in% c('B04', 'Fmask'),]
+
+  # Function to apply terra::project with retry logic
+  project_with_retry <- function(stack, crs) {
+    success <- FALSE
+    result <- NULL
+
+    while (!success) {
+      tryCatch({
+        # Attempt to project the stack
+        result <- terra::project(stack, sprintf("EPSG:%s", crs))
+
+        # If no error occurs, set success to TRUE
+        success <- TRUE
+      }, error = function(e) {
+        # Error handling: print the error message
+        message("An error occurred: ", e$message, ". Retrying.")
+
+        # Optional: add a pause before retrying
+        # Sys.sleep(time_in_seconds)
+
+        # Keep success as FALSE so the loop continues
+      })
+    }
+
+    return(result)
+  }
+
+  progressr::with_progress({
+    pb <- progressr::progressor(nrow(red_bands))
+    future.apply::future_lapply(seq_len(nrow(red_bands)), \(i) {
+
+      # Download the necessary tif files
+      result_red <- process_red(band = red_bands[i,])
+      red <- result_red[[1]]
+      date <- result_red[[2]]
+
+      # If the file already exist, move to the next
+      file_name <- sprintf("%sndvipointer_%s.tif", temp_folder, date)
+      if (file.exists(file_name)) return({
+        pb()
+        # Remove raw files downloaded
+        file.remove(result_red$destfile)
+        file.remove(result_fmask$destfile)
+        file.remove(result_nir$destfile)
+      })
+
+      # Download all the necessary tif files
+      result_fmask <- process_fmask(band = fmask_bands[i,])
+      fmask <- result_fmask[[1]]
+      result_nir <- process_nir(band = nir_bands[i,])
+      nir <- result_nir[[1]]
 
 
-  ndvi_stacks <- terra::rast(ndvi_stack) # Create a stack of NDVI
+      # Calculate the NDVI matrix for that tile
+      stack <- calculate_NDVI(red, nir)
+      stack <- project_with_retry(stack, crs)
 
-  # Project stacks to the desired CRS before any number manipulation
-  ndvi_stacks <- terra::project(ndvi_stacks, sprintf("EPSG:%s", crs))
-  fmask_stack <- lapply(fmask_stack, terra::project, sprintf("EPSG:%s", crs))
+      # Fmask values (quality filtering)
+      # In HLS, both value of 0 and 64 in the Fmask layer indicate the pixel without cloud,
+      # cloud shadow, water, or snow/ice. We will use these values to mask out poor quality
+      # pixels from the ndvi_stacks. HLS quality information can be found in section 6.5
+      # of the [HLS V2.0 User Guide](https://lpdaac.usgs.gov/documents/1118/HLS_User_Guide_V2.pdf).
+      fmask <- project_with_retry(fmask, crs)
+      fmask_values <- terra::values(fmask)[,1]
+      stack[[1]][!fmask_values %in% c(0, 64)] <- -9999
+
+      # Add date as the name
+      names(stack) <- date
+
+      # Save, remove from environment, garbage collection. SAVE MEMORY
+      terra::writeRaster(stack, file_name, overwrite = TRUE)
+
+      # Remove raw files downloaded
+      file.remove(result_red$destfile)
+      file.remove(result_fmask$destfile)
+      file.remove(result_nir$destfile)
+
+      rm(stack)
+      gc()
+      pb()
+    }, future.seed = FALSE)
+  })
+
+
+  # Build the whole ndvi stack
+  files <- list.files(temp_folder, full.names = TRUE)
+  pointers <- grep("ndvipointer_", files, value = TRUE)
+  ndvi_stacks <- terra::rast(lapply(pointers, terra::rast))
+
 
   # Quality Filtering -------------------------------------------------------
 
-  mask_raster <- list()
-  ndvi_filtered <- list()
-
-  # In HLS, both value of 0 and 64 in the Fmask layer indicate the pixel without cloud,
-  # cloud shadow, water, or snow/ice. We will use these values to mask out poor quality
-  # pixels from the ndvi_stacks. HLS quality information can be found in section 6.5
-  # of the [HLS V2.0 User Guide](https://lpdaac.usgs.gov/documents/1118/HLS_User_Guide_V2.pdf).
-  for (i in 1:length(fmask_stack)) {
-    mask_raster[[i]] <- fmask_stack[[i]]
-    # Identify the values to be replaced (not in 0 or 64)
-    values_to_replace <- !terra::values(mask_raster[[i]]) %in% c(0, 64)
-
-    # Replace these values with -9999 in the mask_raster
-    ndvi_filtered[[i]] <- ndvi_stacks[[i]]
-    ndvi_filtered[[i]][values_to_replace] <- -9999
-
-    # # Apply the modified mask to the ndvi_stacks
-    # # Replace values in ndvi_stacks with -9999 where mask_raster is -9999
-    # ndvi_filtered[[i]] <- terra::cover(ndvi_stacks[[i]], mask_raster[[i]], values-9999)
-    # names(ndvi_filtered[[i]]) <- names(ndvi_stacks[[i]])
-  }
-
-  ndvi_filtered_stacks <- terra::rast(ndvi_filtered)
-
   # Save the original extent of ndvi_filtered_stacks
-  original_extent <- terra::ext(ndvi_filtered_stacks)
+  original_extent <- terra::ext(ndvi_stacks)
 
   # Crop to the extent of mp, then mask
-  ndvi_filtered_stacks_cropped <- terra::crop(ndvi_filtered_stacks, terra::ext(master_polygon))
+  ndvi_filtered_stacks_cropped <- terra::crop(ndvi_stacks, terra::ext(master_polygon))
   ndvi_filtered_stacks_masked <- terra::mask(ndvi_filtered_stacks_cropped, master_polygon)
 
   # Extend the masked raster back to its original extent
@@ -453,17 +473,7 @@ ndvi_features_to_point <- function(master_polygon, features,
 
   ndvi_filtered_stacks <- ndvi_filtered_stacks_ext
 
-  # 1. Count NA values per cell across layers
-  invalid_count_per_cell <- apply(terra::values(ndvi_filtered_stacks), 1, function(x) sum(x == -9999, na.rm = T))
-
-  # 2. Identify cells with at least two NAs
-  valid_cells <- invalid_count_per_cell > 2
-
-  # NA cells (Which means it's OUTSIDE the current master_polygon)
-  na_count_per_cell <- apply(terra::values(ndvi_filtered_stacks), 1, function(x) sum(is.na(x)))
-  only_NA_cell <- na_count_per_cell == ncol(terra::values(ndvi_filtered_stacks))
-
-  # 3. Function to calculate the mean after dropping min and max
+  # Function to calculate the mean NDVI value after dropping min and max
   mean_without_min_max <- function(x) {
     x <- stats::na.omit(x)  # Remove NA values
     x <- x[x != -9999]
@@ -472,21 +482,56 @@ ndvi_features_to_point <- function(master_polygon, features,
     if (length(x) > 0) mean(x) else -9999  # Calculate mean or return NA if no data left
   }
 
-  # 4. Apply the function to each cell, excluding those with at least two NAs
-  mean_values <- apply(terra::values(ndvi_filtered_stacks)[valid_cells, , drop = FALSE], 1, mean_without_min_max)
+  # Function to extract year from column name
+  extract_year <- function(name) {
+    as.integer(substr(name, 2, 5))
+  }
 
-  # 5. Create a new raster for the mean values
-  # Initialize a raster filled with NAs
-  mean_raster <- terra::setValues(ndvi_filtered_stacks[[1]], rep(NA, terra::ncell(ndvi_filtered_stacks)))
+  # Get the years from the column names
+  years <- unique(sapply(names(ndvi_filtered_stacks), extract_year))
 
-  # Fill in the mean values in the appropriate cells
-  mean_raster[valid_cells] <- mean_values
-  mean_raster[!valid_cells] <- -9999
-  mean_raster[only_NA_cell] <- NA
+  # Initialize an empty stack with one layer per year
+  yearly_stack <- terra::rast(ndvi_filtered_stacks[[1]], nlyr = length(years))
+  names(yearly_stack) <- paste0("ndvi_", years)
 
-  names(mean_raster) <- sprintf("ndvi_%s", year)
+  # Loop over each year
+  progressr::with_progress({
+    pb <- progressr::progressor(length(years))
+    for (year in years) {
+      print(year)
+      # Select layers for the current year
+      current_year_layers <- grep(paste0(".", year), names(ndvi_filtered_stacks), value = TRUE)
+      current_year_stack <- terra::subset(ndvi_filtered_stacks, current_year_layers)
 
-  return(mean_raster)
+      # Steps 1 and 2: Handling NA and invalid values
+      invalid_count_per_cell <- apply(terra::values(current_year_stack),  1,
+                                      \(x) sum(x == -9999, na.rm = TRUE))
+      valid_cells <- invalid_count_per_cell > 2
+
+      na_count_per_cell <- apply(terra::values(current_year_stack), 1, \(x) sum(is.na(x)))
+      only_NA_cell <- na_count_per_cell == ncol(terra::values(current_year_stack))
+
+      # Step 3: Apply the mean_without_min_max function to each cell for the current year
+      mean_values <- apply(terra::values(current_year_stack)[valid_cells, , drop = FALSE],
+                           1, mean_without_min_max)
+
+      # Step 4: Create a layer for the mean values of the current year
+      mean_layer <- rep(NA, terra::ncell(ndvi_filtered_stacks))
+      mean_layer[valid_cells] <- mean_values
+      mean_layer[!valid_cells] <- -9999
+      mean_layer[only_NA_cell] <- NA
+
+      # Step 5: Add the layer to the yearly stack
+      yearly_stack[[paste0("ndvi_", year)]] <- mean_layer
+      pb()
+
+      rm(mean_layer, mean_values, only_NA_cell, na_count_per_cell, valid_cells,
+         invalid_count_per_cell, current_year_stack, current_year_layers)
+      gc()
+    }
+  })
+
+  return(yearly_stack)
 
 }
 
@@ -662,7 +707,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
                                            output_path, temp_folder = tempdir(),
                                            overwrite = FALSE, crs) {
 
-  # If the folder doesn't exist, create itt
+  # If the folder doesn't exist, create it
   dir.create(temp_folder, showWarnings = FALSE, recursive = TRUE)
 
   # Read GeoJSON polygon representing the zone
@@ -701,72 +746,56 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   # All existing files in the output path
   all_files <- list.files(output_path, full.names = TRUE)
 
-  progressr::with_progress({
-    pb <- progressr::progressor(length(unique_tile) * length(years) + length(unique_tile))
+  lapply(unique_tile, \(tile) {
 
-    lapply(unique_tile, \(tile) {
+    # For every tile, iterate over all the years
+    file_name <- sprintf("%s%s.tif", output_path, tile)
+    if (!overwrite & file_name %in% all_files) {
+      return(terra::rast(file_name))
+    }
 
-      # For every tile, iterate over all the years
-      tile_data <- lapply(rev(years), \(year) {
-        file_name <- sprintf("%s%s_%s.tif", output_path, tile, year)
-        if (!overwrite & file_name %in% all_files) {
-          pb()
-          return(terra::rast(file_name))
-        }
+    tile_features <- lapply(rev(years), \(year) {
+      retrievals <- cc.data:::ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
 
-        retrievals <- ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
+      # Get the features only
+      retrievals_features <- lapply(retrievals, `[[`, "features")
 
-        # Get the features only
-        retrievals_features <- lapply(retrievals, `[[`, "features")
+      # Identify common columns across all data frames
+      common_columns <- Reduce(intersect, lapply(retrievals_features, colnames))
 
-        # Identify common columns across all data frames
-        common_columns <- Reduce(intersect, lapply(retrievals_features, colnames))
+      # Select only common columns and bind the data frames
+      searches_features <- dplyr::bind_rows(lapply(retrievals_features, \(df) dplyr::select(df, common_columns)))
+      searches_features <- tibble::as_tibble(searches_features)
 
-        # Select only common columns and bind the data frames
-        searches_features <- dplyr::bind_rows(lapply(retrievals_features, \(df) dplyr::select(df, common_columns)))
-        searches_features <- tibble::as_tibble(searches_features)
-
-        # Which features are part of this tile
-        tile_features <- searches_features[grepl(tile, searches_features$id), ]
-
-        out <- ndvi_features_to_point(
-          master_polygon = mp,
-          features = tile_features,
-          temp_folder = temp_folder,
-          year = year,
-          crs = crs)
-
-        # Save the file (save advancements)
-        terra::writeRaster(out, file = file_name, overwrite = TRUE)
-
-        pb()
-
-        out
-      })
-
-      # If the files all already exist, return nothing
-      files <- sprintf("%sgrd30_%s.tif", output_path, tile)
-      if (overwrite | !all(files %in% all_files)) {
-
-        # Reduce to only one set of raster
-        grd30 <- Reduce(c, tile_data)
-
-        terra::writeRaster(grd30, file = sprintf("%sgrd30_%s.tif", output_path, tile),
-                           overwrite = TRUE)
-
-      }
-
-      pb()
-
-      return(NULL)
-
+      # Which features are part of this tile
+      searches_features[grepl(tile, searches_features$id), ]
     })
+
+    # Identify common columns across all data frames
+    common_columns <- Reduce(intersect, lapply(tile_features, colnames))
+
+    # Select only common columns and bind the data frames
+    tile_features <- dplyr::bind_rows(lapply(tile_features, \(df) dplyr::select(df, common_columns)))
+    tile_features <- tibble::as_tibble(tile_features)
+
+    out <- ndvi_features_to_point(
+      master_polygon = mp,
+      features = tile_features,
+      temp_folder = temp_folder,
+      year = year,
+      crs = crs)
+
+    # Save the file
+    terra::writeRaster(out, file = file_name, overwrite = TRUE)
+
+    lapply(list.files(temp_folder, full.names = TRUE), file.remove)
+
+    return(NULL)
 
   })
 
   # Grab all the tiles and make one raster
   all_files_after_tiles <- list.files(output_path, full.names = TRUE)
-  grd_files <- grep("grd30_", all_files_after_tiles, value = TRUE)
   grd_files <- grep("tif$", grd_files, value = TRUE)
 
   final_tifs <- sprintf("%s%s.tif", output_path, c("grd30", "grd60", "grd120", "grd300", "grd480"))
@@ -1026,3 +1055,4 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
   return(NULL)
 
 }
+
