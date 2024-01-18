@@ -498,7 +498,6 @@ ndvi_features_to_point <- function(master_polygon, features,
   progressr::with_progress({
     pb <- progressr::progressor(length(years))
     for (year in years) {
-      print(year)
       # Select layers for the current year
       current_year_layers <- grep(paste0(".", year), names(ndvi_filtered_stacks), value = TRUE)
       current_year_stack <- terra::subset(ndvi_filtered_stacks, current_year_layers)
@@ -785,10 +784,11 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
       year = year,
       crs = crs)
 
+    # Empty the temp folder to save some disk space
+    lapply(list.files(temp_folder, full.names = TRUE), file.remove)
+
     # Save the file
     terra::writeRaster(out, file = file_name, overwrite = TRUE)
-
-    lapply(list.files(temp_folder, full.names = TRUE), file.remove)
 
     return(NULL)
 
@@ -796,13 +796,21 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
   # Grab all the tiles and make one raster
   all_files_after_tiles <- list.files(output_path, full.names = TRUE)
-  grd_files <- grep("tif$", grd_files, value = TRUE)
+  grd_files <- grep("tif$", all_files_after_tiles, value = TRUE)
 
   final_tifs <- sprintf("%s%s.tif", output_path, c("grd30", "grd60", "grd120", "grd300", "grd480"))
   if (overwrite | !all(final_tifs %in% list.files(output_path, full.names = TRUE))) {
 
     # Combine all data
     rasters <- lapply(grd_files, terra::rast)
+
+    # Sometimes tiles overlap. When it does, (I assume) resolution is not the same.
+    # If resolutions aren't the same, tiles automatically won't be mergeable. We
+    # use only the tiles that have a resolution of 30x30. In the process of changing
+    # CRS and other manipulation, under a common CRS, a tile might have a resolution
+    # of 29.9984 instead of 30. Both then can't be merged.
+    resolution <- sapply(rasters, terra::res, simplify = FALSE)
+    rasters <- rasters[sapply(resolution, identical, c(30, 30))]
     raster <- Reduce(terra::merge, rasters)
     trimmed <- terra::trim(raster)
     for (i in names(trimmed)) {
