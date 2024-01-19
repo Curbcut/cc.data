@@ -10,7 +10,8 @@ ndvi_import_from_masterpolygon(
   output_path,
   temp_folder = tempdir(),
   overwrite = FALSE,
-  crs
+  crs,
+  grid_sizes
 )
 }
 \arguments{
@@ -32,6 +33,8 @@ folder becomes to heavy.}
 \item{overwrite}{<\code{logical}> Should data be overwritten?}
 
 \item{crs}{<\code{numeric}> CRS of the region.}
+
+\item{grid_sizes}{<\verb{character vector}> What should the size of the grid cells?}
 }
 \value{
 NULL. The function processes the NDVI points and applies relevant
