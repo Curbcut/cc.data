@@ -5,7 +5,7 @@
 \title{Helper function to read data from a database table based on selected columns
 and IDs}
 \usage{
-db_read_data_helper(table, columns = "*", column_to_select = "ID", IDs)
+db_read_data_helper(table, columns = "*", column_to_select = "ID", IDs = NULL)
 }
 \arguments{
 \item{table}{<\code{character}> The table name in the MySQL database. To list all

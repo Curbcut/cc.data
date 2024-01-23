@@ -8,7 +8,7 @@ db_read_data(
   table,
   columns = "*",
   column_to_select = "ID",
-  IDs,
+  IDs = NULL,
   crs = 3347,
   keep_geometry = TRUE
 )

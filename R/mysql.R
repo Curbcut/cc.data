@@ -254,6 +254,10 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
                            rows_per_append_wave = 1000) {
 
   if ("sf" %in% class(df)) {
+
+    # Keep constant over the database
+    df <- sf::st_transform(df, 3347)
+
     # Get a df without geometry column
     df_no_geo <- sf::st_drop_geometry(df)
 
@@ -563,9 +567,16 @@ db_read_ttm <- function(mode, DA_ID) {
 #' character and all other columns are converted using the utils::type.convert()
 #' function.
 db_read_data_helper <- function(table, columns = "*", column_to_select = "ID",
-                                IDs) {
-  # If not retrieve all columns, make sure to retrieve IDs
-  if (length(columns) != 1 && all(columns != "*")) {
+                                IDs = NULL) {
+  # Determine the selection mode based on presence of IDs
+  if (is.null(IDs)) {
+    selection_mode <- "ALL"
+  } else {
+    selection_mode <- "SELECTED"
+  }
+
+  # If not retrieve all columns, make sure to retrieve IDs if in SELECTED mode
+  if (length(columns) != 1 && all(columns != "*") && selection_mode == "SELECTED") {
     all_cols <- db_query(type = "get", statement = sprintf("SELECT COLUMN_NAME
           FROM INFORMATION_SCHEMA.COLUMNS
           WHERE table_name = '%s'", table))$COLUMN_NAME
@@ -573,25 +584,29 @@ db_read_data_helper <- function(table, columns = "*", column_to_select = "ID",
     geo_cols <- all_cols[grepl("geometry_", all_cols)]
     columns <- columns[columns %in% all_cols]
 
-    columns <- c(column_to_select, all_cols[grepl("ID$", all_cols)], columns,
-                 geo_cols) |> unique()
+    columns <- c(column_to_select, all_cols[grepl("ID$", all_cols)], columns, geo_cols) |> unique()
     columns <- paste0(columns, collapse = ", ")
   }
 
-  # Split in multiple smaller calls
-  rows_calls <- 100
-  ids <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
-  while (length(ids) > 2500) {
-    rows_calls <- rows_calls * 1.2
+  # Split in multiple smaller calls if IDs are provided
+  if (selection_mode == "SELECTED") {
+    rows_calls <- 100
     ids <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
-  }
+    while (length(ids) > 2500) {
+      rows_calls <- rows_calls * 1.2
+      ids <- suppressWarnings(split(IDs, 1:ceiling(length(IDs)/rows_calls)))
+    }
 
-  # Construct the calls
-  ids <- lapply(ids, \(x) paste0(column_to_select, " = '", x, "'"))
-  query <- lapply(ids, \(x) paste(
-    "(SELECT ", columns, " FROM ", table, " WHERE", paste0(x, collapse = " OR "), ")"
-  ))
-  query <- paste0(query, collapse = " UNION ALL ")
+    # Construct the calls
+    ids <- lapply(ids, \(x) paste0(column_to_select, " = '", x, "'"))
+    query <- lapply(ids, \(x) paste(
+      "(SELECT ", columns, " FROM ", table, " WHERE", paste0(x, collapse = " OR "), ")"
+    ))
+    query <- paste0(query, collapse = " UNION ALL ")
+  } else {
+    # Construct a single query for all rows
+    query <- paste0("SELECT ", columns, " FROM ", table)
+  }
 
   # Call and consolidate
   df <- db_query(type = "get", statement = query)
@@ -612,6 +627,7 @@ db_read_data_helper <- function(table, columns = "*", column_to_select = "ID",
 }
 
 
+
 #' Read a table in the MySQL database
 #'
 #' Read a table in the database by filtering the ID column.
@@ -630,7 +646,7 @@ db_read_data_helper <- function(table, columns = "*", column_to_select = "ID",
 #'
 #' @return A tibble or an sf tibble depending if geometry is available.
 #' @export
-db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
+db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs = NULL,
                          crs = 3347, keep_geometry = TRUE) {
 
   all_tb <- db_list_tables()
@@ -639,15 +655,13 @@ db_read_data <- function(table, columns = "*", column_to_select = "ID", IDs,
 
   df <- if (length(to_retrieve) == 0) {
     out <- db_read_data_helper(table = table, columns = columns,
-                               column_to_select = column_to_select,
-                               IDs = IDs)
+                               column_to_select = column_to_select, IDs = IDs)
     # Ensure all out are unique
     unique(out)
   } else {
     dfs <- lapply(to_retrieve, \(x) {
       out <- db_read_data_helper(table = x, columns = columns,
-                                 column_to_select = column_to_select,
-                                 IDs = IDs)
+                                 column_to_select = column_to_select, IDs = IDs)
       # Ensure all out are unique
       unique(out)
     })
