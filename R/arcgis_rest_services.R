@@ -21,19 +21,39 @@ arcgis_rest_services_ret <- function(url) {
     url <- paste0(url, "query")
   }
 
-  # prepare the query with parameters to fetch all features
-  # as geoJSON, which is a good intermediate format for conversion to a shapefile
-  query_params <- list(
-    where = "1=1", # to get all the data; no filter
-    outFields = "*", # to get all fields
-    outSR = "4326", # output spatial reference; EPSG:4326 is WGS84 lat/long
-    f = "geojson", # output format
-    returnGeometry = "true" # to ensure geometry is included
-  )
+  # Function to prepare URL and make GET request
+  make_request <- function(url, format) {
 
-  # Make the GET request
-  response <- httr::GET(url = url, query = query_params)
+    # Prepare the query with parameters
+    query_params <- list(
+      where = "1=1", # to get all the data; no filter
+      outFields = "*", # to get all fields
+      outSR = "4326", # output spatial reference; EPSG:4326 is WGS84 lat/long
+      f = format, # output format
+      returnGeometry = "true" # to ensure geometry is included
+    )
 
-  # Content parsing straight to a spatial dataframe using sf
-  sf_data <- sf::st_read(httr::content(response, "text"), quiet = TRUE)
+    # Make the GET request
+    response <- httr::GET(url = url, query = query_params)
+    return(response)
+  }
+
+  # Try fetching data with 'geojson' format
+  response <- make_request(url, "geojson")
+  json_data <- httr::content(response, "text")
+
+  # Check if the response contains an error
+  if (grepl("\"error\"", json_data)) {
+    # Retry with 'json' format if 'geojson' failed
+    response <- make_request(url, "json")
+    json_data <- httr::content(response, "text")
+
+    # Check again for error
+    if (grepl("\"error\"", json_data)) {
+      stop("Error in response: ", json_data)
+    }
+  }
+
+  # Convert the successful response to a spatial dataframe using sf
+  sf_data <- sf::st_read(json_data, quiet = TRUE)
 }

@@ -397,7 +397,7 @@ ndvi_features_to_point <- function(master_polygon, features,
 
   progressr::with_progress({
     pb <- progressr::progressor(nrow(red_bands))
-    future.apply::future_lapply(seq_len(nrow(red_bands)), \(i) {
+    lapply(seq_len(nrow(red_bands)), \(i) {
 
       # Download the necessary tif files
       result_red <- process_red(band = red_bands[i,])
@@ -447,7 +447,7 @@ ndvi_features_to_point <- function(master_polygon, features,
       rm(stack)
       gc()
       pb()
-    }, future.seed = FALSE)
+    })
   })
 
 
@@ -871,37 +871,38 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
     for (n in names(grd)) {
       vls <- terra::values(grd[[n]])[,1]
       vls <- vls[!is.na(vls)]
+      vls[vls == -9999] <- NA
       sf_grid[[n]] <- vls
     }
 
     tb <- sf::st_transform(sf_grid, crs)
 
-    year_combinations <- t(utils::combn(years, 2))
-    year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
-
-    for (i in year_combinations) {
-      first_year <- sprintf("ndvi_%s", i[[1]])
-      second_year <- sprintf("ndvi_%s", i[[2]])
-
-      first_year_values <- tb[[first_year]]
-      second_year_values <- tb[[second_year]]
-
-      # Replace -9999 with NA
-      first_year_values[first_year_values == -9999] <- NA
-      second_year_values[second_year_values == -9999] <- NA
-
-      # Perform the calculation
-      vec <- second_year_values - first_year_values
-      vec <- vec / first_year_values
-      vec <- as.numeric(vec)
-
-      # Assign the calculated values back to grd30
-      tb[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
-
-      # Clean up
-      rm(vec, first_year_values, second_year_values)
-      gc()
-    }
+    #   year_combinations <- t(utils::combn(years, 2))
+    #   year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
+    #
+    #   for (i in year_combinations) {
+    #     first_year <- sprintf("ndvi_%s", i[[1]])
+    #     second_year <- sprintf("ndvi_%s", i[[2]])
+    #
+    #     first_year_values <- tb[[first_year]]
+    #     second_year_values <- tb[[second_year]]
+    #
+    #     # Replace -9999 with NA
+    #     first_year_values[first_year_values == -9999] <- NA
+    #     second_year_values[second_year_values == -9999] <- NA
+    #
+    #     # Perform the calculation
+    #     vec <- second_year_values - first_year_values
+    #     vec <- vec / first_year_values
+    #     vec <- as.numeric(vec)
+    #
+    #     # Assign the calculated values back to grd30
+    #     tb[[sprintf("ndvi_delta_%s_%s", i[[1]], i[[2]])]] <- vec
+    #
+    #     # Clean up
+    #     rm(vec, first_year_values, second_year_values)
+    #     gc()
+    #   }
 
     # Save
     qs::qsave(tb, sprintf("%s%s.qs", output_path, x))

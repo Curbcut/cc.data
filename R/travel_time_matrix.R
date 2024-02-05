@@ -247,7 +247,7 @@ tt_calculate <- function(centroids, max_dist = 120000,
 #' @export
 tt_calculate_all_modes <- function(dest_folder, DA_table,
                                    routing_server = "http://localhost:5001/",
-                                   osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf") {
+                                   osm_pbf = "north-america/canada-220101.osm.pbf") {
 
   # Remove container function
   rem_container <- function(routing_server) {
@@ -287,6 +287,7 @@ tt_calculate_all_modes <- function(dest_folder, DA_table,
 
   # Build the docker image for car routing
   tt_local_osrm(dest_folder = dest_folder, mode = "foot", osm_pbf = osm_pbf)
+
   # Create the travel time matrix
   foot <- tt_calculate(centroids = DA_table, max_dist = 10000,
                        routing_server = routing_server)
