@@ -876,6 +876,8 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
     }
 
     tb <- sf::st_transform(sf_grid, crs)
+    tb$ID <- sprintf("%s_%s", x, seq_along(tb$geometry))
+    tb <- tb[c("ID", grep("ndvi", names(tb), value = TRUE), "geometry")]
 
     #   year_combinations <- t(utils::combn(years, 2))
     #   year_combinations <- split(year_combinations, seq(nrow(year_combinations)))
@@ -905,7 +907,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
     #   }
 
     # Save
-    qs::qsave(tb, sprintf("%s%s.qs", output_path, x))
+    qs::qsave(tb, output_file)
   })
 
 
