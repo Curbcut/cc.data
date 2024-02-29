@@ -106,8 +106,10 @@ census_custom_boundaries <-
             for (col in census_vectors_table$var_code) {
               # Check if the column exists in the data frame
               if (col %in% names(merged_data)) {
-                # Calculate the new column values
-                merged_data[[col]] <- with(merged_data, merged_data[[col]] * pop_pct)
+                if (col %in% agg_type$additive) {
+                  # Calculate the new column values
+                  merged_data[[col]] <- with(merged_data, merged_data[[col]] * pop_pct)
+                }
               } else {
                 warning(paste("Column", col, "not found in the data frame."))
               }

@@ -137,7 +137,8 @@ census_data_raw <- function(empty_geometries,
 #' @return A data frame containing the requested census data. If the data is found
 #'         in the cache, it is returned directly from there. If not, the data is
 #'         retrieved vector by vector and merged by "GeoUID".
-get_census_data <- function(census_dataset, var_codes, region, scale, cache = cancensus::list_cancensus_cache()) {
+get_census_data <- function(census_dataset, var_codes, region, scale,
+                            cache = cancensus::list_cancensus_cache()) {
   # Is it in the cache?
   vc_unnamed <- unname(var_codes)
   in_cache <- cache[sapply(
@@ -165,12 +166,12 @@ get_census_data <- function(census_dataset, var_codes, region, scale, cache = ca
       geo_format = NA,
       quiet = TRUE,
       use_cache = TRUE
-    )
+    )[c("GeoUID", names(var_codes))]
   } else {
     # If not, get it vector by vector so that next time, it's cached (vector
     # by vector)!
     vectors_output <- lapply(seq_along(var_codes), function(l) {
-      cancensus::get_census(
+      out <- cancensus::get_census(
         dataset = census_dataset,
         regions = region,
         level = scale,
@@ -179,6 +180,20 @@ get_census_data <- function(census_dataset, var_codes, region, scale, cache = ca
         quiet = TRUE,
         use_cache = TRUE
       )[c("GeoUID", names(var_codes[l]))]
+
+      if (nrow(out) == 0) {
+        out <- cancensus::get_census(
+          dataset = census_dataset,
+          regions = region,
+          level = scale,
+          vectors = var_codes[l],
+          geo_format = NA,
+          quiet = TRUE,
+          use_cache = FALSE
+        )[c("GeoUID", names(var_codes[l]))]
+      }
+
+      out
     })
     Reduce(function(x, y) merge(x, y, all = TRUE, by = "GeoUID"), vectors_output)
   }

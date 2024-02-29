@@ -17,7 +17,7 @@ ndvi_years <- function() {
     year_to_use <- current_year - 1
   }
 
-  2013:year_to_use
+  2014:year_to_use
 }
 
 nasa_earthdata_auth <- function() {
