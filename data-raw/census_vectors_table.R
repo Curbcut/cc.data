@@ -178,9 +178,9 @@ census_vectors_housing <-
       "accommodations without enough bedrooms"
     ),
     exp_q5 = "are living in accommodations without enough bedrooms",
-    rankings_chr = list(c("exceptionally unsuitable", "unusually unsuitable",
-                          "just about average suitability", "unusually suitable",
-                          "exceptionally suitable")),
+    rankings_chr = list(c("exceptionally suitable", "unusually suitable",
+                          "just about average suitability", "unusually unsuitable",
+                          "exceptionally unsuitable")),
     parent_vec = "private_households",
     parent = FALSE
   ) |>
