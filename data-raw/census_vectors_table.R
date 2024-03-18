@@ -155,9 +155,9 @@ census_vectors_housing <-
       "more than 30% of income on housing costs"
     ),
     exp_q5 = "pay more than 30% of income on housing costs",
-    rankings_chr = list(c("exceptionally unaffordable", "unusually unaffordable",
+    rankings_chr = list(c("exceptionally affordable", "unusually affordable",
                           "just about average affordability",
-                          "unusually affordable", "exceptionally affordable")),
+                          "unusually unaffordable", "exceptionally unaffordable")),
     parent_vec = "owner_tenant_households",
     parent = FALSE
   ) |>
