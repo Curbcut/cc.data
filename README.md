@@ -19,7 +19,7 @@ You can install the development version of cc.data from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("MSSI-urban/cc.data")
+devtools::install_github("Curbcut/cc.data")
 ```
 
 ## Usage
