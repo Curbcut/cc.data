@@ -5,15 +5,15 @@
 \title{Build ALP index for a given year}
 \usage{
 build_alp(
-  years = cc.data::census_years[2:length(cc.data::census_years)],
-  DA_table
+  years = census_years[2:length(cc.data::census_years)],
+  DB_table = bucket_read_object_zip_shp("DB_shp_carto.zip", "curbcut.rawdata")
 )
 }
 \arguments{
 \item{years}{<\code{numeric}> Indicating the years of the streets network to use.
 Options are census years starting from 2001. Defaults to \code{\link{census_years}}.}
 
-\item{DA_table}{<\verb{sf data.frame}> An \code{sf} object representing the
+\item{DB_table}{<\verb{sf data.frame}> An \code{sf} object representing the
 dissemination areas (DAs) to calculate the CanALE index for.}
 }
 \value{

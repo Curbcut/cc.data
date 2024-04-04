@@ -4,11 +4,13 @@
 \alias{get_all_three_plus_ways}
 \title{Get all three+ way intersections in Canadian streets for a given year}
 \usage{
-get_all_three_plus_ways(year)
+get_all_three_plus_ways(year, crs)
 }
 \arguments{
 \item{year}{<\code{numeric}> indicates the year of the streets network to use.
 Options are census years starting 2001.}
+
+\item{crs}{<\code{numeric}> CRS}
 }
 \value{
 An \code{sf} object representing the three+ way intersections in the

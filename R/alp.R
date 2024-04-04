@@ -6,7 +6,7 @@
 #'
 #' @param years <`numeric`> Indicating the years of the streets network to use.
 #' Options are census years starting from 2001. Defaults to \code{\link{census_years}}.
-#' @param DA_table <`sf data.frame`> An \code{sf} object representing the
+#' @param DB_table <`sf data.frame`> An \code{sf} object representing the
 #' dissemination areas (DAs) to calculate the CanALE index for.
 #'
 #' @details Workflow from CanALE User Guide http://canue.ca/wp-content/uploads/2018/03/CanALE_UserGuide.pdf
@@ -14,8 +14,8 @@
 #' @return A data.frame object representing the CanALE index for the given year
 #' and DAs.
 #' @export
-build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_years)],
-                      DA_table) {
+build_alp <- function(years = census_years[2:length(cc.data::census_years)],
+                      DB_table = bucket_read_object_zip_shp("DB_shp_carto.zip", "curbcut.rawdata")) {
 
   # Intersection density measure --------------------------------------------
 
@@ -25,141 +25,183 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   # qs::qsave(three_ways, "calculated_ignore/alp/three_ways.qs")
   # three_ways <- qs::qread("calculated_ignore/alp/three_ways.qs")
 
-  sql_table_list <- cc.data::db_list_tables()
-  non_missing_ids <-
-    DA_table$ID[paste0("ttm_foot_", DA_table$ID) %in% sql_table_list]
-  ttm_foot <- db_read_ttm(mode = "foot", DA_ID = non_missing_ids)
+  # Get travel time matrices by foot. Only 900 seconds (15 minutes walk)
+  ttm_foot <- {
+    conn <- db_connect()
+    on.exit(db_disconnect(conn))
+    query <- "SELECT * FROM ttm_foot_DB WHERE travel_seconds < 900"
+    DBI::dbGetQuery(conn, query)
+  }
+  # In the ttm_foot, add self
+  ttm_foot <- rbind(ttm_foot, tibble::tibble(from = DB_table$DBUID,
+                                             to = DB_table$DBUID,
+                                             travel_seconds = 0))
   # qs::qsave(ttm_foot, "calculated_ignore/alp/ttm_foot.qs")
   # ttm_foot <- qs::qread("calculated_ignore/alp/ttm_foot.qs")
-  ttm_foot <- ttm_foot[names(ttm_foot) %in% DA_table$ID]
 
-  # Subset only the DAs in a 15 minutes walk
-  ttm_foot <- lapply(ttm_foot, \(x) {
-    x[x[[2]] <= (15*60), ]
-  })
-
-  # How many 3+ way intersection per DA buffer
-  DA_table_tw <- DA_table
-  intersects <- lapply(three_ways, \(x) sf::st_intersects(DA_table_tw, x))
-  DA_table_tw <- lapply(intersects, \(x) {
-    nb <- lengths(x)
-    # Add the number of intersects in the DA_table
-    df <- DA_table_tw
-    df$three_ways <- nb
+  # How many 3+ way intersection per DB buffer
+  DB_table_tw <- DB_table
+  intersects <- lapply(three_ways, \(x) sf::st_intersects(DB_table_tw, x))
+  DB_table_tw <- lapply(intersects, \(x) {
+    # Add the number of intersects in the DB_table
+    df <- DB_table_tw
+    df$three_ways <- lengths(x)
     df
   })
-  DA_table_tw <- lapply(DA_table_tw, sf::st_drop_geometry)
+  DB_table_tw <- lapply(DB_table_tw, sf::st_drop_geometry)
+
 
   # How many intersections in the DAs accessible in a 15 minute walks
-  progressr::with_progress({
-    p <- progressr::progressor(length(ttm_foot) * length(DA_table_tw))
-    DA_table_tw <- lapply(DA_table_tw, \(da_year) {
-      out <- future.apply::future_lapply(seq_along(ttm_foot), \(i) {
-        x <- ttm_foot[[i]]
-        ID <- names(ttm_foot)[[i]]
-        all <- da_year$three_ways[da_year$ID %in% x$DA_ID]
-        p()
-        tibble::tibble(ID = ID,
-                       three_ways = sum(all))
-      })
-      Reduce(rbind, out)
-    })
-  })
 
-  DA_table_tw_yr <- lapply(seq_along(DA_table_tw), \(i) {
-    df <- DA_table_tw[[i]]
+  # Convert ttm_foot to a more efficient lookup structure
+  data.table::setDT(ttm_foot)
+
+  # Function to process each db_year
+  process_db_year <- function(db_year) {
+    require(data.table)
+    data.table::setDT(db_year)
+
+    # Ensure 'DBUID' in 'db_year' and 'from' in 'ttm_foot' are of the same type (character)
+    db_year[, DBUID := as.character(DBUID)]
+    ttm_foot[, from := as.character(from)]
+    ttm_foot[, to := as.character(to)]
+
+    # Create a key for joining
+    data.table::setkey(ttm_foot, from)
+
+    # Join 'ttm_foot' to 'db_year', carrying over the 'three_ways' value
+    # This creates a table with every 'from' matched to its 'to' and includes the 'three_ways' for each 'to'
+    joined <- ttm_foot[db_year, .(from, to, three_ways = i.three_ways), on = .(to = DBUID), nomatch = 0]
+
+    # Aggregate the 'three_ways' by 'from', effectively summing for each original DBUID based on its 'to' DBUIDs
+    result <- joined[, .(three_ways = sum(three_ways, na.rm = TRUE)), by = from]
+
+    return(result)
+  }
+
+  # Apply the function to each db_year
+  DB_table_tw <- lapply(DB_table_tw, process_db_year)
+
+  # Add a year column
+  DB_table_tw_yr <- lapply(seq_along(DB_table_tw), \(i) {
+    df <- DB_table_tw[[i]]
     df$year <- years[[i]]
     df
   })
 
-  DA_table_tw_yr <- Reduce(rbind, DA_table_tw_yr)
-  DA_table_tw_yr_fin <- DA_table_tw_yr
-  DA_table_tw_yr_fin$int_d <- stats::ecdf(DA_table_tw_yr$three_ways)(DA_table_tw_yr$three_ways)
+  DB_table_tw_yr <- Reduce(rbind, DB_table_tw_yr)
+  DB_table_tw_yr_fin <- DB_table_tw_yr
+  DB_table_tw_yr_fin$int_d <- stats::ecdf(DB_table_tw_yr$three_ways)(DB_table_tw_yr$three_ways)
 
-  DA_table_tw_yr_fin <- lapply(seq_along(years), \(i) {
-    out <- DA_table_tw_yr_fin[DA_table_tw_yr_fin$year == years[[i]], ]
-    out <- out[c(1, 4)]
+  DB_table_tw_yr_fin <- lapply(seq_along(years), \(i) {
+    out <- DB_table_tw_yr_fin[DB_table_tw_yr_fin$year == years[[i]], ]
+    out <- out[, c(1, 4)]
     names(out)[2] <- paste0("int_d_", years[[i]])
     return(out)
   })
 
-  int_d <- Reduce(merge, DA_table_tw_yr_fin) |>
+  int_d <- Reduce(merge, DB_table_tw_yr_fin) |>
     tibble::as_tibble()
 
 
   # Dwelling density measure ------------------------------------------------
 
-  dwell_vecs <- c(CA21 = "v_CA21_4", CA16 = "v_CA16_404", CA11 = "v_CA11F_2",
-                  CA06 = "v_CA06_98", CA01 = "v_CA01_96")
-
   cancensus_dataset <- paste0("CA", gsub("^20", "", years))
 
   # Get dwellings information from the census
-  dwellings <-
-    lapply(cancensus_dataset, \(c) {
-      tryCatch({cancensus::get_census(
-        dataset = c,
-        regions = list(C = 01),
-        level = "DA",
-        vectors = c(dwellings = unname(dwell_vecs[c])),
-        geo_format = "sf",
-        quiet = TRUE
-      )}, error = function(e) {
+  progressr::with_progress({
+    pb <- progressr::progressor(steps = length(cancensus_dataset) * 13)
+    dwellings <-
+      lapply(cancensus_dataset, \(c) {
         regions <- cancensus::list_census_regions(c)
         regions <- regions$region[regions$level == "PR"]
         regions <- lapply(regions, \(r) {
-          cancensus::get_census(
+          out <- cancensus::get_census(
             dataset = c,
             regions = list(PR = r),
-            level = "DA",
-            vectors = c(dwellings = unname(dwell_vecs[c])),
-            geo_format = "sf",
+            level = "DB",
+            geo_format = NA,
             quiet = TRUE
           )
+          pb()
+          out
         })
-        regions <- lapply(regions, `[`, c("GeoUID", "dwellings", "geometry"))
+        regions <- lapply(regions, `[`, c("GeoUID", "Dwellings"))
         return(Reduce(rbind, regions))
       })
-    })
+  })
+  names(dwellings) <- years
+
+  # Get the spatial features of DBs
+  DB_sf <- sapply(years, \(x) {
+    file <- sprintf("DB_shp_%s.zip", x)
+    if (x == 2021)  file <- "DB_shp_carto.zip"
+    cc.data::bucket_read_object_zip_shp(file, "curbcut.rawdata")
+  }, USE.NAMES = TRUE, simplify = FALSE)
+
+  dwellings_sf <- mapply(\(dw, sf) {
+    other_name_col <- "BLOCKUID" %in% names(sf)
+    col_name <- if (other_name_col) "BLOCKUID" else "DBUID"
+    merge(dw, sf[c(col_name, "geometry")], by.x = "GeoUID", by.y = col_name) |>
+      tibble::as_tibble() |>
+      sf::st_as_sf()
+  }, dwellings, DB_sf, SIMPLIFY = FALSE)
+  qs::qsave(dwellings_sf, file = "calculated_ignore/alp/dwellings_sf.qs")
 
   # Calculate dwelling density using the most recent DA table
-  dwellings <- lapply(dwellings, \(dw) {
+  dwellings <- lapply(dwellings_sf, \(dw) {
     dw <- sf::st_transform(dw, 3347)
     dw <- sf::st_make_valid(dw)
 
     dw$previous_area <- get_area(dw)
-    dwellings_cut <- sf::st_intersection(DA_table, dw)
+    dwellings_cut <- sf::st_intersection(DB_table, dw)
     dwellings_cut$new_area <- get_area(dwellings_cut)
     dwellings_cut <- sf::st_drop_geometry(dwellings_cut)
 
     dwellings_cut$area_pct <- dwellings_cut$new_area / dwellings_cut$previous_area
-    dwellings_cut$n_dwellings <- dwellings_cut$dwellings * dwellings_cut$area_pct
+    dwellings_cut$n_dwellings <- dwellings_cut$Dwellings * dwellings_cut$area_pct
 
     # For each ID, get the density
-    dwelling_density <- stats::aggregate(cbind(n_dwellings, new_area) ~ ID,
+    dwelling_density <- stats::aggregate(cbind(n_dwellings, new_area) ~ DBUID,
                                   data = dwellings_cut,
                                   FUN = \(...) sum(..., na.rm = TRUE))
     dwelling_density$density <- dwelling_density$n_dwellings / dwelling_density$new_area
     dwelling_density
   })
 
-  # Dwelling density for every DA in the 15 minutes walk
-  progressr::with_progress({
-    p <- progressr::progressor(length(dwellings) * length(ttm_foot))
-    dwellings <- lapply(dwellings, \(dw) {
-      out <- future.apply::future_lapply(seq_along(ttm_foot), \(i) {
-        x <- ttm_foot[[i]]
-        ID <- names(ttm_foot)[[i]]
-        all <- dw[dw$ID %in% x$DA_ID, ]
-        p()
-        tibble::tibble(ID = ID,
-                       density = stats::weighted.mean(all$density, all$new_area))
-      })
-      Reduce(rbind, out)
-    })
-  })
 
+  # Function to process each db_year
+  process_db_year <- function(db_year) {
+    # Load required package
+    require(data.table)
 
+    ttm_foot_dt <- data.table(ttm_foot)
+    db_year_dt <- data.table(db_year)
+
+    # Convert 'DBUID' in 'db_year' and 'from', 'to' in 'ttm_foot' to character to ensure matching types
+    db_year_dt[, DBUID := as.character(DBUID)]
+    ttm_foot_dt[, from := as.character(from)]
+    ttm_foot_dt[, to := as.character(to)]
+
+    # Ensure 'db_year' is a data.table and set keys for joining
+    setkey(db_year_dt, DBUID)
+    setkey(ttm_foot_dt, from, to)
+
+    # Join 'ttm_foot' to 'db_year' on 'to' matching 'DBUID' to bring 'density' and 'new_area' over to 'ttm_foot'
+    # Note: Using 'new_area' as weights requires it to be available in the final joined table
+    joined <- ttm_foot_dt[db_year_dt, .(from, to, density = i.density, new_area = i.new_area),
+                          on = .(to = DBUID), nomatch = 0]
+
+    # Compute weighted mean of 'density' by 'from', using 'new_area' as weights
+    result <- joined[, .(density_weighted_mean = weighted.mean(density, new_area, na.rm = TRUE)), by = from]
+
+    return(result)
+  }
+
+  # Apply the function to each db_year
+  dwellings <- lapply(dwellings, process_db_year)
+
+  # Add a year column
   dwellings_yr <- lapply(seq_along(dwellings), \(i) {
     df <- dwellings[[i]]
     df$year <- years[[i]]
@@ -172,7 +214,7 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
 
   dwellings_yr_fin <- lapply(seq_along(years), \(i) {
     out <- dwellings_yr_fin[dwellings_yr_fin$year == years[[i]], ]
-    out <- out[c(1, 4)]
+    out <- out[, c(1, 4)]
     names(out)[2] <- paste0("dwl_d_", years[[i]])
     return(out)
   })
@@ -229,25 +271,25 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
     poi <- sf::st_transform(poi, crs = 3347)
 
     # Calculate the POI number for each DA
-    df <- DA_table
+    df <- DB_table
     intersects <- sf::st_intersects(df, poi)
     df$poi <- lengths(intersects)
 
     # For each DA, calculate the number of POI in the other DAs accessible in
     # a 15 minutes walk
     df <- sf::st_drop_geometry(df)
-    df$poi_15min <- future.apply::future_sapply(df$ID, \(x) {
-      tt <- which(names(ttm_foot) == x)
-      # If there are no travel times, just use the POIs of self
-      if (length(tt) == 0) return(df$poi[df$ID == x])
-      das_15min <- ttm_foot[[tt]]$DA_ID
-
-      sum(df$poi[df$ID %in% das_15min])
-    })
+    require(data.table)
+    df <- data.table::data.table(df)
+    ttm_foot_dt <- data.table::data.table(ttm_foot)
+    df[, DBUID := as.character(DBUID)]
+    ttm_foot_dt[, from := as.character(from)]
+    ttm_foot_dt[, to := as.character(to)]
+    data.table::setkey(ttm_foot, from)
+    joined <- ttm_foot_dt[df, .(from, to, poi = i.poi), on = .(to = DBUID), nomatch = 0]
+    result <- joined[, .(poi = sum(poi, na.rm = TRUE)), by = from]
 
     # Return the poi score for the year
-    df <- df[c(1,3)]
-    return(df)
+    return(result)
   }, simplify = FALSE, USE.NAMES = TRUE)
 
 
@@ -259,11 +301,11 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
 
   pois_yr <- Reduce(rbind, pois_yr)
   pois_yr_fin <- pois_yr
-  pois_yr_fin$poi <- stats::ecdf(pois_yr_fin$poi_15min)(pois_yr_fin$poi_15min)
+  pois_yr_fin$poi <- stats::ecdf(pois_yr_fin$poi)(pois_yr_fin$poi)
 
   pois_yr_fin <- lapply(seq_along(years), \(i) {
     out <- pois_yr_fin[pois_yr_fin$year == years[[i]], ]
-    out <- out[c(1, 4)]
+    out <- out[, c(1, 2)]
     names(out)[2] <- paste0("poi_", years[[i]])
     return(out)
   })
@@ -274,11 +316,11 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
 
   # Sum the three z index for the final score -------------------------------
 
-  DA_table <- sf::st_drop_geometry(DA_table)
+  DB_table <- sf::st_drop_geometry(DB_table)
 
   alp <- lapply(years, \(year) {
     df <-
-      Reduce(\(x, y) merge(x, y, by = "ID"),
+      Reduce(\(x, y) merge(x, y, by = "from"),
              list(int_d[c(1, which(grepl(paste0("int_d_", year), names(int_d))))],
                   dwl_d[c(1, which(grepl(paste0("dwl_d_", year), names(dwl_d))))],
                   poi[c(1, which(grepl(paste0("poi_", year), names(poi))))]))
@@ -291,11 +333,12 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
   })
 
   alp_final <- tibble::as_tibble(Reduce(merge, alp))
+  names(alp_final)[1] <- "ID"
 
 
 #   # Create a statistical model ----------------------------------------------
 #
-#   formod <- Reduce(merge, list(DA_table_tw_yr, dwellings_yr, pois_yr))
+#   formod <- Reduce(merge, list(DB_table_tw_yr, dwellings_yr, pois_yr))
 #   alp_formod <- mapply(\(df, year) {
 #     names(df)[2] <- "alp"
 #     df$year <- year
@@ -319,11 +362,12 @@ build_alp <- function(years = cc.data::census_years[2:length(cc.data::census_yea
 #'
 #' @param year <`numeric`> indicates the year of the streets network to use.
 #' Options are census years starting 2001.
+#' @param crs <`numeric`> CRS
 #'
 #' @return An \code{sf} object representing the three+ way intersections in the
 #' streets network.
 #' @export
-get_all_three_plus_ways <- function(year) {#, OSM_cache = TRUE) {
+get_all_three_plus_ways <- function(year, crs) {#, OSM_cache = TRUE) {
   # # Grab 2021 streets from OSM
   # osm_pbf <- "http://download.geofabrik.de/north-america/canada-210101.osm.pbf"
   # streets <- osmextract::oe_read(osm_pbf, layer = "lines",
@@ -356,7 +400,7 @@ get_all_three_plus_ways <- function(year) {#, OSM_cache = TRUE) {
   utils::unzip(temp_zip_file, exdir = temp_folder)
 
   streets <- sf::st_read(paste0(temp_folder, "/", shp))
-  streets <- sf::st_transform(streets, 3347)
+  streets <- sf::st_transform(streets, crs = 3347)
 
   # Filter out highways
   if (year == 2001) {
