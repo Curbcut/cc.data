@@ -2,21 +2,32 @@
 % Please edit documentation in R/mysql.R
 \name{db_write_ttm}
 \alias{db_write_ttm}
-\title{Write travel time matrix to the MySQL database}
+\title{Write a Travel Time Matrix to Database}
 \usage{
-db_write_ttm(ttm, mode)
+db_write_ttm(mode, zip_file_path, overwrite)
 }
 \arguments{
-\item{ttm}{<\verb{named list}> The travel time matrices in a list. The output
-of \code{\link[cc.data]{tt_calculate}}.}
+\item{mode}{<\code{character}> The mode of transport for the TTM. Valid values are
+"foot", "bicycle", "car", or "transit".}
 
-\item{mode}{<\code{character}> Mode to write in the title of each written dataframes,
-e.g. \code{foot}, \code{bicycle}, \code{car}, \code{transit_pwd}, ...}
+\item{zip_file_path}{<\code{character}> The file path to the zip file containing the TTM data.}
+
+\item{overwrite}{<\code{logical}> If \code{TRUE}, existing data for the specified mode will
+be overwritten. If \code{FALSE}, the function will append new data without deleting existing entries.}
 }
 \value{
-Returns nothing if successful. Every dataframe in the \code{ttm} list are
-saved as a dataframe, with names such as \code{ttm_car_35210809}.
+Invisible. The function is called for its side effect of writing data to a database.
 }
 \description{
-Write travel time matrix to the MySQL database
+This function writes a travel time matrix (TTM) from a specified mode of transport
+and zip file to a database, with the option to overwrite existing data.
+Supported modes are "foot", "bicycle", "car", or "transit". The function first checks
+if the table for the specified mode exists and, based on the \code{overwrite} parameter,
+either updates the table or prompts the user to confirm overwriting.
+}
+\details{
+The function performs several steps: it first lists and filters files within the zip
+archive, connects to a database, and then based on the \code{overwrite} parameter and user confirmation,
+decides whether to recreate the table for the TTM data. It processes the data in batches for efficiency
+and uses a retry mechanism for database operations to handle potential transient errors.
 }

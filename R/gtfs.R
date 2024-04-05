@@ -185,20 +185,26 @@ gtfs_get_traveltimes <- function(gtfs,
     )
   }
 
+  # Filter just the day
+  gtfs_day_filtered <- gtfsrouter::gtfs_timetable(gtfs, day = day)
+
   # Calculate all the travel times for a time period (day and time)
-  pb <- progressr::progressor(steps = length(unique(gtfs$stops$stop_id)))
+  progressr::with_progress({
+  pb <- progressr::progressor(steps = length(unique(gtfs_day_filtered$stops$stop_id)))
   traveltimes <-
-    future.apply::future_sapply(unique(gtfs$stops$stop_id), \(x) {
+    sapply(unique(gtfs_day_filtered$stops$stop_id), \(x) {
       out <- gtfsrouter::gtfs_traveltimes(
-        gtfs = gtfs,
+        gtfs = gtfs_day_filtered,
         from = x,
         from_is_id = TRUE,
-        day = day,
+        # day = day,
         start_time_limits = start_time_limits,
         max_traveltime = max_traveltime)
       pb()
       return(out)
-    }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+    }, simplify = FALSE, USE.NAMES = TRUE)
+  })
+
 
   # Subset only relevant columns and filter out negative durations in
   # traveltimes (bug most possibly from gtfsrouter::gtfs_traveltimes)

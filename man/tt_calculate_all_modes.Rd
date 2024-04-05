@@ -8,7 +8,7 @@ tt_calculate_all_modes(
   dest_folder,
   DA_table,
   routing_server = "http://localhost:5001/",
-  osm_pbf = "http://download.geofabrik.de/north-america/canada-220101.osm.pbf"
+  osm_pbf = "north-america/canada-220101.osm.pbf"
 )
 }
 \arguments{

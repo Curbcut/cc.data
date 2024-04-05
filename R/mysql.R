@@ -11,7 +11,7 @@ db_connect <- function() {
   }
 
   DBI::dbConnect(
-    drv = RMySQL::MySQL(),
+    drv = RMySQL::MySQL(max.con = 100),
     username = Sys.getenv("CURBCUT_DB_USER"),
     password = Sys.getenv("CURBCUT_DB_PASSWORD"),
     host = "ccdb-instance-1.cplnwzthenux.us-east-1.rds.amazonaws.com",
@@ -464,37 +464,149 @@ db_write_raw_data <- function(DA_data_raw) {
   return(invisible(NULL))
 }
 
-#' Write travel time matrix to the MySQL database
+#' Write a Travel Time Matrix to Database
 #'
-#' @param ttm <`named list`> The travel time matrices in a list. The output
-#' of \code{\link[cc.data]{tt_calculate}}.
-#' @param mode <`character`> Mode to write in the title of each written dataframes,
-#' e.g. `foot`, `bicycle`, `car`, `transit_pwd`, ...
+#' This function writes a travel time matrix (TTM) from a specified mode of transport
+#' and zip file to a database, with the option to overwrite existing data.
+#' Supported modes are "foot", "bicycle", "car", or "transit". The function first checks
+#' if the table for the specified mode exists and, based on the `overwrite` parameter,
+#' either updates the table or prompts the user to confirm overwriting.
 #'
-#' @return Returns nothing if successful. Every dataframe in the `ttm` list are
-#' saved as a dataframe, with names such as `ttm_car_35210809`.
+#' @param mode <`character`> The mode of transport for the TTM. Valid values are
+#' "foot", "bicycle", "car", or "transit".
+#' @param zip_file_path <`character`> The file path to the zip file containing the TTM data.
+#' @param overwrite <`logical`> If `TRUE`, existing data for the specified mode will
+#' be overwritten. If `FALSE`, the function will append new data without deleting existing entries.
+#'
+#' @details The function performs several steps: it first lists and filters files within the zip
+#' archive, connects to a database, and then based on the `overwrite` parameter and user confirmation,
+#' decides whether to recreate the table for the TTM data. It processes the data in batches for efficiency
+#' and uses a retry mechanism for database operations to handle potential transient errors.
+#'
+#' @return Invisible. The function is called for its side effect of writing data to a database.
 #' @export
-db_write_ttm <- function(ttm, mode) {
+db_write_ttm <- function(mode, zip_file_path, overwrite) {
+  # List and filter your files
+  files_in_zip <- unzip(zip_file_path, list = TRUE)$Name
+  files_in_mode_folder <- grep(sprintf("^%s/.*\\.qs$", mode), files_in_zip, value = TRUE)
 
-  # Progress bar
-  pb <- progressr::progressor(steps = length(ttm))
+  # Connect to the database
+  conn <- db_connect()
+  on.exit(db_disconnect(conn), add = TRUE)
 
-  # Write to db
-  sapply(ttm, \(tt) {
+  table_name <- sprintf("ttm_%s_DB", mode)
 
-    # Put together the table name
-    DA_ID <- names(tt)[2]
-    tb_name <- paste("ttm", mode, DA_ID, sep = "_")
+  # Check if table exists
+  table_exists <- DBI::dbExistsTable(conn, table_name)
 
-    # Write
-    db_write_table(df = tt, tb_name = tb_name)
+  # If the table doesn't exist
+  if (!table_exists || overwrite) {
+    if (table_exists) {
+      cat(sprintf(paste0("The table `%s` already exists. Recreating the table is a ",
+                         "multi-day uploading process. Do you want to remove and ",
+                         "recreate it? (y/n): "), table_name))
+      confirm <- readline() # Capture user input from the console
+      if (confirm != "y") stop()
 
-    # Advance the progress bar
-    pb()
+      DBI::dbRemoveTable(conn, table_name)
+    }
 
+    # Create the table
+    DBI::dbExecute(conn, sprintf("CREATE TABLE IF NOT EXISTS %s (
+  `from` VARCHAR(255),
+  `to` VARCHAR(255),
+  travel_seconds INT
+)", table_name))
+  }
+
+  # In the case where overwrite is FALSE, we do not re-upload already present data
+  present_froms <- sprintf("SELECT DISTINCT `from` FROM %s ORDER BY `from`", table_name)
+  present_froms <- DBI::dbGetQuery(conn, present_froms)
+  present_froms_as_path <- sprintf("%s/%s.qs", mode, present_froms$from)
+
+  db_disconnect(conn)
+
+  # Function to process files in batch and insert into the database
+  process_files_batch <- function(file_names, zip_file_path, table_name, .progress) {
+
+    batch_csv <- tempfile(fileext = ".csv")
+    on.exit(unlink(batch_csv))
+
+    for (file_name in file_names) {
+      # If it's already present, pass to the next
+      if (!overwrite & file_name %in% present_froms_as_path) next
+      tmp <- tempfile(fileext = ".qs")
+      on.exit(unlink(tmp), add = TRUE)
+
+      utils::unzip(zipfile = zip_file_path, files = file_name, exdir = tmp)
+      dat <- qs::qread(file.path(tmp, file_name))
+      if (nrow(dat) == 0) next
+
+      # Assuming 'from' is at dat[2] and 'to' is at dat[1]
+      dat <- data.frame(
+        from = names(dat)[2],
+        to = dat[[1]],
+        travel_seconds = dat[[2]],
+        stringsAsFactors = FALSE
+      )
+
+      # Append to batch CSV
+      write.table(dat, file = batch_csv, sep = ",", row.names = FALSE, col.names = FALSE, append = TRUE, quote = FALSE)
+    }
+
+    # Bulk insert the batch
+    batch_csv <- gsub("\\\\", "/", batch_csv) # Ensure correct path format
+
+    # Retry mechanism for database operation
+    max_retries <- 3 # Maximum number of retries
+    for (attempt in 1:max_retries) {
+      conn <- NULL # Initialize connection outside tryCatch to ensure visibility for on.exit
+
+      tryCatch({
+        conn <- db_connect() # Attempt to connect to the database
+        on.exit({
+          if (!is.null(conn)) {
+            db_disconnect(conn) # Ensure disconnection on exit
+          }
+        }, add = TRUE)
+
+        query <- sprintf("LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',' LINES TERMINATED BY '\\n'", batch_csv, table_name)
+        if (file.exists(batch_csv)) {
+          DBI::dbExecute(conn, query)
+          break # Success, exit the loop
+        }
+      }, error = function(e) {
+        if (attempt == max_retries) {
+          stop("Failed after max retries: ", e$message)
+        } else {
+          message(sprintf("Attempt %d failed, retrying... Error: %s", attempt, e$message))
+          Sys.sleep(5) # Wait for 5 seconds before retrying
+        }
+      })
+    }
+
+    .progress()
+
+    return()
+  }
+
+  # Initialize progressr
+  progressr::with_progress({
+    p <- progressr::progressor(steps = ceiling(length(files_in_mode_folder)/100))
+
+    # Process files in parallel with progress reporting
+    future.apply::future_lapply(split(files_in_mode_folder, ceiling(seq_along(files_in_mode_folder)/100)),
+                                process_files_batch, zip_file_path = zip_file_path,
+                                table_name = table_name, .progress = p)
   })
 
-  return(invisible(NULL))
+  # Construct the SQL statement for adding an index
+  ind_name <- sprintf("%s_indexfrom", table_name)
+  sql_add_index <- sprintf("ALTER TABLE %s ADD INDEX %s (`from`)", table_name, ind_name)
+  conn <- db_connect()
+  on.exit(db_disconnect(conn), add = TRUE)
+  DBI::dbExecute(conn, sql_add_index)
+  db_disconnect(conn)
 
 }
 

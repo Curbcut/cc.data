@@ -35,7 +35,6 @@ census_empty_geometries <- function(census_scales = cc.data::census_scales,
             regions <- cancensus::list_census_regions(year)
             regions <- regions$region[regions$level == "PR"]
             regions <- lapply(regions, \(r) {
-              print(r)
               cancensus::get_census(
                 dataset = year,
                 regions = list(PR = r),
