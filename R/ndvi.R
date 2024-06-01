@@ -104,20 +104,20 @@ ndvi_get_items <- function(year, limit = 25, zone_bbox, collections) {
 
   # Using future_lapply to parallelize the retrieval process
   if (total_pages > 0) {
-      more_retrievals <- future.apply::future_lapply(seq_len(total_pages), \(page_number) {
-        search_body <- list(limit = limit,
-                            page = page_number,
-                            datetime = zone_datetime,
-                            bbox = zone_bbox,
-                            collections = collections)
-        search_req <- tryCatch(
-          httr::RETRY("POST", search_URL, body = search_body, encode = "json") |>
-            httr::content(as = "text") |>
-            jsonlite::fromJSON()
-          , error = function(e) return(NULL))
-        return(search_req)
-      })
-      retrievals <- c(retrievals, more_retrievals)
+    more_retrievals <- future.apply::future_lapply(seq_len(total_pages), \(page_number) {
+      search_body <- list(limit = limit,
+                          page = page_number,
+                          datetime = zone_datetime,
+                          bbox = zone_bbox,
+                          collections = collections)
+      search_req <- tryCatch(
+        httr::RETRY("POST", search_URL, body = search_body, encode = "json") |>
+          httr::content(as = "text") |>
+          jsonlite::fromJSON()
+        , error = function(e) return(NULL))
+      return(search_req)
+    })
+    retrievals <- c(retrievals, more_retrievals)
   }
 
   return(retrievals)
@@ -309,7 +309,8 @@ ndvi_features_to_point <- function(master_polygon, features,
                 band_link,
                 httr::write_disk(destfile, overwrite = TRUE),
                 httr::config(netrc = TRUE),
-                httr::authenticate(user = .nasa_earthdata_user, password = .nasa_earthdata_pw),
+                httr::add_headers(Authorization = paste("Bearer", .nasa_earthdata_token)),
+                # httr::authenticate(user = .nasa_earthdata_user, password = .nasa_earthdata_pw),
                 times = 10)
 
     out <- terra::rast(destfile)
@@ -395,6 +396,9 @@ ndvi_features_to_point <- function(master_polygon, features,
     return(result)
   }
 
+  # Get the table for quality assessment
+  qa_table <- decode_qa_values()
+
   progressr::with_progress({
     pb <- progressr::progressor(nrow(red_bands))
     lapply(seq_len(nrow(red_bands)), \(i) {
@@ -425,13 +429,14 @@ ndvi_features_to_point <- function(master_polygon, features,
       stack <- project_with_retry(stack, crs)
 
       # Fmask values (quality filtering)
-      # In HLS, both value of 0 and 64 in the Fmask layer indicate the pixel without cloud,
-      # cloud shadow, water, or snow/ice. We will use these values to mask out poor quality
-      # pixels from the ndvi_stacks. HLS quality information can be found in section 6.5
-      # of the [HLS V2.0 User Guide](https://lpdaac.usgs.gov/documents/1118/HLS_User_Guide_V2.pdf).
+      # Refer to Quality Assessment layer https://lpdaac.usgs.gov/documents/1698/HLS_User_Guide_V2.pdf
       fmask <- project_with_retry(fmask, crs)
       fmask_values <- terra::values(fmask)[,1]
-      stack[[1]][!fmask_values %in% c(0, 64)] <- -9999
+
+
+      cloudy <- qa_table$qa_value[qa_table$cloud == 1 | qa_table$water == 1 |
+                                    qa_table$snow_ice == 1]
+      stack[[1]][fmask_values %in% cloudy] <- -9999
 
       # Add date as the name
       names(stack) <- date
@@ -913,5 +918,58 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
 
   return(NULL)
 
+}
+
+
+# Helper function to decode a specific bit
+decode_bit <- function(value, bit_position) {
+  quotient <- value %/% (2^bit_position)
+  bit_value <- quotient %% 2
+  return(bit_value)
+}
+
+# Define a function to decode QA values and form a table
+decode_qa_values <- function() {
+  # Define QA attributes and their bit positions
+  qa_attributes <- list(
+    "aerosol_quality" = c(6, 7),  # Bits 6-7
+    "water" = 5,                  # Bit 5
+    "snow_ice" = 4,               # Bit 4
+    "cloud_shadow" = 3,           # Bit 3
+    "adjacent_cloud" = 2,         # Bit 2
+    "cloud" = 1,                  # Bit 1
+    "cirrus" = 0                  # Bit 0
+  )
+
+  # Initialize a dataframe to store the results
+  qa_values <- 0:255
+  qa_table <- data.frame(qa_value = qa_values, stringsAsFactors = FALSE)
+
+  # Decode each attribute for each QA value
+  for (attribute in names(qa_attributes)) {
+    if (length(qa_attributes[[attribute]]) == 2) {
+      # For attributes with two bits (e.g., aerosol quality)
+      bit1 <- qa_attributes[[attribute]][1]
+      bit2 <- qa_attributes[[attribute]][2]
+      qa_table[[attribute]] <- sapply(qa_values, function(value) {
+        decode_bit(value, bit1) + 2 * decode_bit(value, bit2)
+      })
+    } else {
+      # For attributes with one bit
+      bit_position <- qa_attributes[[attribute]]
+      qa_table[[attribute]] <- sapply(qa_values, decode_bit, bit_position = bit_position)
+    }
+  }
+
+  # Add descriptions for aerosol quality
+  qa_table$aerosol_quality_desc <- sapply(qa_table$aerosol_quality, function(x) {
+    switch(as.character(x),
+           "0" = "Climatology",
+           "1" = "Low",
+           "2" = "Average",
+           "3" = "High")
+  })
+
+  return(qa_table)
 }
 
