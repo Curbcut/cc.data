@@ -8,11 +8,14 @@
 #' @param url <`character`> The base URL of the ArcGIS REST service endpoint.
 #' The function ensures that the URL ends with "/query". If the URL does
 #' not end with "/query", the function modifies it accordingly.
+#' @param limit <`integer`> The maximum number of records to retrieve per request.
+#' Default is 1000. This controls how many records are retrieved in each API call.
+#' If you want to retrieve fewer or more records per request, you can adjust this.
 #'
 #' @return An object of class `sf` representing the spatial dataframe containing
 #'         the fetched data.
 #' @export
-arcgis_rest_services_ret <- function(url) {
+arcgis_rest_services_ret <- function(url, limit = 1000, sf = TRUE) {
   # Ensure URL ends with "query"
   if (!grepl("/query$", url)) {
     if (!grepl("/$", url)) {
@@ -21,39 +24,120 @@ arcgis_rest_services_ret <- function(url) {
     url <- paste0(url, "query")
   }
 
-  # Function to prepare URL and make GET request
-  make_request <- function(url, format) {
-
-    # Prepare the query with parameters
+  # Function to prepare URL and make GET request with pagination
+  make_request <- function(url, format, offset = 0, limit = 1000, sf) {
+    # Prepare the query with parameters including paging
     query_params <- list(
       where = "1=1", # to get all the data; no filter
       outFields = "*", # to get all fields
       outSR = "4326", # output spatial reference; EPSG:4326 is WGS84 lat/long
       f = format, # output format
-      returnGeometry = "true" # to ensure geometry is included
+      returnGeometry = ifelse(sf, "true", "false"), # conditionally include spatial data
+      resultOffset = offset, # start from this record
+      resultRecordCount = limit # number of records to return
     )
 
     # Make the GET request
     response <- httr::GET(url = url, query = query_params)
+
+    # Check if the response is an error (HTML)
+    content_type <- httr::headers(response)$`content-type`
+    if (grepl("text/html", content_type)) {
+      stop("Received HTML content instead of JSON/GeoJSON. Check if the URL is correct or the request exceeds server limits.")
+    }
+
     return(response)
   }
 
-  # Try fetching data with 'geojson' format
-  response <- make_request(url, "geojson")
-  json_data <- httr::content(response, "text")
+  # Function to get total record count
+  get_total_count <- function(url) {
+    query_params <- list(
+      where = "1=1", # to get all the data; no filter
+      returnCountOnly = "true", # request only the count of records
+      f = "json" # output format
+    )
 
-  # Check if the response contains an error
-  if (grepl("\"error\"", json_data)) {
-    # Retry with 'json' format if 'geojson' failed
-    response <- make_request(url, "json")
+    response <- httr::GET(url = url, query = query_params)
+    content <- httr::content(response, "text")
+
+    # Parse the response and extract the count
+    json_data <- jsonlite::fromJSON(content)
+    if (!is.null(json_data$error)) {
+      stop("Error fetching record count: ", json_data$error$message)
+    }
+
+    return(json_data$count)
+  }
+
+  # Get total record count
+  total_records <- get_total_count(url)
+
+  # Initialize variables for paging
+  offset <- 0
+  all_data <- list()
+  format <- "geojson"
+
+  while (offset < total_records) {
+    response <- make_request(url, format, offset, limit, sf)
     json_data <- httr::content(response, "text")
 
-    # Check again for error
+    # Check if the response contains an error
     if (grepl("\"error\"", json_data)) {
-      stop("Error in response: ", json_data)
+      # Retry with 'json' format if 'geojson' failed
+      format <- "json"
+      response <- make_request(url, format, offset, limit, sf)
+      json_data <- httr::content(response, "text")
+
+      # Check again for error
+      if (grepl("\"error\"", json_data)) {
+        stop("Error in response: ", json_data)
+      }
+    }
+
+    # If geometry is requested (sf = TRUE), try reading the data as spatial dataframe using sf
+    if (sf) {
+      sf_data <- sf::st_read(json_data, quiet = TRUE)
+
+      # If no data is returned, we are done
+      if (nrow(sf_data) == 0) {
+        message("All data retrieved.")
+        break
+      }
+
+      # Append data
+      all_data <- append(all_data, list(sf_data))
+    } else {
+      # Extract and unnest all 'list' columns dynamically
+      json_data_parsed <- jsonlite::fromJSON(json_data)
+
+      # Identify columns that are lists and unnest them
+      unnested_data <- json_data_parsed$features |>
+        tidyr::unnest_wider(where(is.list)) |>
+        tibble::as_tibble()
+
+      all_data <- append(all_data, list(unnested_data))
+    }
+
+    # If the offset + default limit is equal to the total_records, it means
+    # all data has been fetched already.
+    if ((offset + limit) == total_records) break
+
+    # Update offset for next page
+    offset <- offset + limit
+
+    # If the new offset + default limit would exceed total_records, update the limit
+    if ((offset + limit) > total_records) {
+      limit <- total_records - offset
     }
   }
 
-  # Convert the successful response to a spatial dataframe using sf
-  sf_data <- sf::st_read(json_data, quiet = TRUE)
+  # Combine all chunks into one spatial dataframe or list
+  if (sf) {
+    combined_data <- do.call(rbind, all_data)
+  } else {
+    combined_data <- do.call(rbind, all_data)
+  }
+
+  return(combined_data)
 }
+

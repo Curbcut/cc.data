@@ -68,25 +68,25 @@ db_query <- function(type, statement, name = NULL) {
   # Connect to database
   conn <- db_connect()
 
-  if (type %in% c("write", "execute", "append")) {
-    # The following is a SESSION variable, and so it must be enable/disable
-    # for every connection.
-    # The innodb_strict_mode setting affects the handling of syntax errors
-    # for CREATE TABLE, ALTER TABLE and CREATE INDEX statements.
-    # innodb_strict_mode also enables a record size check, so that an
-    # INSERT or UPDATE never fails due to the record being too large for
-    # the selected page size.
-    #
-    # By default, the option is ON:
-    # `DBI::dbGetQuery(conn, "show variables like '%strict%'")`
-    # Set it to OFF:
-    # `DBI::dbGetQuery(conn, "set innodb_strict_mode = 0;")`
-    innodb_strict_mode <-
-      DBI::dbGetQuery(conn, "show variables like '%strict%'")$Value
-    if (innodb_strict_mode == "ON") {
-      DBI::dbExecute(conn, "set innodb_strict_mode = 0;")
-    }
-  }
+  # if (type %in% c("write", "execute", "append")) {
+  #   # The following is a SESSION variable, and so it must be enable/disable
+  #   # for every connection.
+  #   # The innodb_strict_mode setting affects the handling of syntax errors
+  #   # for CREATE TABLE, ALTER TABLE and CREATE INDEX statements.
+  #   # innodb_strict_mode also enables a record size check, so that an
+  #   # INSERT or UPDATE never fails due to the record being too large for
+  #   # the selected page size.
+  #   #
+  #   # By default, the option is ON:
+  #   # `DBI::dbGetQuery(conn, "show variables like '%strict%'")`
+  #   # Set it to OFF:
+  #   # `DBI::dbGetQuery(conn, "set innodb_strict_mode = 0;")`
+  #   innodb_strict_mode <-
+  #     DBI::dbGetQuery(conn, "show variables like '%strict%'")$Value
+  #   if (innodb_strict_mode == "ON") {
+  #     DBI::dbExecute(conn, "set innodb_strict_mode = 0;")
+  #   }
+  # }
 
   # Include the call into a tryCatch to disconnect if it fails
   tryCatch(
