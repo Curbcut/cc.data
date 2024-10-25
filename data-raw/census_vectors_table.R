@@ -666,6 +666,60 @@ census_vectors_identity <-
     rankings_chr = list(NULL),
     parent_vec = "population_ph",
     parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "iden_nonpr",
+    type = list("pct"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_4434"),
+    vec_2016 = list("v_CA16_3435"),
+    vec_2011 = list("v_CA11N_46"),
+    vec_2006 = list("v_CA06_511"),
+    vec_2001 = list("v_CA01_458"),
+    vec_1996 = list("v_CA1996_180"),
+    var_title = "Non-permanent residents (%)",
+    var_short = "Non-permanent residents",
+    explanation = "the percentage of individuals who are non-permanent residents",
+    exp_q5 = "are non-permanent residents",
+    rankings_chr = list(NULL),
+    parent_vec = "population_ph",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "iden_nonimm",
+    type = list("pct"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_4407"),
+    vec_2016 = list("v_CA16_3408"),
+    vec_2011 = list("v_CA11N_19"),
+    vec_2006 = list("v_CA06_475"),
+    vec_2001 = list("v_CA01_403"),
+    vec_1996 = list("v_CA1996_126"),
+    var_title = "Non-Immigrant (%)",
+    var_short = "Non-Immigrant",
+    explanation = "the percentage of individuals who are non-immigrants",
+    exp_q5 = "are non-immigrants",
+    rankings_chr = list(NULL),
+    parent_vec = "population_ph",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "iden_cit",
+    type = list("pct"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_4392"),
+    vec_2016 = list("v_CA16_3393"),
+    vec_2011 = list("v_CA11N_4"),
+    vec_2006 = list("v_CA06_470"),
+    vec_2001 = list("v_CA01_400"),
+    vec_1996 = list("v_CA1996_123"),
+    var_title = "Canadian citizen (%)",
+    var_short = "Canadian citizen",
+    explanation = "the percentage of individuals who are Canadian citizens",
+    exp_q5 = "are Canadian citizens",
+    rankings_chr = list(NULL),
+    parent_vec = "citizen_ph",
+    parent = FALSE
   )
 
 census_vectors_identity_parent <-
@@ -682,6 +736,24 @@ census_vectors_identity_parent <-
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = "the total count of individuals in private households",
+    exp_q5 = NA,
+    rankings_chr = list(NULL),
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::tibble(
+    var_code = "citizen_ph",
+    type = list("count"),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_4389"),
+    vec_2016 = list("v_CA16_3390"),
+    vec_2011 = list("v_CA11N_1"),
+    vec_2006 = list("v_CA06_469"),
+    vec_2001 = list("v_CA01_399"),
+    vec_1996 = list("v_CA1996_122"),
+    var_title = "Citizens",
+    var_short = "Citizens",
+    explanation = "the total count of Canadian citizens in private households",
     exp_q5 = NA,
     rankings_chr = list(NULL),
     parent_vec = NA,
