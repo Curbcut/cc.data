@@ -1134,6 +1134,69 @@ census_vectors_language <-
     rankings_chr = list(NULL),
     parent_vec = "c_population",
     parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "spoke_eng",
+    type = list("pct"),
+    theme = "Language",
+    vec_2021 = "v_CA21_2209",
+    vec_2016 = "v_CA16_1364",
+    vec_2011 = "v_CA11F_593",
+    vec_2006 = "v_CA06_257",
+    vec_2001 = "v_CA01_227",
+    vec_1996 = "v_CA1996_324",
+    var_title = "Most often spoke English at home (%)",
+    var_short = "Most often spoke English at home",
+    explanation = paste0(
+      "the percentage of individuals that most often spoke ",
+      "English at home"
+    ),
+    exp_q5 = "most often spoke English at home",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "spoke_fr",
+    type = list("pct"),
+    theme = "Language",
+    vec_2021 = "v_CA21_2212",
+    vec_2016 = "v_CA16_1367",
+    vec_2011 = "v_CA11F_596",
+    vec_2006 = "v_CA06_258",
+    vec_2001 = "v_CA01_228",
+    vec_1996 = "v_CA1996_325",
+    var_title = "Most often spoke French at home (%)",
+    var_short = "Most often spoke French at home",
+    explanation = paste0(
+      "the percentage of individuals that most often spoke ",
+      "French at home"
+    ),
+    exp_q5 = "most often spoke French at home",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "spoke_nonof",
+    type = list("pct"),
+    theme = "Language",
+    vec_2021 = "v_CA21_2215",
+    vec_2016 = "v_CA16_1370",
+    vec_2011 = "v_CA11F_599",
+    vec_2006 = "v_CA06_259",
+    vec_2001 = "v_CA01_229",
+    vec_1996 = "v_CA1996_326",
+    var_title = "Most often spoke a non-official language at home (%)",
+    var_short = "Most often spoke a non-official language at home",
+    explanation = paste0(
+      "the percentage of individuals that most often spoke ",
+      "a non-official language at home"
+    ),
+    exp_q5 = "most often spoke a non-official language at home",
+    rankings_chr = list(NULL),
+    parent_vec = "c_population",
+    parent = FALSE
   )
 
 census_vectors_language_parent <-
