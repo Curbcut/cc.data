@@ -284,6 +284,90 @@ census_vectors_housing <-
     rankings_chr = list(NULL),
     parent_vec = "private_dwellings",
     parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "housing_size_1",
+    type = list("pct"),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_444"),
+    vec_2016 = list("v_CA16_419"),
+    vec_2011 = list("v_CA11F_210"),
+    vec_2006 = list("v_CA06_129"),
+    vec_2001 = list("v_CA01_122"),
+    vec_1996 = list("v_CA1996_117"),
+    var_title = "One-person households (%)",
+    var_short = "One-person households",
+    explanation = paste0(
+      "the percentage of private households that ",
+      "consist of one person"
+    ),
+    exp_q5 = "are one-person households",
+    rankings_chr = list(NULL),
+    parent_vec = "private_households",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "housing_size_2",
+    type = list("pct"),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_445"),
+    vec_2016 = list("v_CA16_420"),
+    vec_2011 = list("v_CA11F_211"),
+    vec_2006 = list("v_CA06_130"),
+    vec_2001 = list("v_CA01_123"),
+    vec_1996 = list("v_CA1996_118"),
+    var_title = "Two-person households (%)",
+    var_short = "Two-person households",
+    explanation = paste0(
+      "the percentage of private households that ",
+      "consist of two persons"
+    ),
+    exp_q5 = "are two-person households",
+    rankings_chr = list(NULL),
+    parent_vec = "private_households",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "housing_size_3",
+    type = list("pct"),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_446"),
+    vec_2016 = list("v_CA16_421"),
+    vec_2011 = list("v_CA11F_212"),
+    vec_2006 = list("v_CA06_131"),
+    vec_2001 = list("v_CA01_124"),
+    vec_1996 = list("v_CA1996_119"),
+    var_title = "Three-person households (%)",
+    var_short = "Three-person households",
+    explanation = paste0(
+      "the percentage of private households that ",
+      "consist of three persons"
+    ),
+    exp_q5 = "are three-person households",
+    rankings_chr = list(NULL),
+    parent_vec = "private_households",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "housing_size_4",
+    type = list("pct"),
+    theme = "Housing",
+    vec_2021 = list(c("v_CA21_447", "v_CA21_448")),
+    vec_2016 = list(c("v_CA16_422", "v_CA16_423")),
+    vec_2011 = list(c("v_CA11F_213", "v_CA11F_214", "v_CA11F_215")),
+    vec_2006 = list(c("v_CA06_132", "v_CA06_133")),
+    vec_2001 = list(c("v_CA01_125", "v_CA01_126")),
+    vec_1996 = list(c("v_CA1996_120", "v_CA1996_121")),
+    var_title = "Four-or-more-person households (%)",
+    var_short = "Four-or-more-person households",
+    explanation = paste0(
+      "the percentage of private households that ",
+      "consist of four or more persons"
+    ),
+    exp_q5 = "are four-or-more-person households",
+    rankings_chr = list(NULL),
+    parent_vec = "private_households",
+    parent = FALSE
   )
 
 census_vectors_housing_parent <-
