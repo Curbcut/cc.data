@@ -1060,6 +1060,217 @@ usethis::use_data(census_vectors_transport, overwrite = TRUE)
 #
 # usethis::use_data(census_vectors_employment, overwrite = TRUE)
 
+census_vectors_employment <-
+  tibble::tibble(
+    var_code = "employed_er",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_6498"),
+    vec_2016 = list("v_CA16_5603"),
+    vec_2011 = list("v_CA11N_1993"),
+    vec_2006 = list("v_CA06_577"),
+    vec_2001 = list("v_CA01_737"),
+    vec_1996 = list("v_CA1996_799"),
+    var_title = "Employment Rate (%)",
+    var_short = "Employed",
+    explanation = paste0(
+      "the percentage of individuals who are 15 years or older ",
+      "and are employed"
+    ),
+    exp_q5 = "are employed",
+    rankings_chr = list(NULL),
+    parent_vec = "employed_15older",
+    parent = FALSE
+  ) |>
+  tibble::tibble(
+    var_code = "employed_uer",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_6501"),
+    vec_2016 = list("v_CA16_5606"),
+    vec_2011 = list("v_CA11N_1996"),
+    vec_2006 = list("v_CA06_578"),
+    vec_2001 = list("v_CA01_738"),
+    vec_1996 = list("v_CA1996_800"),
+    var_title = "Unemployment Rate (%)",
+    var_short = "Unemployed",
+    explanation = paste0(
+      "the percentage of individuals who are in the labour force ",
+      "and are unemployed"
+    ),
+    exp_q5 = "are unemployed",
+    rankings_chr = list(NULL),
+    parent_vec = "employed_lf",
+    parent = FALSE
+  ) |>
+  tibble::tibble(
+    var_code = "emp_powoutmun",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list(c("v_CA21_7623", "v_CA21_7626", "v_CA21_7629")),
+    vec_2016 = list(c("v_CA16_5783", "v_CA16_5786", "v_CA16_5789")),
+    vec_2011 = list(NA),
+    vec_2006 = list(c("v_CA06_1079", "v_CA06_1082")),
+    vec_2001 = list(c("v_CA01_1240", "v_CA01_1243", "v_CA01_1248", "v_CA01_1251")),
+    vec_1996 = list(c("v_CA1996_1311", "v_CA1996_1314", "v_CA1996_1319", "v_CA1996_1322")),
+    var_title = "Work Outside Municipality of Residence (%)",
+    var_short = "Work Outside Municipality of Residence",
+    explanation = paste0(
+      "the percentage of individuals who work outside ",
+      "their municipality of residence"
+    ),
+    exp_q5 = "work outside their municipality of residence",
+    rankings_chr = list(NULL),
+    parent_vec = "employed_lfupow",
+    parent = FALSE
+  ) |>
+  tibble::tibble(
+    var_code = "emp_powinmun",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_7620"),
+    vec_2016 = list("v_CA16_5780"),
+    vec_2011 = list(NA),
+    vec_2006 = list("v_CA06_1078"),
+    vec_2001 = list(c("v_CA01_1239", "v_CA01_1247")),
+    vec_1996 = list(c("v_CA1996_1310", "v_CA1996_1318")),
+    var_title = "Work in Municipality of Residence (%)",
+    var_short = "Work in Municipality of Residence",
+    explanation = paste0(
+      "the percentage of individuals who work in ",
+      "their municipality of residence"
+    ),
+    exp_q5 = "work in their municipality of residence",
+    rankings_chr = list(NULL),
+    parent_vec = "employed_upow",
+    parent = FALSE
+  ) |>
+  tibble::tibble(
+    var_code = "emp_powphys",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list(c("v_CA21_7614", "v_CA21_7611", "v_CA21_7608")),
+    vec_2016 = list(c("v_CA16_5768", "v_CA16_5771", "v_CA16_5774")),
+    vec_2011 = list(c("v_CA11N_2182", "v_CA11N_2185", "v_CA11N_2188")),
+    vec_2006 = list(c("v_CA06_1077", "v_CA06_1082", "v_CA06_1083")),
+    vec_2001 = list(c("v_CA06_1077", "v_CA01_1243", "v_CA01_1244", "v_CA01_1246",
+                      "v_CA01_1251", "v_CA01_1252")),
+    vec_1996 = list(c("v_CA1996_1309", "v_CA1996_1317", "v_CA1996_1314",
+                      "v_CA1996_1322", "v_CA1996_1315", "v_CA1996_1323")),
+    var_title = "Work at a Physical Work Location (%)",
+    var_short = "Work at a Physical Work Location",
+    explanation = paste0(
+      "the percentage of employed individuals who work ",
+      "at a physical work location"
+    ),
+    exp_q5 = "work at a physical work location",
+    rankings_chr = list(NULL),
+    parent_vec = "employed_em",
+    parent = FALSE
+  ) |>
+  tibble::tibble(
+    var_code = "emp_powhome",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_7605"),
+    vec_2016 = list("v_CA16_5765"),
+    vec_2011 = list("v_CA11N_2179"),
+    vec_2006 = list("v_CA06_1081"),
+    vec_2001 = list(c("v_CA01_1242", "v_CA01_1250")),
+    vec_1996 = list(c("v_CA1996_1313", "v_CA1996_1321")),
+    var_title = "Work at Home (%)",
+    var_short = "Work at Home",
+    explanation = paste0(
+      "the percentage of employed individuals who work ",
+      "at home"
+    ),
+    exp_q5 = "work at home",
+    rankings_chr = list(NULL),
+    parent_vec = "employed_em",
+    parent = FALSE
+  )
+
+census_vectors_employment_parent <-
+  tibble::tibble(
+    var_code = "employed_15older",
+    type = list("count"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_6492"),
+    vec_2016 = list("v_CA16_5597"),
+    vec_2011 = list("v_CA11N_1987"),
+    vec_2006 = list("v_CA06_575"),
+    vec_2001 = list("v_CA01_735"),
+    vec_1996 = list("v_CA1996_797"),
+    var_title = "Individuals aged 15 years or older",
+    var_short = "15 years or older",
+    explanation = "the total population aged 15 years and over",
+    exp_q5 = NA,
+    rankings_chr = list(NULL),
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::tibble(
+    var_code = "employed_lf",
+    type = list("count"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_6495"),
+    vec_2016 = list("v_CA16_5600"),
+    vec_2011 = list("v_CA11N_1990"),
+    vec_2006 = list("v_CA06_576"),
+    vec_2001 = list("v_CA01_736"),
+    vec_1996 = list("v_CA1996_798"),
+    var_title = "Individuals aged 15 years or older in the labour force",
+    var_short = "In the labour force",
+    explanation = "the total population aged 15 years and over",
+    exp_q5 = NA,
+    rankings_chr = list(NULL),
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::tibble(
+    var_code = "employed_lfupow",
+    type = list("count"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_7617"),
+    vec_2016 = list("v_CA16_5777"),
+    vec_2011 = list(NA),
+    vec_2006 = list("v_CA06_1077"),
+    vec_2001 = list(c("v_CA01_1238", "v_CA01_1246")),
+    vec_1996 = list(c("v_CA1996_1309", "v_CA1996_1317")),
+    var_title = "Individuals employed in the labour force with a usual place of work",
+    var_short = "Usual place of work",
+    explanation = "employed individuals with a usual place of work",
+    exp_q5 = NA,
+    rankings_chr = list(NULL),
+    parent_vec = NA,
+    parent = TRUE
+  ) |>
+  tibble::tibble(
+    var_code = "employed_em",
+    type = list("pct"),
+    theme = "Employment",
+    vec_2021 = list("v_CA21_6498"),
+    vec_2016 = list("v_CA16_5603"),
+    vec_2011 = list("v_CA11N_1993"),
+    vec_2006 = list("v_CA06_577"),
+    vec_2001 = list("v_CA01_737"),
+    vec_1996 = list("v_CA1996_799"),
+    var_title = "Employed Individuals in the Labour Force",
+    var_short = "Employed",
+    explanation = "the individuals in the labour force who are employed",
+    exp_q5 = NA,
+    rankings_chr = list(NULL),
+    parent_vec = NA,
+    parent = TRUE
+  )
+
+verify_parents(vectors_df = census_vectors_employment,
+               parents_df = census_vectors_employment_parent)
+
+census_vectors_employment <- rbind(census_vectors_employment,
+                                   census_vectors_employment_parent)
+
+usethis::use_data(census_vectors_employment, overwrite = TRUE)
 
 ## IMPORT FAMILY CENSUS VECTORS ############################################
 
