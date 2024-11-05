@@ -85,7 +85,7 @@ nasa_earthdata_auth <- function() {
 ndvi_get_items <- function(year, limit = 25, zone_bbox, collections) {
 
   # Define the URL for searching data
-  search_URL <- 'https://cmr.earthdata.nasa.gov/stac/LPCLOUD/search'
+  search_URL <- 'https://cmr.earthdata.nasa.gov/cloudstac/LPCLOUD/search'
 
   # Create datetime string for growing season
   zone_datetime <- sprintf('%s-05-01T00:00:00Z/%s-08-31T23:59:59Z', year, year)
@@ -99,12 +99,15 @@ ndvi_get_items <- function(year, limit = 25, zone_bbox, collections) {
   retrievals <- httr::RETRY("POST", search_URL, body = search_body, encode = "json") |>
     httr::content(as = "text") |>
     jsonlite::fromJSON()
-  total_pages <- ceiling(retrievals$context$matched / limit) - 1
-  retrievals <- list(retrievals)
 
-  # Using future_lapply to parallelize the retrieval process
-  if (total_pages > 0) {
-    more_retrievals <- future.apply::future_lapply(seq_len(total_pages), \(page_number) {
+  total_pages <- ceiling(retrievals$context$matched / limit) # Calculate total pages
+
+  # Initialize list to store all pages
+  all_retrievals <- list(retrievals)
+
+  # Fetch additional pages in parallel if needed
+  if (total_pages > 1) {
+    more_retrievals <- future.apply::future_lapply(seq(2, total_pages), function(page_number) {
       search_body <- list(limit = limit,
                           page = page_number,
                           datetime = zone_datetime,
@@ -113,15 +116,17 @@ ndvi_get_items <- function(year, limit = 25, zone_bbox, collections) {
       search_req <- tryCatch(
         httr::RETRY("POST", search_URL, body = search_body, encode = "json") |>
           httr::content(as = "text") |>
-          jsonlite::fromJSON()
-        , error = function(e) return(NULL))
+          jsonlite::fromJSON(),
+        error = function(e) return(NULL)
+      )
       return(search_req)
     })
-    retrievals <- c(retrievals, more_retrievals)
+    all_retrievals <- c(all_retrievals, more_retrievals)
   }
 
-  return(retrievals)
+  return(all_retrievals)
 }
+
 
 #' Retrieve HLS Items for a Specific Year and Season
 #'
