@@ -2,6 +2,11 @@
 
 verify_parents <- function(vectors_df, parents_df) {
 
+  parents_type <- unique(unlist(parents_df$type))
+  if (length(parents_type) > 1 | parents_type != "count") {
+    stop("All vectors of `parents_df` must have `count` as type.")
+  }
+
   if (sum(vectors_df$parent) > 0)
     stop("All vectors of `vectors_df` must be non-parent vectors. `parent` == F")
 
@@ -1117,7 +1122,7 @@ census_vectors_employment <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "emp_powoutmun",
+    var_code = "employment_powoutmun",
     type = list("pct"),
     theme = "Employment",
     vec_2021 = list(c("v_CA21_7623", "v_CA21_7626", "v_CA21_7629")),
@@ -1138,7 +1143,7 @@ census_vectors_employment <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "emp_powinmun",
+    var_code = "employment_powinmun",
     type = list("pct"),
     theme = "Employment",
     vec_2021 = list("v_CA21_7620"),
@@ -1159,7 +1164,7 @@ census_vectors_employment <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "emp_powphys",
+    var_code = "employment_powphys",
     type = list("pct"),
     theme = "Employment",
     vec_2021 = list(c("v_CA21_7614", "v_CA21_7611", "v_CA21_7608")),
@@ -1182,7 +1187,7 @@ census_vectors_employment <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "emp_powhome",
+    var_code = "employment_powhome",
     type = list("pct"),
     theme = "Employment",
     vec_2021 = list("v_CA21_7605"),
@@ -1242,7 +1247,7 @@ census_vectors_employment_parent <-
   ) |>
   tibble::add_row(
     var_code = "employment_em",
-    type = list("pct"),
+    type = list("count"),
     theme = "Employment",
     vec_2021 = list("v_CA21_6498"),
     vec_2016 = list("v_CA16_5603"),

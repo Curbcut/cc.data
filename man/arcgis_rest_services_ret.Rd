@@ -4,12 +4,16 @@
 \alias{arcgis_rest_services_ret}
 \title{Retrieve GeoJSON Data from ArcGIS REST Services}
 \usage{
-arcgis_rest_services_ret(url)
+arcgis_rest_services_ret(url, limit = 1000, sf = TRUE)
 }
 \arguments{
 \item{url}{<\code{character}> The base URL of the ArcGIS REST service endpoint.
 The function ensures that the URL ends with "/query". If the URL does
 not end with "/query", the function modifies it accordingly.}
+
+\item{limit}{<\code{integer}> The maximum number of records to retrieve per request.
+Default is 1000. This controls how many records are retrieved in each API call.
+If you want to retrieve fewer or more records per request, you can adjust this.}
 }
 \value{
 An object of class \code{sf} representing the spatial dataframe containing

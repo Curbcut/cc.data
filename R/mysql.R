@@ -180,38 +180,41 @@ db_disconnect <- function(conn) {
 #' @return NULL
 db_write_table_helper <- function(df, tb_name, primary_key = NULL, index = NULL,
                                  rows_per_append_wave = 1000) {
-  if (!is.null(primary_key)) {
-    # Create the table with the primary key for faster retrieval
-    cols <-
-      paste0(paste(
-        names(df), "VARCHAR(",
-        sapply(seq_len(ncol(df)),
-               \(x) {
-                 n <- suppressWarnings(max(nchar(df[[x]]), na.rm = TRUE))
-                 if (is.infinite(n)) n <- 5
-                 n
-               })
-        ,"),"), collapse = " ")
-    db_query(type = "execute",
-             statement = paste("CREATE TABLE", tb_name, "(",
-                               cols,
-                               "CONSTRAINT", paste0(tb_name, "_pk"),
-                               "PRIMARY KEY",
-                               paste0("(", primary_key , "))")))
-
-    # Append the table's data by waves of x rows
-    waves <- split(df, 1:ceiling(nrow(df) / rows_per_append_wave)) |>
-      suppressWarnings()
-
-    pb <- progressr::progressor(steps = length(waves))
-    lapply(waves, \(x) {
-      code <- db_query(type = "append", statement = x, name = tb_name)
-      db_query(type = "execute", code)
-      pb()
-    })
-  } else {
+  if (!is.null(primary_key)) stop({
+    paste0("You set a primary key, but an update in")
+  })
+  # if (!is.null(primary_key)) {
+  #   # Create the table with the primary key for faster retrieval
+  #   cols <-
+  #     paste0(paste(
+  #       names(df), "VARCHAR(",
+  #       sapply(seq_len(ncol(df)),
+  #              \(x) {
+  #                n <- suppressWarnings(max(nchar(df[[x]]), na.rm = TRUE))
+  #                if (is.infinite(n)) n <- 5
+  #                n
+  #              })
+  #       ,"),"), collapse = " ")
+  #   db_query(type = "execute",
+  #            statement = paste("CREATE TABLE", tb_name, "(",
+  #                              cols,
+  #                              "CONSTRAINT", paste0(tb_name, "_pk"),
+  #                              "PRIMARY KEY",
+  #                              paste0("(", primary_key , "))")))
+  #
+  #   # Append the table's data by waves of x rows
+  #   waves <- split(df, 1:ceiling(nrow(df) / rows_per_append_wave)) |>
+  #     suppressWarnings()
+  #
+  #   pb <- progressr::progressor(steps = length(waves))
+  #   lapply(waves, \(x) {
+  #     code <- db_query(type = "append", statement = x, name = tb_name)
+  #     db_query(type = "execute", code)
+  #     pb()
+  #   })
+  # } else {
     db_query(type = "write", statement = df, name = tb_name)
-  }
+  # }
 
   if (!is.null(index)) {
     # Create an index on ID for faster retrieval
@@ -356,6 +359,7 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
           stop(print(e))
         }
       }
+      stop(print(e))
     })
   }
 
@@ -375,39 +379,36 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
 #' @export
 db_write_processed_data <- function(processed_census) {
 
-  # Territories sf to filter out from the db
-  terr <- data.table::rbindlist(lapply(c(60, 61, 62), \(x) {
-    cancensus::get_census(
-      dataset = cc.data::census_years[length(cc.data::census_years)],
-      regions = list(PR = x),
-      geo_format = "sf",
-      quiet = TRUE
-    )
-  })) |> sf::st_as_sf()
-  terr <- sf::st_union(terr)
-  terr <- sf::st_transform(terr, 3347)
-
   out <-
     sapply(names(processed_census), \(scale) {
       tb_name <- paste("processed", scale, sep = "_")
 
       tb <- processed_census[[scale]]
 
-      # Cut the Canada's three territories. They are huge DAs, leading to hundreds
-      # of geometry columns in the database. Filter out to respect the MySQL cell
-      # limit.
-      tb_centroids <- suppressWarnings(sf::st_point_on_surface(tb))
-      tb <- tb[!as.vector(sf::st_intersects(tb_centroids, terr, sparse = FALSE)), ]
+      # Cut too large geometries, as it doesn't fit in the SQL database.
+      # THIS MUST BE FIXED IN THE FUTURE. We can simply not send geometries
+      # to the database and merge it with a shapefile in an S3 bucket (which is
+      # cached locally)!
+      row_size_limit <- 500 # (MySQL limit is 8126 bytes)
 
-      # Filter out very large areas to respect the MySQL cell limit
-      tb$area <- get_area(tb)
-      very_large_geos <- which(tb$area >= 1e11)
-      if (length(very_large_geos) > 0) {
-        tb <- tb[-very_large_geos, ]
+      # Calculate the size of each row
+      row_size <- apply(tb, 1, function(row) {
+        sum(sapply(row, function(cell) object.size(cell)), na.rm = TRUE)
+      })
+
+      # Convert size to kilobytes (optional, for clarity)
+      row_size_kb <- row_size / 1024
+
+      # Filter out rows that exceed the row size limit
+      tb <- tb[row_size_kb <= row_size_limit, ]
+
+      # Print a message if any rows were removed
+      if (nrow(tb) < nrow(processed_census[[scale]])) {
+        message(paste0("Some rows were removed due to exceeding size limit. ",
+                       "This must be fixed if data is to be used nationally."))
       }
-      tb$area <- NULL
 
-      db_write_table(df = tb, tb_name = tb_name, primary_key = "ID",
+      db_write_table(df = tb, tb_name = tb_name, index = "ID",
                      rows_per_append_wave = 100)
 
     })
@@ -454,7 +455,7 @@ db_write_raw_data <- function(DA_data_raw) {
     df <- df[!as.vector(sf::st_intersects(df_centroids, terr, sparse = FALSE)), ]
 
     # Write
-    db_write_table(df = df, tb_name = tb_name, primary_key = "ID")
+    db_write_table(df = df, tb_name = tb_name, index = "ID")
 
     # Advance the progress bar
     pb()
