@@ -268,27 +268,6 @@ census_vectors_housing <-
     rankings_chr = list(NULL),
     parent_vec = "mobility_status_5",
     parent = FALSE
-  ) |>
-  tibble::add_row(
-    var_code = "housing_single_detached",
-    type = list("pct"),
-    theme = "Housing",
-    vec_2021 = list("v_CA21_435"),
-    vec_2016 = list("v_CA16_409"),
-    vec_2011 = list("v_CA11F_200"),
-    vec_2006 = list("v_CA06_120"),
-    vec_2001 = list("v_CA01_113"),
-    vec_1996 = list("v_CA1996_108"),
-    var_title = "Single-detached (%)",
-    var_short = "Single-detached",
-    explanation = paste0(
-      "the percentage of occupied private dwellings that ",
-      "are single-detached houses"
-    ),
-    exp_q5 = "are single-detached houses",
-    rankings_chr = list(NULL),
-    parent_vec = "private_dwellings",
-    parent = FALSE
   )
 
 census_vectors_housing_parent <-
@@ -426,6 +405,468 @@ census_vectors_housing <- rbind(census_vectors_housing,
                             census_vectors_housing_parent)
 
 usethis::use_data(census_vectors_housing, overwrite = TRUE)
+
+
+## IMPORT HOUSING TYPOLOGY #####################################################
+
+census_vectors_typology <-
+  tibble::tibble(
+    var_code = "typology_single_detached",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_435"),
+    vec_2016 = list("v_CA16_409"),
+    vec_2011 = list("v_CA11F_200"),
+    vec_2006 = list("v_CA06_120"),
+    vec_2001 = list("v_CA01_113"),
+    vec_1996 = list("v_CA1996_108"),
+    var_title = "Single-detached (%)",
+    var_short = "Single-detached",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that ",
+      "are single-detached houses"
+    ),
+    exp_q5 = "are single-detached houses",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_semi_detached",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_436"),
+    vec_2016 = list("v_CA16_412"),
+    vec_2011 = list("v_CA11F_204"),
+    vec_2006 = list("v_CA06_121"),
+    vec_2001 = list("v_CA01_114"),
+    vec_1996 = list("v_CA1996_109"),
+    var_title = "Semi-detached (%)",
+    var_short = "Semi-detached",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are ",
+      "semi-detached houses"
+    ),
+    exp_q5 = "are semi-detached houses",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_row_house",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_437"),
+    vec_2016 = list("v_CA16_413"),
+    vec_2011 = list("v_CA11F_205"),
+    vec_2006 = list("v_CA06_122"),
+    vec_2001 = list("v_CA01_115"),
+    vec_1996 = list("v_CA1996_110"),
+    var_title = "Row house (%)",
+    var_short = "Row house",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are row houses"
+    ),
+    exp_q5 = "are row houses",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_duplex",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_438"),
+    vec_2016 = list("v_CA16_414"),
+    vec_2011 = list("v_CA11F_206"),
+    vec_2006 = list("v_CA06_123"),
+    vec_2001 = list("v_CA01_116"),
+    vec_1996 = list("v_CA1996_111"),
+    var_title = "Duplex (%)",
+    var_short = "Duplex",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are duplexes"
+    ),
+    exp_q5 = "are duplexes",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_apart_small",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_439"),
+    vec_2016 = list("v_CA16_415"),
+    vec_2011 = list("v_CA11F_207"),
+    vec_2006 = list("v_CA06_125"),
+    vec_2001 = list("v_CA01_118"),
+    vec_1996 = list("v_CA1996_113"),
+    var_title = "Apartment, less than 5 storeys (%)",
+    var_short = "Apartment < 5 storeys",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are apartments ",
+      "with less than 5 storeys"
+    ),
+    exp_q5 = "are apartments with less than 5 storeys",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_apart_large",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_440"),
+    vec_2016 = list("v_CA16_410"),
+    vec_2011 = list("v_CA11F_201"),
+    vec_2006 = list("v_CA06_124"),
+    vec_2001 = list("v_CA01_117"),
+    vec_1996 = list("v_CA1996_112"),
+    var_title = "Apartment, 5 or more storeys (%)",
+    var_short = "Apartment >= 5 storeys",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are apartments ",
+      "with 5 or more storeys"
+    ),
+    exp_q5 = "are apartments with 5 or more storeys",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_other_single",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_441"),
+    vec_2016 = list("v_CA16_416"),
+    vec_2011 = list("v_CA11F_208"),
+    vec_2006 = list("v_CA06_126"),
+    vec_2001 = list("v_CA01_119"),
+    vec_1996 = list("v_CA1996_114"),
+    var_title = "Other single-attached (%)",
+    var_short = "Other single-attached",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are other types of ",
+      "single-attached dwellings"
+    ),
+    exp_q5 = "are other types of single-attached dwellings",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "typology_movable",
+    type = list("pct"),
+    theme = "Building typology",
+    vec_2021 = list("v_CA21_442"),
+    vec_2016 = list("v_CA16_417"),
+    vec_2011 = list("v_CA11F_202"),
+    vec_2006 = list("v_CA06_127"),
+    vec_2001 = list("v_CA01_120"),
+    vec_1996 = list("v_CA1996_115"),
+    var_title = "Movable dwellings (%)",
+    var_short = "Movable dwellings",
+    explanation = paste0(
+      "the percentage of occupied private dwellings that are movable dwellings"
+    ),
+    exp_q5 = "are movable dwellings",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  )
+
+
+verify_parents(vectors_df = census_vectors_typology,
+               parents_df = census_vectors_housing_parent)
+
+census_vectors_typology <- rbind(census_vectors_typology)
+
+usethis::use_data(census_vectors_typology, overwrite = TRUE)
+
+## IMPORT BEDROOM SIZE CENSUS VECTORS ##########################################
+
+census_vectors_bedroomsize <-
+  tibble::tibble(
+    var_code = "bedroom_zero",
+    type = list("pct"),
+    theme = "Dwelling size",
+    vec_2021 = list("v_CA21_4245"),
+    vec_2016 = list("v_CA16_4844"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Zero bedrooms (%)",
+    var_short = "Zero bedrooms",
+    explanation = paste0(
+      "the percentage of occupied private dwellings with zero bedrooms"
+    ),
+    exp_q5 = "have zero bedrooms",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "bedroom_one",
+    type = list("pct"),
+    theme = "Dwelling size",
+    vec_2021 = list("v_CA21_4246"),
+    vec_2016 = list("v_CA16_4845"),
+    # BECAUSE 2011 LISTS 0 AND 1 TOGETHER !
+    # vec_2011 = list("v_CA11N_2248"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "One bedroom (%)",
+    var_short = "One bedroom",
+    explanation = paste0(
+      "the percentage of occupied private dwellings with one bedroom"
+    ),
+    exp_q5 = "have one bedroom",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "bedroom_two",
+    type = list("pct"),
+    theme = "Dwelling size",
+    vec_2021 = list("v_CA21_4247"),
+    vec_2016 = list("v_CA16_4846"),
+    # vec_2011 = list("v_CA11N_2249"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Two bedrooms (%)",
+    var_short = "Two bedrooms",
+    explanation = paste0(
+      "the percentage of occupied private dwellings with two bedrooms"
+    ),
+    exp_q5 = "have two bedrooms",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "bedroom_three",
+    type = list("pct"),
+    theme = "Dwelling size",
+    vec_2021 = list("v_CA21_4248"),
+    vec_2016 = list("v_CA16_4847"),
+    # vec_2011 = list("v_CA11N_2250"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Three bedrooms (%)",
+    var_short = "Three bedrooms",
+    explanation = paste0(
+      "the percentage of occupied private dwellings with three bedrooms"
+    ),
+    exp_q5 = "have three bedrooms",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "bedroom_four",
+    type = list("pct"),
+    theme = "Dwelling size",
+    vec_2021 = list("v_CA21_4249"),
+    vec_2016 = list("v_CA16_4848"),
+    # vec_2011 = list("v_CA11N_2251"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Four or more bedrooms (%)",
+    var_short = "Four or more bedrooms",
+    explanation = paste0(
+      "the percentage of occupied private dwellings with four or more bedrooms"
+    ),
+    exp_q5 = "have four or more bedrooms",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  )
+
+verify_parents(vectors_df = census_vectors_bedroomsize,
+               parents_df = census_vectors_housing_parent)
+
+usethis::use_data(census_vectors_bedroomsize, overwrite = TRUE)
+
+## IMPORT BEDROOM SIZE CENSUS VECTORS ##########################################
+
+census_vectors_buildingage <-
+  tibble::tibble(
+    var_code = "buildingage_1960constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4264"),
+    vec_2016 = list("v_CA16_4863"),
+    vec_2011 = list("v_CA11N_2234"),
+    vec_2006 = list(c("v_CA06_110", "v_CA06_111")),
+    vec_2001 = list(c("v_CA01_105", "v_CA01_106")),
+    vec_1996 = list(NA),
+    var_title = "Built before 1960 (%)",
+    var_short = "Pre-1960",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built before 1960"
+    ),
+    exp_q5 = "were built before 1960",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_1980constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4265"),
+    vec_2016 = list("v_CA16_4864"),
+    vec_2011 = list("v_CA11N_2235"),
+    vec_2006 = list("v_CA06_113"),
+    vec_2001 = list(c("v_CA01_107", "v_CA01_108")),
+    vec_1996 = list(NA),
+    var_title = "Built 1961-1980 (%)",
+    var_short = "1961-1980",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 1961 and 1980"
+    ),
+    exp_q5 = "were built between 1961 and 1980",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_1990constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4266"),
+    vec_2016 = list("v_CA16_4865"),
+    vec_2011 = list("v_CA11N_2236"),
+    vec_2006 = list(c("v_CA06_114", "v_CA06_115")),
+    vec_2001 = list("v_CA01_109"),
+    vec_1996 = list(NA),
+    var_title = "Built 1981-1990 (%)",
+    var_short = "1981-1990",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 1981 and 1990"
+    ),
+    exp_q5 = "were built between 1981 and 1990",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_2000constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4267"),
+    vec_2016 = list("v_CA16_4866"),
+    vec_2011 = list("v_CA11N_2237"),
+    vec_2006 = list(c("v_CA06_116", "v_CA06_117")),
+    vec_2001 = list(c("v_CA01_110", "v_CA01_111")),
+    vec_1996 = list(NA),
+    var_title = "Built 1991-2000 (%)",
+    var_short = "1991-2000",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 1991 and 2000"
+    ),
+    exp_q5 = "were built between 1991 and 2000",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_2005constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4268"),
+    vec_2016 = list("v_CA16_4867"),
+    vec_2011 = list("v_CA11N_2238"),
+    vec_2006 = list("v_CA06_118"),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Built 2001-2005 (%)",
+    var_short = "2001-2005",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 2001 and 2005"
+    ),
+    exp_q5 = "were built between 2001 and 2005",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_2010constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4269"),
+    vec_2016 = list("v_CA16_4868"),
+    vec_2011 = list("v_CA11N_2239"),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Built 2006-2010 (%)",
+    var_short = "2006-2010",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 2006 and 2010"
+    ),
+    exp_q5 = "were built between 2006 and 2010",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_2015constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4270"),
+    vec_2016 = list("v_CA16_4869"),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Built 2011-2015 (%)",
+    var_short = "2011-2015",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 2011 and 2015"
+    ),
+    exp_q5 = "were built between 2011 and 2015",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "buildingage_2020constr",
+    type = list("pct"),
+    theme = "Housing period of construction",
+    vec_2021 = list("v_CA21_4271"),
+    vec_2016 = list(NA),
+    vec_2011 = list(NA),
+    vec_2006 = list(NA),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
+    var_title = "Built 2016-2020 (%)",
+    var_short = "2016-2020",
+    explanation = paste0(
+      "the percentage of occupied private dwellings built between 2016 and 2020"
+    ),
+    exp_q5 = "were built between 2016 and 2020",
+    rankings_chr = list(NULL),
+    parent_vec = "private_dwellings",
+    parent = FALSE
+  )
+
+verify_parents(vectors_df = census_vectors_buildingage,
+               parents_df = census_vectors_housing_parent)
+
+usethis::use_data(census_vectors_buildingage, overwrite = TRUE)
+
 
 ## IMPORT HOUSEHOLD SIZE CENSUS VECTORS ########################################
 
@@ -692,9 +1133,9 @@ usethis::use_data(census_vectors_income, overwrite = TRUE)
 
 census_vectors_identity <-
   tibble::tibble(
-    var_code = "iden_imm",
+    var_code = "citizenship_imm",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4410"),
     vec_2016 = list("v_CA16_3411"),
     vec_2011 = list("v_CA11N_22"),
@@ -710,9 +1151,9 @@ census_vectors_identity <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "iden_imm_new",
+    var_code = "citizenship_imm_new",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4431"),
     vec_2016 = list("v_CA16_3432"),
     vec_2011 = list("v_CA11N_43"),
@@ -733,7 +1174,7 @@ census_vectors_identity <-
   tibble::add_row(
     var_code = "iden_vm",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Visible minority and ethnic origin",
     vec_2021 = list("v_CA21_4875"),
     vec_2016 = list("v_CA16_3957"),
     vec_2011 = list("v_CA11N_460"),
@@ -754,7 +1195,7 @@ census_vectors_identity <-
   tibble::add_row(
     var_code = "iden_aboriginal",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Visible minority and ethnic origin",
     vec_2021 = list("v_CA21_4204"),
     vec_2016 = list("v_CA16_3855"),
     vec_2011 = list("v_CA11N_1354"),
@@ -770,9 +1211,9 @@ census_vectors_identity <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "iden_nonpr",
+    var_code = "citizenship_nonpr",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4434"),
     vec_2016 = list("v_CA16_3435"),
     vec_2011 = list("v_CA11N_46"),
@@ -788,9 +1229,9 @@ census_vectors_identity <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "iden_nonimm",
+    var_code = "citizenship_nonimm",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4407"),
     vec_2016 = list("v_CA16_3408"),
     vec_2011 = list("v_CA11N_19"),
@@ -806,9 +1247,9 @@ census_vectors_identity <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "iden_cit",
+    var_code = "citizenship_cit",
     type = list("pct"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4392"),
     vec_2016 = list("v_CA16_3393"),
     vec_2011 = list("v_CA11N_4"),
@@ -828,7 +1269,7 @@ census_vectors_identity_parent <-
   tibble::tibble(
     var_code = "population_ph",
     type = list("count"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4404"),
     vec_2016 = list("v_CA16_3405"),
     vec_2011 = list("v_CA11N_16"),
@@ -846,7 +1287,7 @@ census_vectors_identity_parent <-
   tibble::add_row(
     var_code = "citizen_ph",
     type = list("count"),
-    theme = "Identity",
+    theme = "Citizenship",
     vec_2021 = list("v_CA21_4389"),
     vec_2016 = list("v_CA16_3390"),
     vec_2011 = list("v_CA11N_1"),
@@ -1855,13 +2296,19 @@ usethis::use_data(census_vectors_education, overwrite = TRUE)
 ## COMBINE ALL CENSUS VECTORS ##################################################
 
 census_vectors_table <- rbind(
-  census_vectors_housing, census_vectors_householdsize,
+  census_vectors_housing,
+  census_vectors_householdsize,
   census_vectors_income,
-  census_vectors_identity, census_vectors_transport,
+  census_vectors_identity,
+  census_vectors_transport,
   census_vectors_employment,
   census_vectors_family,
-  census_vectors_language, census_vectors_age,
-  census_vectors_education
+  census_vectors_language,
+  census_vectors_age,
+  census_vectors_education,
+  census_vectors_bedroomsize,
+  census_vectors_buildingage,
+  census_vectors_typology
 )
 
 usethis::use_data(census_vectors_table, overwrite = TRUE)

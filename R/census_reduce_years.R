@@ -36,7 +36,7 @@ census_reduce_years <- function(parent_dropped,
         years[length(years)]
       )
 
-    merge_keep_all <- function(...) merge(..., all.x = TRUE)
+    merge_keep_all <- function(...) merge(..., by = "ID", all.x = TRUE)
     tibble::as_tibble(Reduce(merge_keep_all, rev(years))) |>
       sf::st_as_sf()
   }, simplify = FALSE, USE.NAMES = TRUE)
