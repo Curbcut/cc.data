@@ -106,6 +106,26 @@ census_vectors_housing <-
     parent = FALSE
   ) |>
   tibble::add_row(
+    var_code = "housing_shelcost",
+    type = list(c("dollar")),
+    theme = "Housing",
+    vec_2021 = list("v_CA21_4310"),
+    vec_2016 = list("v_CA16_4894"),
+    vec_2011 = list("v_CA11N_2285"),
+    vec_2006 = list("v_CA06_2055"),
+    vec_2001 = list("v_CA01_1671"),
+    vec_1996 = list("v_CA1996_1704"),
+    var_title = "Average shelter cost ($)",
+    var_short = "Avg. shelter cost",
+    explanation = "the average shelter cost paid by owners per month",
+    exp_q5 = "the average shelter cost is",
+    rankings_chr = list(c("exceptionally inexpensive", "unusually inexpensive",
+                          "just about average price", "unusually expensive",
+                          "exceptionally expensive")),
+    parent_vec = "owner_households",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
     var_code = "housing_repairs",
     type = list("pct"),
     theme = "Housing",
@@ -1261,7 +1281,7 @@ census_vectors_identity <-
     explanation = "the percentage of individuals who are Canadian citizens",
     exp_q5 = "are Canadian citizens",
     rankings_chr = list(NULL),
-    parent_vec = "citizen_ph",
+    parent_vec = "population_ph",
     parent = FALSE
   )
 
@@ -1279,24 +1299,6 @@ census_vectors_identity_parent <-
     var_title = "Individuals",
     var_short = "Individuals",
     explanation = "the total count of individuals in private households",
-    exp_q5 = NA,
-    rankings_chr = list(NULL),
-    parent_vec = NA,
-    parent = TRUE
-  ) |>
-  tibble::add_row(
-    var_code = "citizen_ph",
-    type = list("count"),
-    theme = "Citizenship",
-    vec_2021 = list("v_CA21_4389"),
-    vec_2016 = list("v_CA16_3390"),
-    vec_2011 = list("v_CA11N_1"),
-    vec_2006 = list("v_CA06_469"),
-    vec_2001 = list("v_CA01_399"),
-    vec_1996 = list("v_CA1996_122"),
-    var_title = "Citizens",
-    var_short = "Citizens",
-    explanation = "the total count of Canadian citizens in private households",
     exp_q5 = NA,
     rankings_chr = list(NULL),
     parent_vec = NA,
@@ -2218,6 +2220,90 @@ usethis::use_data(census_vectors_age, overwrite = TRUE)
 
 census_vectors_education <-
   tibble::tibble(
+    var_code = "edu_no_degree",
+    type = list("pct"),
+    theme = "Education",
+    vec_2021 = list("v_CA21_5820"),
+    vec_2016 = list("v_CA16_5054"),
+    vec_2011 = list("v_CA11N_1774"),
+    vec_2006 = list(c("v_CA06_1235", "v_CA06_1249", "v_CA06_1263")),
+    vec_2001 = list("v_CA01_1387"),
+    vec_1996 = list("v_CA1996_1350"),
+    var_title = "No certificate, diploma or degree (%)",
+    var_short = "No degree",
+    explanation = paste0(
+      "the percentage of the population aged 15 and over ",
+      "with no certificate, diploma or degree"
+    ),
+    exp_q5 = "hold no certificate, diploma or degree",
+    rankings_chr = list(NULL),
+    parent_vec = "population_15plus",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "edu_secondary",
+    type = list("pct"),
+    theme = "Education",
+    vec_2021 = list("v_CA21_5823"),
+    vec_2016 = list("v_CA16_5057"),
+    vec_2011 = list("v_CA11N_1777"),
+    vec_2006 = list(c("v_CA06_1237", "v_CA06_1251", "v_CA06_1265")),
+    vec_2001 = list("v_CA01_1387"),
+    vec_1996 = list("v_CA1996_1351"),
+    var_title = "Secondary school diploma or equivalent (%)",
+    var_short = "Secondary diploma",
+    explanation = paste0(
+      "the percentage of the population aged 15 and over ",
+      "holding a secondary (high) school diploma or equivalency certificate"
+    ),
+    exp_q5 = "hold a secondary (high) school diploma or equivalency certificate",
+    rankings_chr = list(NULL),
+    parent_vec = "population_15plus",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "edu_nonuni",
+    type = list("pct"),
+    theme = "Education",
+    vec_2021 = list("v_CA21_5841"),
+    vec_2016 = list("v_CA16_5072"),
+    vec_2011 = list("v_CA11N_1786"),
+    vec_2006 = list(c("v_CA06_1239", "v_CA06_1253", "v_CA06_1267")),
+    vec_2001 = list("v_CA01_1392"),
+    vec_1996 = list("v_CA1996_1355"),
+    var_title = "College, CEGEP or other non-university certificate or diploma (%)",
+    var_short = "College certificate",
+    explanation = paste0(
+      "the percentage of the population aged 15 and over ",
+      "holding a college, CEGEP or other non-university certificate or diploma"
+    ),
+    exp_q5 = "hold a college, CEGEP or other non-university certificate or diploma",
+    rankings_chr = list(NULL),
+    parent_vec = "population_15plus",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "edu_uni_below",
+    type = list("pct"),
+    theme = "Education",
+    vec_2021 = list("v_CA21_5844"),
+    vec_2016 = list("v_CA16_5075"),
+    vec_2011 = list("v_CA11N_1789"),
+    vec_2006 = list(c("v_CA06_1241", "v_CA06_1255", "v_CA06_1269")),
+    vec_2001 = list("v_CA01_1396"),
+    vec_1996 = list("v_CA1996_1359"),
+    var_title = "University certificate or diploma below bachelor level (%)",
+    var_short = "University certificate or diploma below bachelor level",
+    explanation = paste0(
+      "the percentage of the population aged 15 and over ",
+      "holding a university certificate or diploma below bachelor level"
+    ),
+    exp_q5 = "hold a university certificate or diploma below bachelor level",
+    rankings_chr = list(NULL),
+    parent_vec = "population_15plus",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
     var_code = "edu_bachelor_above",
     type = list("pct"),
     theme = "Education",
@@ -2238,28 +2324,8 @@ census_vectors_education <-
     rankings_chr = list(NULL),
     parent_vec = "population_15plus",
     parent = FALSE
-  ) |>
-  tibble::add_row(
-    var_code = "edu_no_degree",
-    type = list("pct"),
-    theme = "Education",
-    vec_2021 = list("v_CA21_5820"),
-    vec_2016 = list("v_CA16_5054"),
-    vec_2011 = list("v_CA11N_1774"),
-    vec_2006 = list(c("v_CA06_1235", "v_CA06_1249", "v_CA06_1263")),
-    vec_2001 = list("v_CA01_1387"),
-    vec_1996 = list("v_CA1996_1350"),
-    var_title = "No certificate, diploma or degree (%)",
-    var_short = "No degree",
-    explanation = paste0(
-      "the percentage of the population aged 15 and over ",
-      "with no certificate, diploma or degree"
-    ),
-    exp_q5 = "hold no certificate, diploma or degree",
-    rankings_chr = list(NULL),
-    parent_vec = "population_15plus",
-    parent = FALSE
   )
+
 
 census_vectors_education_parent <-
   tibble::tibble(
