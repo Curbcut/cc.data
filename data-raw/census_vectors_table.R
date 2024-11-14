@@ -617,8 +617,8 @@ census_vectors_bedroomsize <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = "Zero bedrooms (%)",
-    var_short = "Zero bedrooms",
+    var_title = "0 bedrooms (%)",
+    var_short = "0 bedrooms",
     explanation = paste0(
       "the percentage of occupied private dwellings with zero bedrooms"
     ),
@@ -639,8 +639,8 @@ census_vectors_bedroomsize <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = "One bedroom (%)",
-    var_short = "One bedroom",
+    var_title = "1 bedroom (%)",
+    var_short = "1 bedroom",
     explanation = paste0(
       "the percentage of occupied private dwellings with one bedroom"
     ),
@@ -660,8 +660,8 @@ census_vectors_bedroomsize <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = "Two bedrooms (%)",
-    var_short = "Two bedrooms",
+    var_title = "2 bedrooms (%)",
+    var_short = "2 bedrooms",
     explanation = paste0(
       "the percentage of occupied private dwellings with two bedrooms"
     ),
@@ -681,8 +681,8 @@ census_vectors_bedroomsize <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = "Three bedrooms (%)",
-    var_short = "Three bedrooms",
+    var_title = "3 bedrooms (%)",
+    var_short = "3 bedrooms",
     explanation = paste0(
       "the percentage of occupied private dwellings with three bedrooms"
     ),
@@ -702,8 +702,8 @@ census_vectors_bedroomsize <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = "Four or more bedrooms (%)",
-    var_short = "Four or more bedrooms",
+    var_title = "4 or more bedrooms (%)",
+    var_short = "4 or more bedrooms",
     explanation = paste0(
       "the percentage of occupied private dwellings with four or more bedrooms"
     ),
@@ -731,7 +731,7 @@ census_vectors_buildingage <-
     vec_2006 = list(c("v_CA06_110", "v_CA06_111")),
     vec_2001 = list(c("v_CA01_105", "v_CA01_106")),
     vec_1996 = list(NA),
-    var_title = "Built before 1960 (%)",
+    var_title = "Built <1960 (%)",
     var_short = "Pre-1960",
     explanation = paste0(
       "the percentage of occupied private dwellings built before 1960"
@@ -1805,7 +1805,7 @@ census_vectors_language <-
     vec_2006 = "v_CA06_245",
     vec_2001 = "v_CA01_215",
     vec_1996 = "v_CA1996_312",
-    var_title = "French only (%)",
+    var_title = "Knows French only (%)",
     var_short = "Fr. only",
     explanation = paste0(
       "the percentage of individuals that only know French ",
@@ -1826,7 +1826,7 @@ census_vectors_language <-
     vec_2006 = "v_CA06_244",
     vec_2001 = "v_CA01_214",
     vec_1996 = "v_CA1996_311",
-    var_title = "English only (%)",
+    var_title = "Knows English only (%)",
     var_short = "Eng. only",
     explanation = paste0(
       "the percentage of individuals that only know English ",
@@ -1847,7 +1847,7 @@ census_vectors_language <-
     vec_2006 = "v_CA06_246",
     vec_2001 = "v_CA01_216",
     vec_1996 = "v_CA1996_313",
-    var_title = "French and English (%)",
+    var_title = "Knows French and English (%)",
     var_short = "Fr. and Eng.",
     explanation = paste0(
       "the percentage of individuals that know both official ",
@@ -1868,7 +1868,7 @@ census_vectors_language <-
     vec_2006 = "v_CA06_247",
     vec_2001 = "v_CA01_217",
     vec_1996 = "v_CA1996_314",
-    var_title = "Neither French nor English (%)",
+    var_title = "Knows neither French nor English (%)",
     var_short = "Non-official",
     explanation = paste0(
       "the percentage of individuals that do not know either ",
@@ -1889,13 +1889,13 @@ census_vectors_language <-
     vec_2006 = "v_CA06_257",
     vec_2001 = "v_CA01_227",
     vec_1996 = "v_CA1996_324",
-    var_title = "Most often spoke English at home (%)",
-    var_short = "Most often spoke English at home",
+    var_title = "Most often speak English at home (%)",
+    var_short = "English",
     explanation = paste0(
-      "the percentage of individuals that most often spoke ",
+      "the percentage of individuals that most often speak ",
       "English at home"
     ),
-    exp_q5 = "most often spoke English at home",
+    exp_q5 = "most often speak English at home",
     rankings_chr = list(NULL),
     parent_vec = "c_population",
     parent = FALSE
@@ -1910,13 +1910,13 @@ census_vectors_language <-
     vec_2006 = "v_CA06_258",
     vec_2001 = "v_CA01_228",
     vec_1996 = "v_CA1996_325",
-    var_title = "Most often spoke French at home (%)",
-    var_short = "Most often spoke French at home",
+    var_title = "Most often speak French at home (%)",
+    var_short = "French",
     explanation = paste0(
-      "the percentage of individuals that most often spoke ",
+      "the percentage of individuals that most often speak ",
       "French at home"
     ),
-    exp_q5 = "most often spoke French at home",
+    exp_q5 = "most often speak French at home",
     rankings_chr = list(NULL),
     parent_vec = "c_population",
     parent = FALSE
@@ -1931,13 +1931,13 @@ census_vectors_language <-
     vec_2006 = "v_CA06_259",
     vec_2001 = "v_CA01_229",
     vec_1996 = "v_CA1996_326",
-    var_title = "Most often spoke a non-official language at home (%)",
-    var_short = "Most often spoke a non-official language at home",
+    var_title = "Most often speak a non-official language at home (%)",
+    var_short = "Non-official",
     explanation = paste0(
-      "the percentage of individuals that most often spoke ",
+      "the percentage of individuals that most often speak ",
       "a non-official language at home"
     ),
-    exp_q5 = "most often spoke a non-official language at home",
+    exp_q5 = "most often speak a non-official language at home",
     rankings_chr = list(NULL),
     parent_vec = "c_population",
     parent = FALSE

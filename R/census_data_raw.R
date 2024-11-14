@@ -141,8 +141,9 @@ get_census_data <- function(census_dataset, var_codes, region, scale,
                             cache = cancensus::list_cancensus_cache()) {
   # Is it in the cache?
   vc_unnamed <- unname(var_codes)
+  fromjson <- \(x) if (is.na(x)) NA else jsonlite::fromJSON(x)
   in_cache <- cache[sapply(
-    lapply(cache$vectors, jsonlite::fromJSON),
+    lapply(cache$vectors, fromjson),
     identical, vc_unnamed
   ), ]
   if (nrow(in_cache) > 0)
