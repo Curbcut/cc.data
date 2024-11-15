@@ -61,14 +61,14 @@ census_agg_type <- function(census_vectors = cc.data::census_vectors,
   # Override for census bugs
   agg <-
     agg[!{agg$var_code == "housing_stress_renter" & agg$agg == "Additive"} &
-          !{agg$var_code == "housing_stress_owner" & agg$agg == "Additive"}, ]
+          !{agg$var_code == "housing_stress_owner" & agg$agg == "Additive"} &
+            !{agg$var_code == "housing_shelcost" & agg$agg == "Additive"}, ]
 
   # Check for error
-  if (length(unique(agg$var_code)) != nrow(agg)) {
-    stop(paste0(
-      "One or more var_code have multiple `aggregation` values in ",
-      "cancensus::list_census_vectors() between the years."
-    ))
+  multiple <- table(agg$var_code)[table(agg$var_code) > 1]
+  if (length(multiple) > 0) {
+    stop(paste(names(multiple), "has multiple `aggregation` values in ",
+               "cancensus::list_census_vectors() between the years."))
   }
 
   # Out

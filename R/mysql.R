@@ -320,7 +320,7 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
     attempt_count <- attempt_count + 1
 
     tryCatch({
-      if (ncol(df_no_geo) > 1017) {
+      if (ncol(df_no_geo) > 500) {
         ind <- suppressWarnings(split(seq_len(ncol(df_no_geo)), 1:split_df))
 
         # Split the dataframe and keep `ID` in all

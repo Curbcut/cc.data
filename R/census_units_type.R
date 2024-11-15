@@ -63,14 +63,14 @@ census_unit_type <- function(census_vectors = cc.data::census_vectors,
             !{units$var_code == "housing_stress_owner" & units$units == "Number"}, ]
   units <-
     units[!{units$var_code == "housing_value" & units$units == "Number"} &
-            !{units$var_code == "housing_rent" & units$units == "Number"}, ]
+            !{units$var_code == "housing_rent" & units$units == "Number"} &
+            !{units$var_code == "housing_shelcost" & units$units == "Number"}, ]
 
   # Check for error
-  if (length(unique(units$var_code)) != nrow(units)) {
-    stop(paste0(
-      "One or more var_code have multiple `units` values in ",
-      "cancensus::list_census_vectors() between the years."
-    ))
+  multiple <- table(units$var_code)[table(units$var_code) > 1]
+  if (length(multiple) > 0) {
+    stop(paste(names(multiple), "has multiple `units` values in ",
+               "cancensus::list_census_vectors() between the years."))
   }
 
   # Out
