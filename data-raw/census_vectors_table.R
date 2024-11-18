@@ -703,7 +703,7 @@ census_vectors_bedroomsize <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = "4 or more bedrooms (%)",
-    var_short = "4 or more bedrooms",
+    var_short = "4+ bedrooms",
     explanation = paste0(
       "the percentage of occupied private dwellings with four or more bedrooms"
     ),
@@ -1241,7 +1241,7 @@ census_vectors_identity <-
     vec_2001 = list("v_CA01_458"),
     vec_1996 = list("v_CA1996_180"),
     var_title = "Non-permanent residents (%)",
-    var_short = "Non-permanent residents",
+    var_short = "Non-permanent",
     explanation = "the percentage of individuals who are non-permanent residents",
     exp_q5 = "are non-permanent residents",
     rankings_chr = list(NULL),
@@ -1258,8 +1258,8 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_475"),
     vec_2001 = list("v_CA01_403"),
     vec_1996 = list("v_CA1996_126"),
-    var_title = "Non-Immigrant (%)",
-    var_short = "Non-Immigrant",
+    var_title = "Non-immigrant (%)",
+    var_short = "Non-immigrant",
     explanation = "the percentage of individuals who are non-immigrants",
     exp_q5 = "are non-immigrants",
     rankings_chr = list(NULL),
@@ -1277,7 +1277,7 @@ census_vectors_identity <-
     vec_2001 = list("v_CA01_400"),
     vec_1996 = list("v_CA1996_123"),
     var_title = "Canadian citizen (%)",
-    var_short = "Canadian citizen",
+    var_short = "Citizen",
     explanation = "the percentage of individuals who are Canadian citizens",
     exp_q5 = "are Canadian citizens",
     rankings_chr = list(NULL),
@@ -1574,8 +1574,8 @@ census_vectors_employment <-
     vec_2006 = list(c("v_CA06_1079", "v_CA06_1082")),
     vec_2001 = list(c("v_CA01_1240", "v_CA01_1243", "v_CA01_1248", "v_CA01_1251")),
     vec_1996 = list(c("v_CA1996_1311", "v_CA1996_1314", "v_CA1996_1319", "v_CA1996_1322")),
-    var_title = "Work Outside Municipality of Residence (%)",
-    var_short = "Work Outside Municipality of Residence",
+    var_title = "Work outside municipality of residence (%)",
+    var_short = "Outside",
     explanation = paste0(
       "the percentage of individuals who work outside ",
       "their municipality of residence"
@@ -1595,8 +1595,8 @@ census_vectors_employment <-
     vec_2006 = list("v_CA06_1078"),
     vec_2001 = list(c("v_CA01_1239", "v_CA01_1247")),
     vec_1996 = list(c("v_CA1996_1310", "v_CA1996_1318")),
-    var_title = "Work in Municipality of Residence (%)",
-    var_short = "Work in Municipality of Residence",
+    var_title = "Work in municipality of residence (%)",
+    var_short = "Within",
     explanation = paste0(
       "the percentage of individuals who work in ",
       "their municipality of residence"
@@ -1606,29 +1606,30 @@ census_vectors_employment <-
     parent_vec = "employment_lfupow",
     parent = FALSE
   ) |>
-  tibble::add_row(
-    var_code = "employment_powphys",
-    type = list("pct"),
-    theme = "Employment",
-    vec_2021 = list(c("v_CA21_7614", "v_CA21_7611", "v_CA21_7608")),
-    vec_2016 = list(c("v_CA16_5768", "v_CA16_5771", "v_CA16_5774")),
-    vec_2011 = list(c("v_CA11N_2182", "v_CA11N_2185", "v_CA11N_2188")),
-    vec_2006 = list(c("v_CA06_1077", "v_CA06_1082", "v_CA06_1083")),
-    vec_2001 = list(c("v_CA06_1077", "v_CA01_1243", "v_CA01_1244", "v_CA01_1246",
-                      "v_CA01_1251", "v_CA01_1252")),
-    vec_1996 = list(c("v_CA1996_1309", "v_CA1996_1317", "v_CA1996_1314",
-                      "v_CA1996_1322", "v_CA1996_1315", "v_CA1996_1323")),
-    var_title = "Work at a Physical Work Location (%)",
-    var_short = "Work at a Physical Work Location",
-    explanation = paste0(
-      "the percentage of employed individuals who work ",
-      "at a physical work location"
-    ),
-    exp_q5 = "work at a physical work location",
-    rankings_chr = list(NULL),
-    parent_vec = "employment_em",
-    parent = FALSE
-  ) |>
+  # TKTK VECTORS SEEM OFF
+  # tibble::add_row(
+  #   var_code = "employment_powphys",
+  #   type = list("pct"),
+  #   theme = "Employment",
+  #   vec_2021 = list(c("v_CA21_7614", "v_CA21_7611", "v_CA21_7608")),
+  #   vec_2016 = list(c("v_CA16_5768", "v_CA16_5771", "v_CA16_5774")),
+  #   vec_2011 = list(c("v_CA11N_2182", "v_CA11N_2185", "v_CA11N_2188")),
+  #   vec_2006 = list(c("v_CA06_1077", "v_CA06_1082", "v_CA06_1083")),
+  #   vec_2001 = list(c("v_CA06_1077", "v_CA01_1243", "v_CA01_1244", "v_CA01_1246",
+  #                     "v_CA01_1251", "v_CA01_1252")),
+  #   vec_1996 = list(c("v_CA1996_1309", "v_CA1996_1317", "v_CA1996_1314",
+  #                     "v_CA1996_1322", "v_CA1996_1315", "v_CA1996_1323")),
+  #   var_title = "Work at a physical work location (%)",
+  #   var_short = "Work at a physical work location",
+  #   explanation = paste0(
+  #     "the percentage of employed individuals who work ",
+  #     "at a physical work location"
+  #   ),
+  #   exp_q5 = "work at a physical work location",
+  #   rankings_chr = list(NULL),
+  #   parent_vec = "employment_em",
+  #   parent = FALSE
+  # ) |>
   tibble::add_row(
     var_code = "employment_powhome",
     type = list("pct"),
@@ -1639,8 +1640,8 @@ census_vectors_employment <-
     vec_2006 = list("v_CA06_1081"),
     vec_2001 = list(c("v_CA01_1242", "v_CA01_1250")),
     vec_1996 = list(c("v_CA1996_1313", "v_CA1996_1321")),
-    var_title = "Work at Home (%)",
-    var_short = "Work at Home",
+    var_title = "Work at home (%)",
+    var_short = "Home",
     explanation = paste0(
       "the percentage of employed individuals who work ",
       "at home"
@@ -1682,7 +1683,7 @@ census_vectors_employment_parent <-
     vec_1996 = list(c("v_CA1996_1309", "v_CA1996_1317")),
     var_title = "Individuals employed in the labour force with a usual place of work",
     var_short = "Usual place of work",
-    explanation = "employed individuals with a usual place of work",
+    explanation = "the number of employed individuals with a usual place of work",
     exp_q5 = NA,
     rankings_chr = list(NULL),
     parent_vec = NA,
@@ -1698,9 +1699,9 @@ census_vectors_employment_parent <-
     vec_2006 = list("v_CA06_577"),
     vec_2001 = list("v_CA01_737"),
     vec_1996 = list("v_CA1996_799"),
-    var_title = "Employed Individuals in the Labour Force",
+    var_title = "Employed individuals in the labour force",
     var_short = "Employed",
-    explanation = "the individuals in the labour force who are employed",
+    explanation = "the number of individuals in the labour force who are employed",
     exp_q5 = NA,
     rankings_chr = list(NULL),
     parent_vec = NA,
@@ -2251,7 +2252,7 @@ census_vectors_education <-
     vec_2001 = list("v_CA01_1387"),
     vec_1996 = list("v_CA1996_1351"),
     var_title = "Secondary school diploma or equivalent (%)",
-    var_short = "Secondary diploma",
+    var_short = "Secondary",
     explanation = paste0(
       "the percentage of the population aged 15 and over ",
       "holding a secondary (high) school diploma or equivalency certificate"
@@ -2272,7 +2273,7 @@ census_vectors_education <-
     vec_2001 = list("v_CA01_1392"),
     vec_1996 = list("v_CA1996_1355"),
     var_title = "College, CEGEP or other non-university certificate or diploma (%)",
-    var_short = "College certificate",
+    var_short = "College",
     explanation = paste0(
       "the percentage of the population aged 15 and over ",
       "holding a college, CEGEP or other non-university certificate or diploma"
@@ -2293,7 +2294,7 @@ census_vectors_education <-
     vec_2001 = list("v_CA01_1396"),
     vec_1996 = list("v_CA1996_1359"),
     var_title = "University certificate or diploma below bachelor level (%)",
-    var_short = "University certificate or diploma below bachelor level",
+    var_short = "Uni. below bachelor",
     explanation = paste0(
       "the percentage of the population aged 15 and over ",
       "holding a university certificate or diploma below bachelor level"
