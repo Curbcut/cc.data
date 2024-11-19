@@ -523,7 +523,7 @@ census_vectors_typology <-
     vec_2001 = list("v_CA01_118"),
     vec_1996 = list("v_CA1996_113"),
     var_title = "Apartment, less than 5 storeys (%)",
-    var_short = "Apartment < 5 storeys",
+    var_short = "Apt. <5",
     explanation = paste0(
       "the percentage of occupied private dwellings that are apartments ",
       "with less than 5 storeys"
@@ -544,7 +544,7 @@ census_vectors_typology <-
     vec_2001 = list("v_CA01_117"),
     vec_1996 = list("v_CA1996_112"),
     var_title = "Apartment, 5 or more storeys (%)",
-    var_short = "Apartment >= 5 storeys",
+    var_short = "Apt. >=5",
     explanation = paste0(
       "the percentage of occupied private dwellings that are apartments ",
       "with 5 or more storeys"
@@ -1258,8 +1258,8 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_475"),
     vec_2001 = list("v_CA01_403"),
     vec_1996 = list("v_CA1996_126"),
-    var_title = "Non-immigrant (%)",
-    var_short = "Non-immigrant",
+    var_title = "Non-immigrants (%)",
+    var_short = "Non-immigrants",
     explanation = "the percentage of individuals who are non-immigrants",
     exp_q5 = "are non-immigrants",
     rankings_chr = list(NULL),
@@ -1276,8 +1276,8 @@ census_vectors_identity <-
     vec_2006 = list("v_CA06_470"),
     vec_2001 = list("v_CA01_400"),
     vec_1996 = list("v_CA1996_123"),
-    var_title = "Canadian citizen (%)",
-    var_short = "Citizen",
+    var_title = "Canadian citizens (%)",
+    var_short = "Citizens",
     explanation = "the percentage of individuals who are Canadian citizens",
     exp_q5 = "are Canadian citizens",
     rankings_chr = list(NULL),
