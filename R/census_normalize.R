@@ -33,8 +33,10 @@ census_normalize <- function(interpolated,
 
   sapply(census_scales, \(scale) {
     sapply(as.character(census_years), \(year) {
+      print(scale)
+      print(year)
       data <- interpolated[[scale]][[year]]
-      data_no_geo <- sf::st_drop_geometry(data)
+      data_no_geo <- sf::st_drop_geometry(data) |> unique()
 
       # If classed as percentage in the census
       pcts <-

@@ -482,8 +482,8 @@ census_vectors_typology <-
     vec_2006 = list("v_CA06_122"),
     vec_2001 = list("v_CA01_115"),
     vec_1996 = list("v_CA1996_110"),
-    var_title = "Row house (%)",
-    var_short = "Row house",
+    var_title = "Row houses (%)",
+    var_short = "Row houses",
     explanation = paste0(
       "the percentage of occupied private dwellings that are row houses"
     ),
@@ -522,7 +522,7 @@ census_vectors_typology <-
     vec_2006 = list("v_CA06_125"),
     vec_2001 = list("v_CA01_118"),
     vec_1996 = list("v_CA1996_113"),
-    var_title = "Apartment, less than 5 storeys (%)",
+    var_title = "Apartments, less than 5 storeys (%)",
     var_short = "Apt. <5",
     explanation = paste0(
       "the percentage of occupied private dwellings that are apartments ",
@@ -543,7 +543,7 @@ census_vectors_typology <-
     vec_2006 = list("v_CA06_124"),
     vec_2001 = list("v_CA01_117"),
     vec_1996 = list("v_CA1996_112"),
-    var_title = "Apartment, 5 or more storeys (%)",
+    var_title = "Apartments, 5 or more storeys (%)",
     var_short = "Apt. >=5",
     explanation = paste0(
       "the percentage of occupied private dwellings that are apartments ",

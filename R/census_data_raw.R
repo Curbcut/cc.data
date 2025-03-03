@@ -94,7 +94,7 @@ census_data_raw <- function(empty_geometries,
 
         to_add_done <- sapply(to_add, \(x) {
           dat[grepl(x, names(dat))] |> rowSums()
-        }, USE.NAMES = TRUE)
+        }, USE.NAMES = TRUE, simplify = FALSE)
 
         dat <- dat[, !grepl(paste0(to_add, collapse = "|"), names(dat))]
         dat <- tibble::as_tibble(cbind(dat, to_add_done))

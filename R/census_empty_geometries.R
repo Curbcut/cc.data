@@ -13,6 +13,7 @@ census_empty_geometries <- function(census_scales = cc.data::census_scales,
 
   # Create vector of dataset code for cancensus
   census_dataset <- paste0("CA", sub("20", "", census_years))
+  latest_census <- census_dataset[length(census_dataset)]
 
   progressr::with_progress({
     # Iterate over all scales to get the empty geometries
@@ -25,7 +26,9 @@ census_empty_geometries <- function(census_scales = cc.data::census_scales,
           # In the case it leads to an error (too large request), retrieve
           # by provinces.
           out <- tryCatch({cancensus::get_census(
-            dataset = year,
+            # We don't want interpolation for Canada and the Provinces. If boundaries change,
+            # it's just methodology.
+            dataset = if (scale %in% c("C", "PR")) latest_census else year,
             regions = list(C = "01"),
             level = scale,
             geo_format = "sf",
@@ -50,6 +53,21 @@ census_empty_geometries <- function(census_scales = cc.data::census_scales,
 
           out <- out[, c("GeoUID", "geometry")]
           names(out) <- c("ID", "geometry")
+
+
+          # Nunavut is a territory since 1999
+          if (scale == "PR" & year == "CA1996") {
+            # Subset the geometries
+            geoms_to_merge <- out[out$ID %in% c(61, 62), ]
+            # Combine the geometries into a single MULTIPOLYGON
+            combined_geometry <- sf::st_union(geoms_to_merge)
+            # Create a new feature with ID 61 (NW Territories)
+            new_feature <- sf::st_sf(ID = 61, geometry = combined_geometry)
+            # Add the new feature back to the rest of the data
+            out <- out[!out$ID %in% c(61, 62), ]  # Remove the old features
+            out <- rbind(out, new_feature)        # Add the combined feature
+          }
+
           out <- sf::st_transform(out, 3347)
           pb()
           sf::st_as_sf(tibble::as_tibble(out))
