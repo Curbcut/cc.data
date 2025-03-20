@@ -28,9 +28,7 @@ fetch_cmhc_data <- function(survey, series, dimension, breakdown, geo_uid) {
       series = series, 
       dimension = dimension, 
       breakdown = breakdown, 
-      geo_uid = geo_uid,
-      refresh = TRUE
-    ),
+      geo_uid = geo_uid),
     error = function(e) {
       return(NULL)
     }
