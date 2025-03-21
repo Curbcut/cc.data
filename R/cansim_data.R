@@ -90,11 +90,9 @@ process_maintenance_exp <- function(table_id) {
 #' @export
 process_wages_tab <- function(table_id) {
   
-  #' Helper function to reformat column names (YYYY-MM → YYYYMM)
-  #' @param x A character string representing a date in YYYY-MM format.
-  #' @return A formatted string in YYYYMM format.
+  # Internal function: reformats date column names (YYYY-MM → YYYYMM)
   format_date_names <- function(x) {
-    stringr::str_replace_all(x, "-", "")  # Remove "-" to get YYYYMM
+    stringr::str_replace_all(x, "-", "")  # Remove "-" to get YYYYMM format
   }
   
   # Load wage rate data from CANSIM
