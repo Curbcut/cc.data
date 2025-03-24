@@ -20,8 +20,7 @@
 #' @param breakdown The breakdown level for the data (e.g., "Historical Time Periods").
 #' @param geo_uid The geographical identifier for the CMA.
 #' @return A data frame containing the retrieved CMHC data, or `NULL` if an error occurs.
-#' @export
-fetch_cmhc_data <- function(survey, series, dimension, breakdown, geo_uid) {
+cmhc_fetch_data <- function(survey, series, dimension, breakdown, geo_uid) {
   tryCatch(
     cmhc::get_cmhc(
       survey = survey, 
@@ -42,8 +41,7 @@ fetch_cmhc_data <- function(survey, series, dimension, breakdown, geo_uid) {
 #'
 #' @param results A data frame containing raw CMHC data.
 #' @return A cleaned and processed data frame with standardized column names and formats.
-#' @export
-process_results <- function(results) {
+cmhc_process_results <- function(results) {
   if (!is.null(results) && nrow(results) > 0) {
     results <- results |> dplyr::mutate(GeoUID = as.character(GeoUID))  
     
@@ -85,8 +83,7 @@ process_results <- function(results) {
 #'
 #' @param name_vector A vector of column names to clean.
 #' @return A vector of cleaned and standardized column names.
-#' @export
-clean_names <- function(name_vector) {
+cmhc_clean_names <- function(name_vector) {
   name_vector |> 
     stringr::str_trim() |>  
     stringr::str_to_lower() |>  
@@ -106,8 +103,7 @@ clean_names <- function(name_vector) {
 #' @param cma_all A reference dataset containing geographical ID.
 #' @param dimension The column name used as a filter for restructuring.
 #' @return A list of reshaped data frames, each corresponding to a unique series.
-#' @export
-reshape_results <- function(results, cma_all, dimension) {
+cmhc_reshape_results <- function(results, cma_all, dimension) {
   results_list <- list()
   
   if (!is.null(results) && nrow(results) > 0) {
@@ -123,8 +119,8 @@ reshape_results <- function(results, cma_all, dimension) {
               names_prefix = paste0(s, "_", dimension, "_", d, "_")
             ) |> dplyr::filter(!is.na(GeoUID))
           
-          colnames(df_filtered) <- clean_names(colnames(df_filtered))
-          list_name <- clean_names(paste(s, dimension, d, sep = "_"))
+          colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+          list_name <- cmhc_clean_names(paste(s, dimension, d, sep = "_"))
           
           df_final <- df_filtered |> 
             dplyr::left_join(cma_all |> dplyr::mutate(geouid = as.character(geouid)), by = "geouid") |>  
@@ -145,8 +141,8 @@ reshape_results <- function(results, cma_all, dimension) {
             names_prefix = paste0(s, "_")
           ) |> dplyr::filter(!is.na(GeoUID))
         
-        colnames(df_filtered) <- clean_names(colnames(df_filtered))
-        list_name <- clean_names(s)
+        colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+        list_name <- cmhc_clean_names(s)
         
         df_final <- df_filtered |> 
           dplyr::left_join(cma_all |> dplyr::mutate(geouid = as.character(geouid)), by = "geouid") |>  
@@ -169,7 +165,6 @@ reshape_results <- function(results, cma_all, dimension) {
 #'
 #' @param cmhc_cma_vectors A list containing CMHC data frames.
 #' @return A modified list of data frames with standardized names.
-#' @export
 cmhc_abbreviations <- function(cmhc_cma_vectors) {
   if (exists("cmhc_data_abbreviations") && is.list(cmhc_data_abbreviations)) {
     
@@ -202,7 +197,7 @@ cmhc_abbreviations <- function(cmhc_cma_vectors) {
 #' @param cma_all A data frame containing all CMAs with geographical identifiers.
 #' @return A structured list containing processed CMHC data with applied abbreviations.
 #' @export
-get_cmhc_cma <- function(requests, cma_all) {
+cmhc_get_cma <- function(requests, cma_all) {
   cmhc_vectors <- list(CMA = list())
   results_list <- list()
   
@@ -214,9 +209,9 @@ get_cmhc_cma <- function(requests, cma_all) {
       breakdown <- req$breakdown
       
       if (breakdown == "Historical Time Periods") {
-        results <- fetch_cmhc_data(survey, series, dimension, breakdown, geo_uid)
-        results <- process_results(results)
-        reshaped_data <- reshape_results(results, cma_all, dimension)
+        results <- cmhc_fetch_data(survey, series, dimension, breakdown, geo_uid)
+        results <- cmhc_process_results(results)
+        reshaped_data <- cmhc_reshape_results(results, cma_all, dimension)
         
         for (key in names(reshaped_data)) {
           if (is.null(results_list[[key]])) {
@@ -245,7 +240,7 @@ get_cmhc_cma <- function(requests, cma_all) {
 #' @param census_year Character. The census year (e.g., "CA21").
 #' @return sf object containing CMAs with Ottawa-Gatineau split by province.
 #' @export
-split_ottawa_gatineau_cma <- function(census_year = "CA21") {
+cma_split_ottawa <- function(census_year = "CA21") {
   
   # Retrieve list of CMAs and Provinces
   census_regions <- cancensus::list_census_regions(census_year)
