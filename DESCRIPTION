@@ -30,6 +30,8 @@ Imports:
     sp,
     dplyr,
     terra,
+    cmhc,
+    cansim
 Suggests:
     aws.s3,
     gtfsrouter,
