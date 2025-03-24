@@ -17,7 +17,7 @@ connect_to_db <- function() {
 
 
 #' @title Extract and Process Points of Interest (POI) for Canadian CMAs
-#' @description This function retrieves Points of Interest (POI) from a database, associates them with CMAs,
+#' @description This function retrieves Points of Interest from a database, associates them with CMAs,
 #' calculates the number of active POIs per year, and creates a structured dataset.
 #' @param conn A database connection object obtained from `connect_to_db()`.
 #' @param cma_nash A spatial dataframe (`sf`) containing Canadian CMAs with geometries.
@@ -124,4 +124,3 @@ process_poi_cma <- function(conn, cma_nash) {
   
   return(poi_evolution)
 }
-
