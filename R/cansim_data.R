@@ -6,12 +6,10 @@
 #' @param table_id The CANSIM table ID to retrieve. Default is `"34-10-0095-01"`.
 #' @return A spatial dataframe (`sf`) containing expenditure data joined with provincial geometries.
 #' @export
-process_maintenance_exp <- function(table_id) {
-  
-  options(scipen=999) 
-  
+cansim_maintenance_exp <- function() {
+    
   # Retrieves data from the CANSIM database and normalizes it for further processing.
-  maintenance_df <- cansim::get_cansim_connection(table_id) |> 
+  maintenance_df <- cansim::get_cansim_connection("34-10-0095-01") |> 
     cansim::collect_and_normalize()
   
   # Filters out Canada-level data, keeping only province-level observations.
@@ -88,7 +86,7 @@ process_maintenance_exp <- function(table_id) {
 #'   \item{constr_basic}{Basic construction union wage rate indexes}
 #'   \item{constr_union_composite}{Construction union wage rate indexes including selected pay supplements}
 #' @export
-process_wages_tab <- function(table_id) {
+cansim_wages <- function() {
   
   # Internal function: reformats date column names (YYYY-MM → YYYYMM)
   format_date_names <- function(x) {
@@ -96,7 +94,7 @@ process_wages_tab <- function(table_id) {
   }
   
   # Load wage rate data from CANSIM
-  construction <- cansim::get_cansim_connection(table_id) |> 
+  construction <- cansim::get_cansim_connection("18-10-0140-01") |> 
     cansim::collect_and_normalize()
   
   # Process "Basic construction union wage rate indexes"
@@ -211,10 +209,10 @@ process_wages_tab <- function(table_id) {
 #'   \item{constr_price_resi}{Construction price data for residential buildings}
 #'   \item{constr_price_non_resi}{Construction price data for non-residential buildings}
 #' @export
-process_constr_price <- function(table_id) {
+cansim_constr_price <- function() {
   
   # Load construction price data from CANSIM
-  constr_price <- cansim::get_cansim_connection(table_id) |> 
+  constr_price <- cansim::get_cansim_connection("18-10-0276-01") |> 
     cansim::collect_and_normalize()
   
   # Retrieve the list of CMAs
@@ -310,7 +308,7 @@ process_constr_price <- function(table_id) {
 #' @return A spatial data frame (`sf`) containing unemployment data merged with province geometries.
 #' 
 #' @export
-process_unemployment_tab <- function(table_id) {
+cansim_unemployment <- function() {
   
   # Function to reformat column names from YYYY-MM to YYYYMM
   format_date_names <- function(x) {
@@ -318,7 +316,7 @@ process_unemployment_tab <- function(table_id) {
   }
   
   # Load unemployment rate data from CANSIM
-  unemp <- cansim::get_cansim_connection(table_id) |> 
+  unemp <- cansim::get_cansim_connection("14-10-0287-03") |> 
     cansim::collect_and_normalize() |>
     dplyr::filter(
       `Labour force characteristics` == "Unemployment rate",
@@ -392,7 +390,7 @@ process_unemployment_tab <- function(table_id) {
 #' @return A spatial data frame (`sf`) containing census metropolitan areas merged with elasticity values.
 #' 
 #' @export
-process_elasticities_tab <- function(file_url) {
+boc_elasticities <- function(file_url) {
   
   # Download the Excel file to a temporary file
   temp_file <- tempfile(fileext = ".xls")
@@ -464,21 +462,19 @@ process_elasticities_tab <- function(file_url) {
 #' @title Process Bank of Canada Interest Rate Data
 #'
 #' @description This function downloads and processes Bank of Canada interest rate data 
-#' from a provided JSON URL. It extracts, reformats, and reshapes the data into a wide format, 
+#' from the official Valet API. It extracts, reformats, and reshapes the data into a wide format, 
 #' keeping only observations from 1991 onwards.
 #'
-#' @param file_url The URL of the JSON file containing interest rate data.
 #' @return A formatted data frame with interest rates from 1991 onwards, structured in a wide format.
 #' 
 #' @export
-process_interest_rates <- function(file_url) {
+boc_interest_rates <- function() {
   
-  # Download the JSON file to a temporary file
-  temp_file <- tempfile(fileext = ".json")
-  download.file(file_url, temp_file, mode = "wb")
-  
+  # Define the API URL with full date range
+  api_url <- "https://www.bankofcanada.ca/valet/observations/V122530/json?start_date=1900-01-01"
+
   # Load JSON data from the temporary file
-  json_data <- jsonlite::fromJSON(temp_file)
+  json_data <- jsonlite::fromJSON(api_url)
   
   # Extract and reformat interest rate data
   interest_rates <- json_data$observations |> 
@@ -492,9 +488,6 @@ process_interest_rates <- function(file_url) {
                        names_prefix = "bank_rate_") |>  # Convert to wide format
     dplyr::mutate(name = "Canada", geouid = "01") |>  # Add static columns
     dplyr::select(name, geouid, dplyr::everything())  # Reorder columns
-  
-  # Remove the temporary file
-  unlink(temp_file)
-  
+    
   return(interest_rates)
 }
