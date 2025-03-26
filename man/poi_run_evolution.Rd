@@ -2,7 +2,7 @@
 % Please edit documentation in R/foursquare_poi.R
 \name{poi_run_evolution}
 \alias{poi_run_evolution}
-\title{Process POI Evolution with Geometry}
+\title{Process POI Evolution}
 \usage{
 poi_run_evolution(geo_level, census_year)
 }
@@ -12,7 +12,7 @@ poi_run_evolution(geo_level, census_year)
 \item{census_year}{A string specifying the census dataset code (default = "CA21").}
 }
 \value{
-An \code{sf} object with columns: \code{name}, \code{geouid}, yearly POI totals, and geometry.
+An \code{sf} object with columns: \code{id}, yearly POI totals.
 }
 \description{
 Connects to Foursquare, retrieves POIs, downloads the selected census geometry, intersects both, and returns a wide-format dataset of cumulative POIs by year and region.

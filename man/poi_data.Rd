@@ -9,10 +9,10 @@ poi_data(poi_df, geo_sf)
 \arguments{
 \item{poi_df}{A data frame of Foursquare POIs with geographic coordinates and creation/closure dates.}
 
-\item{geo_sf}{An sf object containing geographic boundaries (must include \code{name} and \code{geouid}).}
+\item{geo_sf}{An sf object containing geographic boundaries (must include \code{id}).}
 }
 \value{
-A wide-format data frame of yearly POI totals by region, with \code{geouid} and \code{name}.
+A wide-format data frame of yearly POI totals by region, with \code{id}.
 }
 \description{
 Intersects POI data with geographic boundaries and calculates yearly cumulative POI counts.
