@@ -1,147 +1,101 @@
-#' Process CANSIM data and merge with census ID and geometries 
+#' @title Retrieve and Reshape Housing Maintenance Expenditures
+#' @description Downloads and processes CANSIM data on housing maintenance and repair expenditures by province. 
+#' The function reshapes the data into wide format and returns three data frames: total, owner-occupied, and tenant-occupied expenditures.
 #'
-#' This function retrieves Maintenance and repair expenditures data from a specified CANSIM table, processes it 
-#' by reshaping the dataset into a wide format, and merges it with provincial geometries.
-#'
-#' @param table_id The CANSIM table ID to retrieve. Default is `"34-10-0095-01"`.
-#' @return A spatial dataframe (`sf`) containing expenditure data joined with provincial geometries.
+#' @param table_id CANSIM table ID to download. Default is `"34-10-0095-01"`.
+#' @return A named list of three `data.frame`s: `housing_maint_exp_total`, `housing_maint_exp_owner`, `housing_maint_exp_tenant`.
+#' Each data frame contains one row per province (`id`) and one column per year of expenditure.
 #' @export
 cansim_maintenance_exp <- function() {
-    
-  # Retrieves data from the CANSIM database and normalizes it for further processing.
-  maintenance_df <- cansim::get_cansim_connection("34-10-0095-01") |> 
+  
+  # Step 1: Retrieve and normalize CANSIM data
+  maintenance_df <- cansim::get_cansim_connection("34-10-0095-01") |>
     cansim::collect_and_normalize()
   
-  # Filters out Canada-level data, keeping only province-level observations.
+  # Step 2: Filter out Canada-level aggregates
   maintenance_df <- dplyr::filter(maintenance_df, GEO != "Canada")
   
-  # Converts the dataset into a pivoted format where each expenditure type and date become column names.
-  maintenance_pivot <- maintenance_df |>
-    dplyr::select(REF_DATE, GEO, `Type of expenditure`, val_norm) |>
-    tidyr::pivot_wider(names_from = c(`Type of expenditure`, REF_DATE), 
-                       values_from = val_norm, names_sep = "_")
-  
-  # Replaces spaces with underscores and renames expenditure types into shorter, meaningful names.
-  maintenance_pivot <- maintenance_pivot |>
-    dplyr::rename_with(~ gsub(" ", "_", .x, fixed = TRUE)) |>
-    dplyr::rename_with(~ gsub("Total_expenditures", "total_exp", .x, ignore.case = TRUE)) |>
-    dplyr::rename_with(~ gsub("Owner_occupied_expenditures", "owner_exp", .x, ignore.case = TRUE)) |>
-    dplyr::rename_with(~ gsub("Landlord_and_tenant_occupied_expenditures", "tenant_exp", .x, ignore.case = TRUE))
-  
-  # Loads information about census regions and extracts only province-level data.
-  census_regions <- cancensus::list_census_regions("CA21")
-  province_list <- dplyr::filter(census_regions, level == "PR") |>
-    dplyr::select(region, name)
-  
-  # Retrieves spatial information (geometries) for each province from the census.
-  provinces_sf <- cancensus::get_census(dataset = "CA21", 
-                                        regions = list(PR = province_list$region), 
-                                        geo_format = "sf", 
-                                        level = "PR") |>
-    dplyr::select(name, geometry, GeoUID) 
-  
-  # Matches the province names in the CANSIM dataset with the names in the census dataset.
-  province_mapping <- c(
-    "Newfoundland and Labrador" = "Newfoundland and Labrador (N.L.)",
-    "Prince Edward Island" = "Prince Edward Island (P.E.I.)",
-    "Nova Scotia" = "Nova Scotia (N.S.)",
-    "New Brunswick" = "New Brunswick (N.B.)",
-    "Quebec" = "Quebec (Que.)",
-    "Ontario" = "Ontario (Ont.)",
-    "Manitoba" = "Manitoba (Man.)",
-    "Saskatchewan" = "Saskatchewan (Sask.)",
-    "Alberta" = "Alberta (Alta.)",
-    "British Columbia" = "British Columbia (B.C.)",
-    "Yukon" = "Yukon (Y.T.)",
-    "Northwest Territories" = "Northwest Territories (N.W.T.)",
-    "Nunavut" = "Nunavut (Nvt.)"
+  # Step 3: Correct GeoUID for known mismatches
+  maintenance_df <- dplyr::mutate(
+    maintenance_df,
+    GeoUID = dplyr::case_when(
+      GEO == "Newfoundland and Labrador" ~ "10",
+      GEO == "British Columbia" ~ "59",
+      TRUE ~ GeoUID
+    )
   )
   
-  # Updates province names in the expenditure dataset to match the census dataset.
+  # Step 4: Reshape into wide format (pivot)
+  maintenance_pivot <- maintenance_df |>
+    dplyr::select(REF_DATE, id = GeoUID, `Type of expenditure`, val_norm) |>
+    tidyr::pivot_wider(
+      names_from = c(`Type of expenditure`, REF_DATE),
+      values_from = val_norm,
+      names_sep = "_"
+    ) |>
+    dplyr::filter(!is.na(id)) # Remove rows with missing IDs
+  
+  # Step 5: Clean column names
   maintenance_pivot <- maintenance_pivot |>
-    dplyr::mutate(GEO = dplyr::recode(GEO, !!!province_mapping)) |>
-    dplyr::rename(name = GEO)
+    dplyr::rename_with(~ gsub(" ", "_", .x, fixed = TRUE)) |>
+    dplyr::rename_with(~ gsub("Total_expenditures", "housing_maint_exp_total", .x, ignore.case = TRUE)) |>
+    dplyr::rename_with(~ gsub("Owner_occupied_expenditures", "housing_maint_exp_owner", .x, ignore.case = TRUE)) |>
+    dplyr::rename_with(~ gsub("Landlord_and_tenant_occupied_expenditures", "housing_maint_exp_tenant", .x, ignore.case = TRUE))
   
-  # Joins the expenditure data with the spatial census data based on province names.
-  results <- dplyr::left_join(provinces_sf, maintenance_pivot, by = "name")
-  
-  # - Removes province abbreviations in parentheses to keep only the full province name.
-  # - Renames "GeoUID" to lowercase "geouid" for consistency.
-  results <- results |>
-    dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", name)) |>
-    dplyr::rename(geouid = GeoUID)
-  
-  return(results)
+  # Step 6: Return three separate data frames
+  return(list(
+    housing_maint_exp_total  = dplyr::select(maintenance_pivot, id, dplyr::starts_with("housing_maint_exp_total_")),
+    housing_maint_exp_owner  = dplyr::select(maintenance_pivot, id, dplyr::starts_with("housing_maint_exp_owner_")),
+    housing_maint_exp_tenant = dplyr::select(maintenance_pivot, id, dplyr::starts_with("housing_maint_exp_tenant_"))
+  ))
 }
 
-
-
 #' @title Process Wage Rate Index Data from CANSIM
-#' @description This function retrieves wage rate index data from a specified CANSIM table, processes it, 
-#' and returns two cleaned datasets: one for basic construction union wage rates and another 
-#' for construction union wage rates including selected pay supplements.
+#' @description Retrieves and processes CANSIM wage rate index data, returning two datasets: 
+#' one for basic construction union wage rates and one for those including selected pay supplements.
 #'
 #' @param table_id A string specifying the CANSIM table ID (default: "18-10-0140-01").
-#' @return A list containing two data frames:
-#'   \item{constr_basic}{Basic construction union wage rate indexes}
-#'   \item{constr_union_composite}{Construction union wage rate indexes including selected pay supplements}
+#' @return A list of two data frames:
+#'   \item{union_wage_index_basic}{Basic union wage rate indexes by CMA}
+#'   \item{union_wage_index_supp}{Union wage rate indexes with supplements by CMA}
 #' @export
 cansim_wages <- function() {
   
-  # Internal function: reformats date column names (YYYY-MM → YYYYMM)
-  format_date_names <- function(x) {
-    stringr::str_replace_all(x, "-", "")  # Remove "-" to get YYYYMM format
+  format_date_names <- function(x) stringr::str_replace_all(x, "-", "")
+  clean_cma_names <- function(df) {
+    df |>
+      dplyr::mutate(name = stringr::str_replace_all(name, "\\s*\\(.*?\\)", "")) |>
+      dplyr::rename(id = GeoUID) |>
+      dplyr::select(-name, -geometry)
   }
   
-  # Load wage rate data from CANSIM
   construction <- cansim::get_cansim_connection("18-10-0140-01") |> 
     cansim::collect_and_normalize()
   
-  # Process "Basic construction union wage rate indexes"
-  constr_basic <- construction |>
-    dplyr::filter(
-      `Type of wage indexes` == "Basic construction union wage rate indexes",
-      `Construction trades` == "Composite",
-      GEO != "Canada"
-    ) |>
-    dplyr::select(ref_date = REF_DATE, name = GEO, value = VALUE) |>
-    tidyr::pivot_wider(
-      names_from = ref_date, 
-      values_from = value, 
-      names_prefix = "wages_basic_"
-    ) |>
-    dplyr::rename_with(format_date_names, dplyr::starts_with("wages_basic_"))  # Rename columns to YYYYMM format
+  get_wage_data <- function(data, index_type, prefix) {
+    data |>
+      dplyr::filter(
+        `Type of wage indexes` == index_type,
+        `Construction trades` == "Composite",
+        GEO != "Canada"
+      ) |>
+      dplyr::select(ref_date = REF_DATE, name = GEO, value = VALUE) |>
+      tidyr::pivot_wider(
+        names_from = ref_date, 
+        values_from = value, 
+        names_prefix = prefix
+      ) |>
+      dplyr::rename_with(format_date_names, dplyr::starts_with(prefix))
+  }
   
-  # Process "Construction union wage rate indexes including selected pay supplements"
-  constr_union_composite <- construction |>
-    dplyr::filter(
-      `Type of wage indexes` == "Construction union wage rate indexes including selected pay supplements",
-      `Construction trades` == "Composite",
-      GEO != "Canada"
-    ) |>
-    dplyr::select(ref_date = REF_DATE, name = GEO, value = VALUE) |>
-    tidyr::pivot_wider(
-      names_from = ref_date, 
-      values_from = value, 
-      names_prefix = "wages_pay_sup_"
-    ) |>
-    dplyr::rename_with(format_date_names, dplyr::starts_with("wages_pay_sup_"))  # Rename columns to YYYYMM format
+  union_wage_index_basic <- get_wage_data(construction, 
+                                          "Basic construction union wage rate indexes", 
+                                          "union_wage_index_basic_")
   
-  # Retrieve the list of CMAs
-  census_regions <- cancensus::list_census_regions("CA21")
+  union_wage_index_supp <- get_wage_data(construction, 
+                                         "Construction union wage rate indexes including selected pay supplements", 
+                                         "union_wage_index_supp_")
   
-  # Filter to include only CMA-level regions
-  cma_list <- dplyr::filter(census_regions, level == "CMA") |> 
-    dplyr::select(region, name)
-  
-  # Load census spatial data for CMAs
-  cma_all <- cancensus::get_census(dataset = "CA21", 
-                                   regions = list(CMA = cma_list$region), 
-                                   geo_format = "sf", 
-                                   level = "CMA") |>    
-    dplyr::select(name, geometry, GeoUID) 
-  
-  # Standardize CMA names to ensure consistency
   geo_mapping <- c(
     "St. John's, Newfoundland and Labrador" = "St. John's (B)",
     "Halifax, Nova Scotia" = "Halifax (B)",
@@ -170,30 +124,34 @@ cansim_wages <- function() {
     "Kelowna, British Columbia" = "Kelowna (B)"
   )
   
-  # Apply name standardization
-  constr_basic$name <- dplyr::recode(constr_basic$name, !!!geo_mapping)
-  constr_union_composite$name <- dplyr::recode(constr_union_composite$name, !!!geo_mapping)
+  # List of CMAs
+  cma_all <- cancensus::list_census_regions("CA21") |>
+    dplyr::filter(level == "CMA") |>
+    dplyr::select(region, name) |>
+    {\(cma_list) cancensus::get_census(
+      dataset = "CA21",
+      regions = list(CMA = cma_list$region),
+      geo_format = "sf",
+      level = "CMA"
+    )}() |>
+    dplyr::select(name, geometry, GeoUID)
   
-  # Merge wage rate data with geographic CMA information
-  constr_basic <- cma_all |>
-    dplyr::left_join(constr_basic, by = "name")
+  union_wage_index_basic$name <- dplyr::recode(union_wage_index_basic$name, !!!geo_mapping)
+  union_wage_index_supp$name  <- dplyr::recode(union_wage_index_supp$name, !!!geo_mapping)
   
-  constr_union_composite <- cma_all |>
-    dplyr::left_join(constr_union_composite, by = "name")
+  union_wage_index_basic <- cma_all |>
+    dplyr::left_join(union_wage_index_basic, by = "name") |>
+    clean_cma_names() |>
+    sf::st_drop_geometry()
   
-  # Clean names by removing any content in parentheses
-  constr_basic <- constr_basic |>
-    dplyr::mutate(name = stringr::str_replace_all(name, "\\s*\\(.*?\\)", "")) |>
-    dplyr::rename(geouid = GeoUID)
+  union_wage_index_supp <- cma_all |>
+    dplyr::left_join(union_wage_index_supp, by = "name") |>
+    clean_cma_names() |>
+    sf::st_drop_geometry()
   
-  constr_union_composite <- constr_union_composite |>
-    dplyr::mutate(name = stringr::str_replace_all(name, "\\s*\\(.*?\\)", "")) |>
-    dplyr::rename(geouid = GeoUID)
-  
-  # Return the processed data as a named list
   return(list(
-    constr_basic = constr_basic,
-    constr_union_composite = constr_union_composite
+    union_wage_index_basic = union_wage_index_basic,
+    union_wage_index_supp = union_wage_index_supp
   ))
 }
 
@@ -205,28 +163,29 @@ cansim_wages <- function() {
 #'
 #' @param table_id A string specifying the CANSIM table ID (default: "18-10-0276-01").
 #' @return A list containing three data frames:
-#'   \item{constr_price_apt}{Construction price data for apartment buildings}
-#'   \item{constr_price_resi}{Construction price data for residential buildings}
-#'   \item{constr_price_non_resi}{Construction price data for non-residential buildings}
+#'   \item{construction_price_apartment}{Construction price data for apartment buildings}
+#'   \item{construction_price_residential}{Construction price data for residential buildings}
+#'   \item{construction_price_nonres}{Construction price data for non-residential buildings}
 #' @export
-cansim_constr_price <- function() {
+cansim_construction_price <- function() {
   
-  # Load construction price data from CANSIM
   constr_price <- cansim::get_cansim_connection("18-10-0276-01") |> 
     cansim::collect_and_normalize()
   
-  # Retrieve the list of CMAs
   census_regions <- cancensus::list_census_regions("CA21")
-  cma_list <- census_regions |> dplyr::filter(level == "CMA") |> dplyr::select(region, name)
+  cma_list <- dplyr::filter(census_regions, level == "CMA") |> 
+    dplyr::select(region, name)
   
-  # Load census spatial data for CMAs
-  cma_all <- cancensus::get_census(dataset = "CA21", 
-                                   regions = list(CMA = cma_list$region), 
-                                   geo_format = "sf", 
-                                   level = "CMA") |>    
-    dplyr::select(name, geometry, GeoUID)
+  # Get CMA data without geometry
+  cma_all <- cancensus::get_census(
+    dataset = "CA21", 
+    regions = list(CMA = cma_list$region), 
+    geo_format = "sf", 
+    level = "CMA"
+  ) |> 
+    sf::st_drop_geometry() |>  # Drop geometry here
+    dplyr::select(name, GeoUID)
   
-  # Standardize city names for consistency
   geo_mapping <- c(
     "St. John's, Newfoundland and Labrador" = "St. John's (B)",
     "Halifax, Nova Scotia" = "Halifax (B)",
@@ -241,7 +200,6 @@ cansim_constr_price <- function() {
     "Vancouver, British Columbia" = "Vancouver (B)"
   )
   
-  # Function to filter and reshape data for a specific building type
   process_building_type <- function(building_type, prefix) {
     constr_price |>
       dplyr::filter(
@@ -251,66 +209,54 @@ cansim_constr_price <- function() {
       ) |>
       dplyr::select(ref_date = REF_DATE, name = GEO, value = val_norm) |>
       tidyr::pivot_wider(
-        names_from = ref_date, 
-        values_from = value, 
+        names_from = ref_date,
+        values_from = value,
         names_prefix = prefix
       ) |>
-      dplyr::mutate(name = dplyr::recode(name, !!!geo_mapping)) |> # Apply city name mapping
-      dplyr::left_join(cma_all, by = "name") |>  # Merge with census data
-      dplyr::relocate(name, GeoUID)  # Move 'name' and 'GeoUID' to the beginning
+      dplyr::mutate(name = dplyr::recode(name, !!!geo_mapping)) |>
+      dplyr::left_join(cma_all, by = "name") |>
+      dplyr::rename(id = GeoUID)
   }
   
-  # Process different building types
-  constr_price_apt <- process_building_type("Apartment buildings", "constr_price_apt_")
-  constr_price_resi <- process_building_type("Residential buildings", "constr_price_resi_")
-  constr_price_non_resi <- process_building_type("Non-residential buildings", "constr_price_non_resi_")
-  
-  # Function to rename columns in YYYYQX format (e.g., 201701 -> 2017Q1)
   rename_quarterly <- function(df) {
-    new_names <- names(df)
-    new_names <- stringr::str_replace_all(new_names, "-", "")  # Remove dashes to get YYYYMM
-    new_names <- stringr::str_replace(new_names, "(\\d{4})01$", "\\1q1")
-    new_names <- stringr::str_replace(new_names, "(\\d{4})04$", "\\1q2")
-    new_names <- stringr::str_replace(new_names, "(\\d{4})07$", "\\1q3")
-    new_names <- stringr::str_replace(new_names, "(\\d{4})10$", "\\1q4")
-    names(df) <- new_names
-    return(df)
+    names(df) <- names(df) |>
+      stringr::str_replace_all("-", "") |>
+      stringr::str_replace("(\\d{4})01$", "\\1q1") |>
+      stringr::str_replace("(\\d{4})04$", "\\1q2") |>
+      stringr::str_replace("(\\d{4})07$", "\\1q3") |>
+      stringr::str_replace("(\\d{4})10$", "\\1q4")
+    df
   }
   
-  # Apply the renaming function at the very end
-  constr_price_apt <- rename_quarterly(constr_price_apt)
-  constr_price_resi <- rename_quarterly(constr_price_resi)
-  constr_price_non_resi <- rename_quarterly(constr_price_non_resi)
+  construction_price_apartment <- process_building_type("Apartment buildings", "construction_price_apartment_") |>
+    rename_quarterly() |>
+    dplyr::select(id, dplyr::everything(), -name)
   
-  constr_price_apt <- constr_price_apt |>
-    dplyr::rename(geouid = GeoUID)
+  construction_price_residential <- process_building_type("Residential buildings", "construction_price_residential_") |>
+    rename_quarterly() |>
+    dplyr::select(id, dplyr::everything(), -name)
   
-  constr_price_resi <- constr_price_resi |>
-    dplyr::rename(geouid = GeoUID)
+  construction_price_nonres <- process_building_type("Non-residential buildings", "construction_price_nonres_") |>
+    rename_quarterly() |>
+    dplyr::select(id, dplyr::everything(), -name)
   
-  constr_price_non_resi <- constr_price_non_resi |>
-    dplyr::rename(geouid = GeoUID)
-  
-  # Return the three tables as a list
   return(list(
-    constr_price_apt = constr_price_apt,
-    constr_price_resi = constr_price_resi,
-    constr_price_non_resi = constr_price_non_resi
+    construction_price_apartment   = construction_price_apartment,
+    construction_price_residential = construction_price_residential,
+    construction_price_nonres      = construction_price_nonres
   ))
 }
 
+
 #' @title Process Unemployment Data from CANSIM
-#' @description This function retrieves unemployment rate data from a specified CANSIM table, processes it, 
-#' and merges it with census province-level geometries. The function standardizes province names, 
-#' reshapes the data into a wide format, and applies geographic identifiers for spatial analysis.
-#'
-#' @param table_id A string specifying the CANSIM table ID (default: "14-10-0287-03"), which contains unemployment rate data.
-#' @return A spatial data frame (`sf`) containing unemployment data merged with province geometries.
-#' 
+#' @description Downloads and reshapes CANSIM table 14-10-0287-03 to get monthly unemployment rates
+#'              for each geography (excluding Canada) in wide format (one column per month).
+#' @return A data frame with one row per geographic unit and columns for unemployment rates by month (YYYYMM).
+#' @examples
 #' @export
 cansim_unemployment <- function() {
   
-  # Function to reformat column names from YYYY-MM to YYYYMM
+  #' Helper function: Reformat column names from "YYYY-MM" to "YYYYMM"
   format_date_names <- function(x) {
     stringr::str_replace_all(x, "-", "")  # Remove hyphens to get YYYYMM format
   }
@@ -328,103 +274,52 @@ cansim_unemployment <- function() {
     )
   
   # Reshape data into a wide format with unemployment rates as columns
-  unemp_year <- unemp |>
-    dplyr::select(ref_date = REF_DATE, name = GEO, value = VALUE) |>
+  unemp_wide <- unemp |>
+    dplyr::select(ref_date = REF_DATE, id = GeoUID, value = VALUE) |>
     tidyr::pivot_wider(
       names_from = ref_date, 
       values_from = value, 
-      names_prefix = "unemp_"
+      names_prefix = "unemployment_rate"
     ) |>
-    dplyr::rename_with(format_date_names, dplyr::starts_with("unemp_")) 
+    dplyr::rename_with(format_date_names, dplyr::starts_with("unemployment_rate"))  
   
-  # Retrieve census region metadata
-  census_regions <- cancensus::list_census_regions("CA21")
-  province_list <- dplyr::filter(census_regions, level == "PR") |> dplyr::select(region, name)
-  
-  # Load province-level geometries for spatial analysis
-  provinces_sf <- cancensus::get_census(dataset = "CA21", 
-                                        regions = list(PR = province_list$region), 
-                                        geo_format = "sf", 
-                                        level = "PR") |>    
-    dplyr::select(name, geometry, GeoUID) 
-  
-  # Standardize province names for consistency with census data
-  province_mapping <- c(
-    "Newfoundland and Labrador" = "Newfoundland and Labrador (N.L.)",
-    "Prince Edward Island" = "Prince Edward Island (P.E.I.)",
-    "Nova Scotia" = "Nova Scotia (N.S.)",
-    "New Brunswick" = "New Brunswick (N.B.)",
-    "Quebec" = "Quebec (Que.)",
-    "Ontario" = "Ontario (Ont.)",
-    "Manitoba" = "Manitoba (Man.)",
-    "Saskatchewan" = "Saskatchewan (Sask.)",
-    "Alberta" = "Alberta (Alta.)",
-    "British Columbia" = "British Columbia (B.C.)",
-    "Yukon" = "Yukon (Y.T.)",
-    "Northwest Territories" = "Northwest Territories (N.W.T.)",
-    "Nunavut" = "Nunavut (Nvt.)"
-  )
-  
-  # Apply name mapping to unemployment data
-  unemp_year <- unemp_year |>
-    dplyr::mutate(name = dplyr::recode(name, !!!province_mapping))
-  
-  # Merge unemployment data with census geographic information
-  results <- dplyr::left_join(provinces_sf, unemp_year, by = "name")
-  
-  # Remove province abbreviations in parentheses to match standardized naming
-  results <- results |>
-    dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", name)) |>
-    dplyr::rename(geouid = GeoUID)
-  
-  return(results)
+  return(unemp_wide)
 }
 
-#' @title Process Elasticities Data and Merge with Census Metropolitan Areas
-#'
-#' @description This function retrieves census metropolitan area (CMA) spatial data, 
-#' downloads elasticity data from a provided URL, standardizes the names, and merges both datasets.
-#' The resulting dataset includes geographic and elasticity values for each CMA.
-#'
-#' @param file_url The URL of the elasticity Excel file.
-#' @return A spatial data frame (`sf`) containing census metropolitan areas merged with elasticity values.
+#' @title Process and Merge Elasticity Data with CMA Identifiers
 #' 
+#' @description This function loads Census Metropolitan Area (CMA) data from Statistics Canada's 2021 census,
+#' reads elasticity estimates from a local Excel file, standardizes CMA names for consistency, and merges
+#' both datasets. The output is a clean table containing CMA identifiers and elasticity estimates only.
+#' 
+#' @param file_path A string specifying the full path to the local Excel file containing elasticity data.
+#' 
+#' @return A tibble with two columns: \code{id} (GeoUID of the CMA) and \code{elasticity_estimates}.
 #' @export
-boc_elasticities <- function(file_url) {
+boc_elasticities <- function(file_path) {
   
-  # Download the Excel file to a temporary file
-  temp_file <- tempfile(fileext = ".xls")
-  download.file(file_url, temp_file, mode = "wb")
+  # Step 1: Retrieve list of CMA regions
+  cma_list <- cancensus::list_census_regions("CA21") |>
+    dplyr::filter(level == "CMA") |>
+    dplyr::select(region, name)
   
-  # Load census metropolitan area (CMA) regions
-  census_regions <- cancensus::list_census_regions("CA21")
-  cma_list <- census_regions |> dplyr::filter(level == "CMA") |> dplyr::select(region, name)
+  # Step 2: Download spatial geometries for all CMAs
+  cma_all <- cancensus::get_census(
+    dataset = "CA21",
+    regions = list(CMA = cma_list$region),
+    geo_format = "sf",
+    level = "CMA"
+  ) |>
+    dplyr::select(name, geometry, GeoUID) |>
+    dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", name))  # Remove text in parentheses
   
-  # Retrieve spatial census data for CMAs
-  cma_all <- cancensus::get_census(dataset = "CA21", 
-                                   regions = list(CMA = cma_list$region), 
-                                   geo_format = "sf", 
-                                   level = "CMA") |>    
-    dplyr::select(name, geometry, GeoUID) 
+  # Step 3: Read elasticity data from Excel
+  elasticities <- readxl::read_excel(file_path) |>
+    dplyr::filter(cma == 1) |>  # Keep rows flagged as CMA
+    dplyr::select(city, elasticity) |>  # Only keep needed columns
+    dplyr::rename(name = city)
   
-  # Standardize CMA names by removing parentheses and extra content
-  cma_all <- cma_all |> dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", name))
-  
-  # Load elasticity data from the temporary Excel file
-  elasticities <- readxl::read_excel(temp_file)
-  
-  # Filter relevant CMAs and select necessary columns
-  elasticities <- elasticities |>
-    dplyr::filter(cma == 1) |>
-    dplyr::select(city, prov, elasticity, `Below Median`, `Below Average`) 
-  
-  # Rename "city" column to "name" for consistency
-  elasticities <- elasticities |> dplyr::rename(name = city)
-  
-  # Remove 'prov' column as it is not needed
-  elasticities$prov <- NULL
-  
-  # Standardize CMA names for consistency with census data
+  # Step 4: Standardize CMA names for consistency with census data
   name_mapping <- c(
     "Greater Sudbury/Grand Sudbury" = "Greater Sudbury / Grand Sudbury",
     "Kitchener-Cambridge-Waterloo" = "Kitchener - Cambridge - Waterloo",
@@ -432,32 +327,24 @@ boc_elasticities <- function(file_url) {
     "St. Catharines-Niagara" = "St. Catharines - Niagara",
     "Trois-Rivieres" = "Trois-Rivières",
     "Quebec" = "Québec",
-    "Saint John" = "Saint John",
     "Montreal" = "Montréal",
     "St. John's" = "St. John's",
     "Abbotsford-Mission" = "Abbotsford - Mission"
   )
   
-  # Apply name mapping to standardize names
-  elasticities <- elasticities |> dplyr::mutate(name = dplyr::recode(name, !!!name_mapping))
+  elasticities <- elasticities |>
+    dplyr::mutate(name = dplyr::recode(name, !!!name_mapping))
   
-  # Merge elasticity data with spatial census data
-  final_data <- dplyr::right_join(cma_all, elasticities, by = "name")
-  
-  # Rename columns to lowercase and consistent format
-  final_data <- final_data |>
+  # Step 5: Merge and clean final dataset
+  final_data <- dplyr::right_join(cma_all, elasticities, by = "name") |>
     dplyr::rename(
-      geouid = GeoUID,
-      below_median = `Below Median`,
-      below_average = `Below Average`
-    )
-  
-  # Remove the temporary file
-  unlink(temp_file)
+      id = GeoUID,
+      elasticity_estimates = elasticity) |>
+      dplyr::select(id, elasticity_estimates) |>
+    sf::st_drop_geometry()  # Drop spatial information
   
   return(final_data)
 }
-
 
 #' @title Process Bank of Canada Interest Rate Data
 #'
@@ -472,7 +359,7 @@ boc_interest_rates <- function() {
   
   # Define the API URL with full date range
   api_url <- "https://www.bankofcanada.ca/valet/observations/V122530/json?start_date=1900-01-01"
-
+  
   # Load JSON data from the temporary file
   json_data <- jsonlite::fromJSON(api_url)
   
@@ -485,9 +372,9 @@ boc_interest_rates <- function() {
     dplyr::filter(as.numeric(substr(d, 1, 4)) >= 1991) |>  # Keep only data from 1991 onwards
     dplyr::select(bank_rate_yearmois, bank_rate) |>  # Select relevant columns
     tidyr::pivot_wider(names_from = bank_rate_yearmois, values_from = bank_rate, 
-                       names_prefix = "bank_rate_") |>  # Convert to wide format
+                       names_prefix = "interest_rate_") |>  # Convert to wide format
     dplyr::mutate(name = "Canada", geouid = "01") |>  # Add static columns
-    dplyr::select(name, geouid, dplyr::everything())  # Reorder columns
-    
+    dplyr::select(id=geouid, dplyr::everything())  # Reorder columns
+  
   return(interest_rates)
 }
