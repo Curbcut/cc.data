@@ -4,16 +4,16 @@
 \alias{poi_run_evolution}
 \title{Process POI Evolution}
 \usage{
-poi_run_evolution(geo_level, census_year)
+poi_run_evolution(geo_list)
 }
 \arguments{
-\item{geo_level}{A string specifying the census level: "C", "PR", "CMA", "CSD", "CT", or "DA".}
+\item{poi_df}{A data frame of Foursquare POIs with geographic coordinates and creation/closure dates.}
 
-\item{census_year}{A string specifying the census dataset code (default = "CA21").}
+\item{geo_sf}{An sf object containing geographic boundaries (must include \code{ID}).}
 }
 \value{
-An \code{sf} object with columns: \code{id}, yearly POI totals.
+A data.frame in wide format with one row per region (\code{ID}) and one column per year (\code{poi_YYYY}) representing the cumulative number of active POIs for that year.
 }
 \description{
-Connects to Foursquare, retrieves POIs, downloads the selected census geometry, intersects both, and returns a wide-format dataset of cumulative POIs by year and region.
+Intersects POI data with geographic boundaries and calculates yearly cumulative POI counts.
 }
