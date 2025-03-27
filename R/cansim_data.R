@@ -276,9 +276,9 @@ cansim_unemployment <- function() {
     tidyr::pivot_wider(
       names_from = ref_date, 
       values_from = value, 
-      names_prefix = "unemployment_rate"
+      names_prefix = "unemployment_rate_"
     ) |>
-    dplyr::rename_with(format_date_names, dplyr::starts_with("unemployment_rate"))  
+    dplyr::rename_with(format_date_names, dplyr::starts_with("unemployment_rate_"))  
   
   return(unemp_wide)
 }
