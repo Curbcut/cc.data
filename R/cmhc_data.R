@@ -93,23 +93,23 @@ cmhc_clean_names <- function(name_vector) {
     stringr::str_replace_all("_$", "")  
 }
 
-#' Reshape CMHC Results
+#' @title Reshape CMHC Results
 #'
-#' Transforms the data into a structured format by filtering, pivoting,
-#' and joining it with a reference dataset. Each unique series and dimension
-#' combination is reshaped into a separate data frame.
+#' @description Transforms the CMHC raw data into a structured format by filtering and pivoting
+#' based on series and dimension values. Automatically simplifies column names when the data is annual.
 #'
 #' @param results The CMHC data frame to reshape.
-#' @param cma_all A reference dataset containing geographical ID.
-#' @param dimension The column name used as a filter for restructuring.
-#' @return A list of reshaped data frames, each corresponding to a unique series.
-cmhc_reshape_results <- function(results, cma_all, dimension) {
+#' @param dimension The column name used as a filter for restructuring (e.g., "Structure Type").
+#' @return A named list of reshaped data frames, each corresponding to a unique Series and Dimension.
+cmhc_reshape_results <- function(results, dimension) {
   results_list <- list()
   
   if (!is.null(results) && nrow(results) > 0) {
     for (s in unique(results$Series)) {
+      
       if (!is.null(dimension)) {
         for (d in unique(results[[dimension]])) {
+          
           df_filtered <- results |> 
             dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |> 
             dplyr::select(GeoUID, year_month, Value) |> 
@@ -117,18 +117,16 @@ cmhc_reshape_results <- function(results, cma_all, dimension) {
               names_from = year_month, 
               values_from = Value,
               names_prefix = paste0(s, "_", dimension, "_", d, "_")
-            ) |> dplyr::filter(!is.na(GeoUID))
+            ) |> 
+            dplyr::filter(!is.na(GeoUID))
           
           colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+          colnames(df_filtered) <- cmhc_simplify_if_single_month(colnames(df_filtered))
+          
           list_name <- cmhc_clean_names(paste(s, dimension, d, sep = "_"))
           
-          df_final <- df_filtered |> 
-            dplyr::left_join(cma_all |> dplyr::mutate(geouid = as.character(geouid)), by = "geouid") |>  
-            dplyr::mutate(name = stringr::str_replace_all(name, " \\(B\\)$", "")) |>  
-            dplyr::relocate(name, .before = dplyr::everything())
-          
-          if (!is.null(df_final) && nrow(df_final) > 0) {
-            results_list[[list_name]] <- df_final
+          if (nrow(df_filtered) > 0) {
+            results_list[[list_name]] <- df_filtered
           }
         }
       } else {
@@ -139,24 +137,24 @@ cmhc_reshape_results <- function(results, cma_all, dimension) {
             names_from = year_month, 
             values_from = Value,
             names_prefix = paste0(s, "_")
-          ) |> dplyr::filter(!is.na(GeoUID))
+          ) |> 
+          dplyr::filter(!is.na(GeoUID))
         
         colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+        colnames(df_filtered) <- cmhc_simplify_if_single_month(colnames(df_filtered))
+        
         list_name <- cmhc_clean_names(s)
         
-        df_final <- df_filtered |> 
-          dplyr::left_join(cma_all |> dplyr::mutate(geouid = as.character(geouid)), by = "geouid") |>  
-          dplyr::mutate(name = stringr::str_replace_all(name, " \\(B\\)$", "")) |>  
-          dplyr::relocate(name, .before = dplyr::everything())
-        
-        if (!is.null(df_final) && nrow(df_final) > 0) {
-          results_list[[list_name]] <- df_final
+        if (nrow(df_filtered) > 0) {
+          results_list[[list_name]] <- df_filtered
         }
       }
     }
   }
+  
   return(results_list)
 }
+
 
 #' Apply CMHC Data Abbreviations to Columns and Table Names
 #'
@@ -187,6 +185,27 @@ cmhc_abbreviations <- function(cmhc_cma_vectors) {
   return(cmhc_cma_vectors)
 }
 
+#' Simplify column names by removing month if all are annual (same MM)
+#'
+#' @param col_names Character vector of column names.
+#' @return Vector with simplified names (_YYYYMM → _YYYY if all MM identical).
+cmhc_simplify_if_single_month <- function(col_names) {
+  # Extraire tous les suffixes YYYYMM dans les noms de colonnes
+  ym_matches <- stringr::str_extract(col_names, "\\d{6}")
+  ym_matches <- ym_matches[!is.na(ym_matches)]
+  
+  months <- substr(ym_matches, 5, 6)
+  
+  # Si tous les mois sont les mêmes, enlever MM des noms
+  if (length(months) > 0 && length(unique(months)) == 1) {
+    # Remplacer tous les _YYYYMM par _YYYY
+    col_names <- stringr::str_replace_all(col_names, "_(\\d{4})(\\d{2})", "_\\1")
+  }
+  
+  return(col_names)
+}
+
+
 #' Get CMHC Data for CMA
 #'
 #' Fetches, processes, and formats CMHC  data for CMAs.
@@ -211,7 +230,7 @@ cmhc_get_cma <- function(requests, cma_all) {
       if (breakdown == "Historical Time Periods") {
         results <- cmhc_fetch_data(survey, series, dimension, breakdown, geo_uid)
         results <- cmhc_process_results(results)
-        reshaped_data <- cmhc_reshape_results(results, cma_all, dimension)
+        reshaped_data <- cmhc_reshape_results(results, dimension)
         
         for (key in names(reshaped_data)) {
           if (is.null(results_list[[key]])) {
