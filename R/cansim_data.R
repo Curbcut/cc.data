@@ -61,7 +61,6 @@ cansim_maintenance_exp <- function() {
 #' @export
 cansim_wages <- function() {
   
-  format_date_names <- function(x) stringr::str_replace_all(x, "-", "")
   clean_cma_names <- function(df) {
     df |>
       dplyr::mutate(name = stringr::str_replace_all(name, "\\s*\\(.*?\\)", "")) |>
@@ -247,19 +246,17 @@ cansim_construction_price <- function() {
   ))
 }
 
+  #' Helper function: Reformat column names from "YYYY-MM" to "YYYYMM"
+  format_date_names <- function(x) {
+    stringr::str_replace_all(x, "-", "")  # Remove hyphens to get YYYYMM format
+  }
 
 #' @title Process Unemployment Data from CANSIM
 #' @description Downloads and reshapes CANSIM table 14-10-0287-03 to get monthly unemployment rates
 #'              for each geography (excluding Canada) in wide format (one column per month).
 #' @return A data frame with one row per geographic unit and columns for unemployment rates by month (YYYYMM).
-#' @examples
 #' @export
 cansim_unemployment <- function() {
-  
-  #' Helper function: Reformat column names from "YYYY-MM" to "YYYYMM"
-  format_date_names <- function(x) {
-    stringr::str_replace_all(x, "-", "")  # Remove hyphens to get YYYYMM format
-  }
   
   # Load unemployment rate data from CANSIM
   unemp <- cansim::get_cansim_connection("14-10-0287-03") |> 
