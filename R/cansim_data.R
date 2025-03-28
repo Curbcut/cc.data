@@ -333,7 +333,7 @@ boc_elasticities <- function(file_path) {
     dplyr::mutate(name = dplyr::recode(name, !!!name_mapping))
   
   # Step 5: Merge and clean final dataset
-  final_data <- dplyr::right_join(cma_all, elasticities, by = "name") |>
+  final_data <- dplyr::inner_join(cma_all, elasticities, by = "name") |>
     dplyr::rename(
       id = GeoUID,
       elasticity_estimates = elasticity) |>
