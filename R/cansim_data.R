@@ -139,12 +139,12 @@ cansim_wages <- function() {
   union_wage_index_supp$name  <- dplyr::recode(union_wage_index_supp$name, !!!geo_mapping)
   
   union_wage_index_basic <- cma_all |>
-    dplyr::left_join(union_wage_index_basic, by = "name") |>
+    dplyr::inner_join(union_wage_index_basic, by = "name") |>
     clean_cma_names() |>
     sf::st_drop_geometry()
   
   union_wage_index_supp <- cma_all |>
-    dplyr::left_join(union_wage_index_supp, by = "name") |>
+    dplyr::inner_join(union_wage_index_supp, by = "name") |>
     clean_cma_names() |>
     sf::st_drop_geometry()
   
@@ -213,7 +213,7 @@ cansim_construction_price <- function() {
         names_prefix = prefix
       ) |>
       dplyr::mutate(name = dplyr::recode(name, !!!geo_mapping)) |>
-      dplyr::left_join(cma_all, by = "name") |>
+      dplyr::inner_join(cma_all, by = "name") |>
       dplyr::rename(id = GeoUID)
   }
   
