@@ -139,12 +139,12 @@ cansim_wages <- function() {
   union_wage_index_supp$name  <- dplyr::recode(union_wage_index_supp$name, !!!geo_mapping)
   
   union_wage_index_basic <- cma_all |>
-    dplyr::left_join(union_wage_index_basic, by = "name") |>
+    dplyr::right_join(union_wage_index_basic, by = "name") |>
     clean_cma_names() |>
     sf::st_drop_geometry()
   
   union_wage_index_supp <- cma_all |>
-    dplyr::left_join(union_wage_index_supp, by = "name") |>
+    dplyr::right_join(union_wage_index_supp, by = "name") |>
     clean_cma_names() |>
     sf::st_drop_geometry()
   
