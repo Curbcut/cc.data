@@ -21,6 +21,9 @@ cansim_maintenance_exp <- function() {
     GeoUID = dplyr::case_when(
       GEO == "Newfoundland and Labrador" ~ "10",
       GEO == "British Columbia" ~ "59",
+      GEO == "Northwest Territories" ~ "61",
+      GEO == "Yukon" ~ "60",
+      GEO == "Nunavut" ~ "62",
       TRUE ~ GeoUID
     )
   )
