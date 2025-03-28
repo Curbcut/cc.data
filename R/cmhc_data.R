@@ -248,6 +248,13 @@ cmhc_get_cma <- function(requests, cma_all) {
   # Apply abbreviations to column and table names
   cmhc_vectors <- cmhc_abbreviations(cmhc_vectors)
   
+  cmhc_vectors$CMA <- lapply(cmhc_vectors$CMA, function(df) {
+    if (is.data.frame(df) && "geouid" %in% colnames(df)) {
+      df <- df |> dplyr::rename(id = geouid)
+    }
+    return(df)
+  })
+  
   return(cmhc_vectors)
 }
 
