@@ -10,7 +10,7 @@ foursquare_get_canada(conn)
 \item{conn}{A database connection object from \code{foursquare_connect}.}
 }
 \value{
-A data frame containing POI attributes including ID, name, category, coordinates, location, and dates.
+A data frame containing POI attributes including id, name, category, coordinates, location, and dates.
 }
 \description{
 Retrieves all Points of Interest (POIs) from the Foursquare open source database for Canada.
