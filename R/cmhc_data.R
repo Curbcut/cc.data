@@ -20,7 +20,7 @@
 #' @param breakdown The breakdown level for the data (e.g., "Historical Time Periods").
 #' @param geo_uid The geographical identifier for the CMA.
 #' @return A data frame containing the retrieved CMHC data, or `NULL` if an error occurs.
-cmhc_fetch_data <- function(survey, series, dimension, breakdown, geo_uid) {
+cmhc_fetch_cma_data <- function(survey, series, dimension, breakdown, geo_uid) {
   tryCatch(
     cmhc::get_cmhc(
       survey = survey, 
@@ -41,7 +41,7 @@ cmhc_fetch_data <- function(survey, series, dimension, breakdown, geo_uid) {
 #'
 #' @param results A data frame containing raw CMHC data.
 #' @return A cleaned and processed data frame with standardized column names and formats.
-cmhc_process_results <- function(results) {
+cmhc_process_cma_results <- function(results) {
   if (!is.null(results) && nrow(results) > 0) {
     results <- results |> dplyr::mutate(GeoUID = as.character(GeoUID))  
     
@@ -83,7 +83,7 @@ cmhc_process_results <- function(results) {
 #'
 #' @param name_vector A vector of column names to clean.
 #' @return A vector of cleaned and standardized column names.
-cmhc_clean_names <- function(name_vector) {
+cmhc_clean_cma_names <- function(name_vector) {
   name_vector |> 
     stringr::str_trim() |>  
     stringr::str_to_lower() |>  
@@ -101,7 +101,7 @@ cmhc_clean_names <- function(name_vector) {
 #' @param results The CMHC data frame to reshape.
 #' @param dimension The column name used as a filter for restructuring (e.g., "Structure Type").
 #' @return A named list of reshaped data frames, each corresponding to a unique Series and Dimension.
-cmhc_reshape_results <- function(results, dimension) {
+cmhc_reshape_cma_results <- function(results, dimension) {
   results_list <- list()
   
   if (!is.null(results) && nrow(results) > 0) {
@@ -120,10 +120,10 @@ cmhc_reshape_results <- function(results, dimension) {
             ) |> 
             dplyr::filter(!is.na(GeoUID))
           
-          colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+          colnames(df_filtered) <- cmhc_clean_cma_names(colnames(df_filtered))
           colnames(df_filtered) <- cmhc_simplify_if_single_month(colnames(df_filtered))
           
-          list_name <- cmhc_clean_names(paste(s, dimension, d, sep = "_"))
+          list_name <- cmhc_clean_cma_names(paste(s, dimension, d, sep = "_"))
           
           if (nrow(df_filtered) > 0) {
             results_list[[list_name]] <- df_filtered
@@ -140,10 +140,10 @@ cmhc_reshape_results <- function(results, dimension) {
           ) |> 
           dplyr::filter(!is.na(GeoUID))
         
-        colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+        colnames(df_filtered) <- cmhc_clean_cma_names(colnames(df_filtered))
         colnames(df_filtered) <- cmhc_simplify_if_single_month(colnames(df_filtered))
         
-        list_name <- cmhc_clean_names(s)
+        list_name <- cmhc_clean_cma_names(s)
         
         if (nrow(df_filtered) > 0) {
           results_list[[list_name]] <- df_filtered
@@ -228,9 +228,9 @@ cmhc_get_cma <- function(requests, cma_all) {
       breakdown <- req$breakdown
       
       if (breakdown == "Historical Time Periods") {
-        results <- cmhc_fetch_data(survey, series, dimension, breakdown, geo_uid)
-        results <- cmhc_process_results(results)
-        reshaped_data <- cmhc_reshape_results(results, dimension)
+        results <- cmhc_fetch_cma_data(survey, series, dimension, breakdown, geo_uid)
+        results <- cmhc_process_cma_results(results)
+        reshaped_data <- cmhc_reshape_cma_results(results, dimension)
         
         for (key in names(reshaped_data)) {
           if (is.null(results_list[[key]])) {
