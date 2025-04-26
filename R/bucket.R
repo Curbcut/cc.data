@@ -446,6 +446,6 @@ bucket_read_object_zip_shp <- function(object, bucket) {
   content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
   shp_file <- content[grepl("\\.shp", content)]
   utils::unzip(file, exdir = tempdir())
-  sf::st_read(paste0(tempdir(), "\\", shp_file))
+  sf::st_read(file.path(tempdir(), shp_file))
 
 }
