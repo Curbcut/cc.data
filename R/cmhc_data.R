@@ -1,63 +1,3 @@
-#' @title Split Ottawa-Gatineau CMA by Province
-#' @description This function retrieves census metropolitan areas (CMAs) and provinces for a given census year,
-#' identifies Ottawa-Gatineau (B), and splits it into two separate CMAs: one for Ontario and one for Quebec.
-#' The function assigns appropriate names and GeoUIDs to the split regions.
-#'
-#' @param census_year Character. The census year (e.g., "CA21").
-#' @return sf object containing CMAs with Ottawa-Gatineau split by province.
-#' @export
-cma_split_ottawa <- function(census_year = "CA21") {
-  
-  # Retrieve list of CMAs and Provinces
-  census_regions <- cancensus::list_census_regions(census_year)
-  cma_list <- census_regions |> dplyr::filter(level == "CMA") |> dplyr::select(region, name)
-  province_list <- census_regions |> dplyr::filter(level == "PR") |> dplyr::select(region, name)
-  
-  # Retrieve spatial census data for CMAs and provinces
-  cma_all <- cancensus::get_census(dataset = census_year, 
-                                   regions = list(CMA = cma_list$region), 
-                                   geo_format = "sf", 
-                                   level = "CMA")
-  
-  provinces_sf <- cancensus::get_census(dataset = census_year, 
-                                        regions = list(PR = province_list$region), 
-                                        geo_format = "sf", 
-                                        level = "PR")
-  
-  # Identify Ottawa-Gatineau CMA and corresponding provinces
-  ottawa_cma <- dplyr::filter(cma_all, name == "Ottawa - Gatineau (B)")
-  ottawa_provinces <- dplyr::filter(provinces_sf, name %in% c("Ontario (Ont.)", "Quebec (Que.)"))
-  
-  # Split Ottawa-Gatineau 
-  if (nrow(ottawa_cma) > 0 & nrow(ottawa_provinces) > 0) {
-    
-    ottawa_split <- sf::st_intersection(ottawa_cma, ottawa_provinces) |>
-      dplyr::mutate(
-        name = dplyr::case_when(
-          name.1 == "Ontario (Ont.)" ~ "Ottawa - Ontario (B)",
-          name.1 == "Quebec (Que.)" ~ "Ottawa - Québec (B)"
-        ),
-        GeoUID = dplyr::case_when( # Assign appropriate GeoUIDs
-          name.1 == "Ontario (Ont.)" ~ "35505",
-          name.1 == "Quebec (Que.)" ~ "24505"
-        )
-      ) |>
-      dplyr::select(GeoUID, name, geometry) 
-    
-    # Remove original Ottawa-Gatineau and add split regions
-    cma_all <- dplyr::filter(cma_all, name != "Ottawa - Gatineau (B)") |>
-      dplyr::bind_rows(ottawa_split)
-  }
-  
-  # Final formatting
-  cma_all <- cma_all |>
-    dplyr::rename(geouid = GeoUID) |> 
-    dplyr::select(geouid, name, geometry) |> 
-    dplyr::arrange(name)
-  
-  return(cma_all)
-}
-
 #' CMHC CMA Data load
 #'
 #' This script provides a suite of functions to fetch, process, reshape, and standardize
@@ -273,14 +213,14 @@ cmhc_simplify_if_single_month <- function(col_names) {
 #' reshapes it, and applies abbreviation transformations.
 #'
 #' @param requests A list of requests, each specifying a CMHC survey, series, dimension, and breakdown.
-#' @param cma_all A data frame containing all CMAs with geographical identifiers.
+#' @param cma_list A data frame containing all CMAs with geographical identifiers.
 #' @return A structured list containing processed CMHC data with applied abbreviations.
 #' @export
-cmhc_get_cma <- function(requests, cma_all) {
+cmhc_get_cma <- function(requests, cma_list) {
   cmhc_vectors <- list(CMA = list())
   results_list <- list()
   
-  for (geo_uid in unique(cma_all$geouid)) {
+  for (geo_uid in unique(cma_list$id)) {
     for (req in requests) {
       survey <- req$survey
       series <- req$series
@@ -323,32 +263,27 @@ cmhc_get_cma <- function(requests, cma_all) {
 #' @param census_years Character vector. Census years to compare with the reference year (default CA21).
 #' @param cma_codes Character vector. CMA GeoUID(s) to process. If NULL, processes all CMAs.
 #' @param reference_year Character. The reference census year (default "CA21").
-#' @return A flat named list of correspondence tables.
+#' @return A named list of correspondence tables, one per pair of census years.
 #' @export
 cmhc_ct_correspondences <- function(census_years = c("CA1996", "CA01", "CA06", "CA11", "CA16"),
                                     cma_codes = NULL,
                                     reference_year = "CA21") {
   
   generate_correspondence_table <- function(year_1, year_2, cma_code) {
-    # Load CT geometries for both census years
     ct_1 <- cancensus::get_census(year_1, regions = list(CMA = cma_code), geo_format = "sf", level = "CT") |> 
       dplyr::rename(geouid = GeoUID)
     
     ct_2 <- cancensus::get_census(year_2, regions = list(CMA = cma_code), geo_format = "sf", level = "CT") |> 
       dplyr::rename(geouid = GeoUID)
     
-    # Calculate areas for each CT
     ct_1 <- ct_1 |> dplyr::mutate(area_1 = units::drop_units(sf::st_area(ct_1)))
     ct_2 <- ct_2 |> dplyr::mutate(area_2 = units::drop_units(sf::st_area(ct_2)))
     
-    # Rename geouid in second dataset
     names(ct_2)[names(ct_2) == "geouid"] <- "geouid_old"
     
-    # Find intersections between CTs of both years
     inter <- sf::st_intersection(ct_1, ct_2[c("geouid_old", "area_2")])
     if (nrow(inter) == 0) return(NULL)
     
-    # Calculate proportion of intersected areas
     inter <- inter |> 
       dplyr::mutate(
         intersected_area = units::drop_units(sf::st_area(inter)),
@@ -356,33 +291,31 @@ cmhc_ct_correspondences <- function(census_years = c("CA1996", "CA01", "CA06", "
         proportion_area_2 = intersected_area / area_2
       )
     
-    # Keep matches where both proportions are at least 90%
     correspondence_table <- inter |> 
       dplyr::filter(proportion_area_1 >= 0.9 & proportion_area_2 >= 0.9) |> 
       dplyr::select(geouid, geouid_old) |> 
       dplyr::distinct() |> 
       dplyr::mutate(status = ifelse(geouid == geouid_old, "stable", "changed"))
     
-    # Extract the last two digits of census years for column naming
     year_ref_num <- substr(gsub("CA", "", year_1), nchar(gsub("CA", "", year_1)) - 1, nchar(gsub("CA", "", year_1)))
     year_cmp_num <- substr(gsub("CA", "", year_2), nchar(gsub("CA", "", year_2)) - 1, nchar(gsub("CA", "", year_2)))
     
-    # Rename columns based on census years
     correspondence_table <- correspondence_table |>
       dplyr::rename(
         !!paste0("geouid_", year_ref_num) := geouid,
         !!paste0("geouid_", year_cmp_num) := geouid_old
       ) |> 
+      dplyr::mutate(cma_code = cma_code) |> 
       dplyr::select(
         paste0("geouid_", year_ref_num), 
         paste0("geouid_", year_cmp_num), 
-        "status"
+        "status",
+        "cma_code"
       )
     
     return(correspondence_table)
   }
   
-  # If no CMA codes provided, retrieve all CMAs for the reference year
   if (is.null(cma_codes)) {
     cma_codes <- cancensus::list_census_regions(reference_year) |>
       dplyr::filter(level == "CMA") |> 
@@ -391,31 +324,35 @@ cmhc_ct_correspondences <- function(census_years = c("CA1996", "CA01", "CA06", "
   
   result <- list()
   
-  for (cma_code in cma_codes) {
-    for (year in census_years) {
+  for (year in census_years) {
+    temp_list <- list()
+    
+    for (cma_code in cma_codes) {
       table <- generate_correspondence_table(reference_year, year, cma_code)
       if (!is.null(table)) {
-        # Generate full year labels for naming
-        year_ref_label <- ifelse(nchar(gsub("CA", "", reference_year)) == 2,
-                                 paste0("20", gsub("CA", "", reference_year)),
-                                 gsub("CA", "", reference_year))
-        year_cmp_label <- ifelse(nchar(gsub("CA", "", year)) == 2,
-                                 paste0("20", gsub("CA", "", year)),
-                                 gsub("CA", "", year))
-        
-        # Create the name for the correspondence table
-        name <- paste0("correspondence_", year_ref_label, "_", year_cmp_label)
-        result[[name]] <- table
+        temp_list[[cma_code]] <- table
       }
+    }
+    
+    if (length(temp_list) > 0) {
+      combined_table <- dplyr::bind_rows(temp_list)
+      
+      year_ref_label <- ifelse(nchar(gsub("CA", "", reference_year)) == 2,
+                               paste0("20", gsub("CA", "", reference_year)),
+                               gsub("CA", "", reference_year))
+      year_cmp_label <- ifelse(nchar(gsub("CA", "", year)) == 2,
+                               paste0("20", gsub("CA", "", year)),
+                               gsub("CA", "", year))
+      
+      name <- paste0("correspondence_", year_ref_label, "_", year_cmp_label)
+      result[[name]] <- combined_table
     }
   }
   
   return(result)
 }
 
-#' CMHC CT Data load
-#' 
-#' @title Fetch CMHC CT Data
+#' @title Fetch CMHC Census Tract Data
 #' @description Retrieves CMHC data for a specified census tract (CT) and year, optionally for a specific month.
 #'
 #' @param survey Character. The CMHC survey identifier (e.g., "Scss", "Msss").
@@ -564,33 +501,48 @@ cmhc_process_ct <- function(results, cmhc_vectors, dimension) {
 #' Retrieves CMHC data for census tracts across multiple CMAs and processes the results into structured tables.
 #'
 #' @param requests A list of request objects, each containing survey, series, dimension, breakdown, years, and optional months.
-#' @param cma_all A data frame containing CMAs with a \code{geouid} column specifying the geographic identifiers.
 #' @param ct_correspondence_list A named list of correspondence tables linking older GeoUIDs to 2021 GeoUIDs.
+#' @param cma_all (Optional) A data frame of CMA IDs. If NULL, the function will auto-generate the list from CT 2021 data.
 #' @return A list containing processed census tract data for each series and dimension combination.
 #' @export
-
-cmhc_get_ct <- function(requests, cma_all, ct_correspondence_list) {
-  cmhc_vectors <- list(CT = list())  # Initialize the final list
+cmhc_get_ct <- function(requests, ct_correspondence_list) {
   
-  for (cma in cma_all$geouid) {
-    print(paste("Processing CMA:", cma))  
+  # Auto-load CMA list from 2021 CT geometries (interne, invisible pour l'utilisateur)
+  ct_21 <- cancensus::get_census(
+    dataset = "CA21",
+    regions = list(C = "01"),
+    geo_format = "sf",
+    level = "CT"
+  )
+  
+  cma_all <- ct_21 %>%
+    sf::st_drop_geometry() %>%
+    dplyr::select(CMA_UID) %>%
+    dplyr::distinct() %>%
+    dplyr::arrange(CMA_UID) %>%
+    dplyr::rename(id = CMA_UID)
+  
+  cmhc_vectors <- list(CT = list())
+  
+  for (req in requests) {
+    survey <- req$survey
+    series <- req$series
+    dimension <- req$dimension
+    breakdown <- req$breakdown
+    years <- req$years
+    months <- req$months  
     
-    for (req in requests) {
-      survey <- req$survey
-      series <- req$series
-      dimension <- req$dimension
-      breakdown <- req$breakdown
-      years <- req$years
-      months <- req$months  
+    if (breakdown == "Census Tracts" & !is.null(years)) {
       
-      if (breakdown == "Census Tracts" & !is.null(years)) {
-        
-        results_list <- list()  # Initialize an empty list for each CMA
+      results_list <- list()  # Collect results for one request
+      
+      for (cma in cma_all$id) {
+        message(paste("Processing CMA:", cma))
         
         for (year in years) {
           if (!is.null(months)) {
             for (month in months) {
-              print(paste("Fetching data for:", cma, "year:", year, "month:", month))
+              message(paste("Fetching data for:", cma, "year:", year))
               
               tryCatch({
                 data <- cmhc_fetch_ct_data(
@@ -604,18 +556,18 @@ cmhc_get_ct <- function(requests, cma_all, ct_correspondence_list) {
                 )
                 
                 if (!is.null(data) && nrow(data) > 0) {
-                  print("Data successfully retrieved.")
+                  message("Data successfully retrieved.")
                   data <- apply_ct_correspondence(data, ct_correspondence_list)
                   results_list <- append(results_list, list(data))
                 } else {
-                  print("No data retrieved for this GeoUID.")
+                  message("No data retrieved for this id")
                 }
               }, error = function(e) {
-                print(paste("Error during data retrieval:", e$message))
+                message(paste("Error during data retrieval:", e$message))
               })
             }
           } else {
-            print(paste("Fetching data for:", cma, "year:", year))
+            message(paste("Fetching data for:", cma, "year:", year))
             
             tryCatch({
               data <- cmhc_fetch_ct_data(
@@ -628,28 +580,28 @@ cmhc_get_ct <- function(requests, cma_all, ct_correspondence_list) {
               )
               
               if (!is.null(data) && nrow(data) > 0) {
-                print("Data successfully retrieved.")
+                message("Data successfully retrieved.")
                 data <- apply_ct_correspondence(data, ct_correspondence_list)
                 results_list <- append(results_list, list(data))
               } else {
-                print("No data retrieved for this GeoUID.")
+                message("No data retrieved for this id")
               }
             }, error = function(e) {
-              print(paste("Error during data retrieval:", e$message))
+              message(paste("Error during data retrieval:", e$message))
             })
           }
         }
-        
-        # Merge results and store in cmhc_vectors
-        if (length(results_list) > 0) {
-          results <- dplyr::bind_rows(results_list)
-          cmhc_vectors <- cmhc_process_ct(results, cmhc_vectors, dimension)
-        }
+      }
+      
+      # Bind and process all results for this request
+      if (length(results_list) > 0) {
+        results <- dplyr::bind_rows(results_list)
+        cmhc_vectors <- cmhc_process_ct(results, cmhc_vectors, dimension)
       }
     }
   }
   
-  # Rename "geouid" to "id" in all elements of cmhc_vectors$CT
+  # Rename 'geouid' column to 'id' in the output
   cmhc_vectors$CT <- lapply(cmhc_vectors$CT, function(df) {
     if ("geouid" %in% names(df)) {
       names(df)[names(df) == "geouid"] <- "id"
