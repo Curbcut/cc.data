@@ -148,3 +148,94 @@ poi_run_evolution <- function(geo_list) {
   message("All layers processed successfully.")
   return(results)
 }
+
+
+#' @title Process Local POI Evolution for Multiple Geographies
+#' @description Loads POI data from a local RDS file and processes it by matching to geographic boundaries.
+#' @param geo_list A named list of `sf` objects (e.g., pr, cma, csd, etc.).
+#' @param poi_rds_path The full path to the local POI RDS file.
+#' @return A named list of data frames, one per geography.
+#' @export
+poi_run_evolution_local <- function(geo_list, poi_rds_path) {
+  message("Loading local POI data...")
+  poi_df <- readRDS(poi_rds_path)
+  
+  poi_data <- function(poi_df, geo_sf) {
+    poi_sf <- poi_df |>
+      dplyr::filter(!is.na(LONGITUDE), !is.na(LATITUDE)) |>
+      sf::st_as_sf(coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+    
+    if (sf::st_crs(poi_sf) != sf::st_crs(geo_sf)) {
+      geo_sf <- sf::st_transform(geo_sf, sf::st_crs(poi_sf))
+    }
+    
+    if (any(!sf::st_is_valid(geo_sf))) {
+      geo_sf <- sf::st_make_valid(geo_sf)
+    }
+    
+    if (any(!sf::st_is_valid(poi_sf))) {
+      poi_sf <- sf::st_make_valid(poi_sf)
+    }
+    
+    matched <- sf::st_intersects(poi_sf, geo_sf)
+    
+    poi_sf$id <- sapply(matched, function(x) {
+      if (length(x) > 0) {
+        if ("geouid" %in% names(geo_sf)) {
+          geo_sf$geouid[x[1]]
+        } else if ("ID" %in% names(geo_sf)) {
+          geo_sf$ID[x[1]]
+        } else if ("id" %in% names(geo_sf)) {
+          geo_sf$id[x[1]]
+        } else {
+          NA
+        }
+      } else {
+        NA
+      }
+    })
+    
+    poi_data_no_geom <- poi_sf |>
+      sf::st_drop_geometry() |>
+      dplyr::filter(!is.na(id)) |>
+      dplyr::mutate(
+        year_created = lubridate::year(lubridate::ymd(DATE_CREATED)),
+        year_closed = lubridate::year(lubridate::ymd(DATE_CLOSED))
+      ) |>
+      dplyr::select(id, year_created, year_closed)
+    
+    poi_counts_created <- poi_data_no_geom |>
+      dplyr::filter(!is.na(year_created)) |>
+      dplyr::count(id, year_created) |>
+      dplyr::rename(year = year_created, poi_added = n)
+    
+    poi_counts_closed <- poi_data_no_geom |>
+      dplyr::filter(!is.na(year_closed)) |>
+      dplyr::count(id, year_closed) |>
+      dplyr::rename(year = year_closed, poi_closed = n)
+    
+    poi_evolution <- dplyr::full_join(poi_counts_created, poi_counts_closed, by = c("id", "year")) |>
+      dplyr::mutate(across(c(poi_added, poi_closed), ~ replace(., is.na(.), 0))) |>
+      dplyr::arrange(id, year) |>
+      dplyr::group_by(id) |>
+      dplyr::mutate(poi_total = cumsum(poi_added) - cumsum(poi_closed)) |>
+      dplyr::ungroup()
+    
+    poi_evolution |>
+      dplyr::select(id, year, poi_total) |>
+      dplyr::mutate(year = paste0("point_of_interest_", year)) |>
+      tidyr::pivot_wider(names_from = year, values_from = poi_total, values_fill = list(poi_total = 0))
+  }
+  
+  message("Starting POI evolution processing for each geography...")
+  results <- lapply(names(geo_list), function(name) {
+    message(paste0("Processing layer: ", name))
+    geo_sf <- geo_list[[name]]
+    result <- poi_data(poi_df = poi_df, geo_sf = geo_sf)
+    return(result)
+  })
+  
+  names(results) <- names(geo_list)
+  message("All layers processed successfully.")
+  return(results)
+}
