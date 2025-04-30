@@ -446,54 +446,85 @@ apply_ct_correspondence <- function(data, ct_correspondence_list) {
 #' @param cmhc_vectors A list where the processed census tract data will be stored.
 #' @param dimension The name of the column to use for creating subcategories (e.g., dwelling type, bedroom type).
 #' @return A list of data frames with census tract data organized by series and dimension.
-cmhc_process_ct <- function(results, cmhc_vectors, dimension) {
+cmhc_process_ct <- function(results) {
   if (!is.null(results) && nrow(results) > 0) {
-    if ("DateString" %in% colnames(results)) {
-      results <- results |>
-        dplyr::rename(year_month = DateString)
-    } else if ("Year" %in% colnames(results) & "Month" %in% colnames(results)) {
-      results <- results |>
-        dplyr::mutate(year_month = paste0(Year, sprintf("%02d", as.numeric(Month))))
-    } else if ("Year" %in% colnames(results)) {
-      results <- results |>
-        dplyr::rename(year_month = Year)
-    } else {
-      stop("ERROR: Unable to generate year_month correctly")
-    }
+    results <- results |> dplyr::mutate(GeoUID = as.character(GeoUID))
     
+    if ("DateString" %in% colnames(results)) {
+      results <- results |> 
+        dplyr::rename(date_string = DateString) |> 
+        dplyr::mutate(
+          year = as.numeric(stringr::str_extract(date_string, "\\d{4}")),
+          month = dplyr::case_when(
+            stringr::str_detect(date_string, "Jan|January") ~ "01",
+            stringr::str_detect(date_string, "Feb|February") ~ "02",
+            stringr::str_detect(date_string, "Mar|March") ~ "03",
+            stringr::str_detect(date_string, "Apr|April") ~ "04",
+            stringr::str_detect(date_string, "May") ~ "05",
+            stringr::str_detect(date_string, "Jun|June") ~ "06",
+            stringr::str_detect(date_string, "Jul|July") ~ "07",
+            stringr::str_detect(date_string, "Aug|August") ~ "08",
+            stringr::str_detect(date_string, "Sep|September") ~ "09",
+            stringr::str_detect(date_string, "Oct|October") ~ "10",
+            stringr::str_detect(date_string, "Nov|November") ~ "11",
+            stringr::str_detect(date_string, "Dec|December") ~ "12",
+            TRUE ~ "00"
+          ),
+          year_month = paste0(year, month)
+        )
+      
+    } else if ("Year" %in% colnames(results) & "Month" %in% colnames(results)) {
+      results <- results |> 
+        dplyr::mutate(
+          year_month = paste0(Year, sprintf("%02d", as.integer(Month)))
+        )
+    } else if ("Year" %in% colnames(results)) {
+      results <- results |> 
+        dplyr::rename(year_month = Year) |> 
+        dplyr::mutate(year_month = as.character(year_month))
+    }
+  }
+  return(results)
+}
+
+#' Reshape CMHC CT Results
+#'
+#' Transforms the CMHC raw data for census tracts into a structured format by filtering and pivoting
+#' based on the series and dimension values. Automatically simplifies column names when the data is annual.
+#'
+#' @param results A data frame containing CMHC census tract data after processing.
+#' @param dimension A character string indicating the column to use for disaggregation (e.g., "Dwelling Type").
+#'
+#' @return A named list of reshaped data frames, each corresponding to a unique combination of Series and Dimension.
+cmhc_reshape_ct_results <- function(results, dimension) {
+  results_list <- list()
+  
+  if (!is.null(results) && nrow(results) > 0) {
     for (s in unique(results$Series)) {
       for (d in unique(results[[dimension]])) {
-        df_filtered <- results |>
-          dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |>
-          dplyr::select(GeoUID, year_month, Value) |>
+        df_filtered <- results |> 
+          dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |> 
+          dplyr::select(GeoUID, year_month, Value) |> 
           tidyr::pivot_wider(
             names_from = year_month, 
             values_from = Value,
-            names_prefix = paste0(s, "_", d, "_"),
+            names_prefix = paste0(s, "_", dimension, "_", d, "_"),
             values_fn = dplyr::first
-          ) |>
-          dplyr::filter(!is.na(GeoUID))  
+          ) |> 
+          dplyr::filter(!is.na(GeoUID))
         
-        df_filtered <- df_filtered |>
-          dplyr::left_join(results |> dplyr::select(GeoUID) |> dplyr::distinct(), by = "GeoUID") |>
-          dplyr::distinct(GeoUID, .keep_all = TRUE)
-        
-        colnames(df_filtered) <- colnames(df_filtered) |>
-          stringr::str_to_lower() |>
-          stringr::str_replace_all(" ", "_") |>
-          stringr::str_replace_all("\\+", "plus")
-        
-        list_name <- stringr::str_to_lower(stringr::str_replace_all(paste(s, d, sep = "_"), "[^a-zA-Z0-9 ]", "_")) |>
-          stringr::str_replace_all(" ", "_")
+        colnames(df_filtered) <- cmhc_clean_cma_names(colnames(df_filtered))
+
+        list_name <- cmhc_clean_cma_names(paste(s, dimension, d, sep = "_"))
         
         if (nrow(df_filtered) > 0) {
-          cmhc_vectors$CT[[list_name]] <- df_filtered  
+          results_list[[list_name]] <- df_filtered
         }
       }
     }
   }
   
-  return(cmhc_vectors)
+  return(results_list)
 }
 
 #' Retrieve and Process CMHC Census Tract Data
@@ -507,7 +538,7 @@ cmhc_process_ct <- function(results, cmhc_vectors, dimension) {
 #' @export
 cmhc_get_ct <- function(requests, ct_correspondence_list) {
   
-  # Auto-load CMA list from 2021 CT geometries (interne, invisible pour l'utilisateur)
+  # Auto-load CMA list from 2021 CT geometries
   ct_21 <- cancensus::get_census(
     dataset = "CA21",
     regions = list(C = "01"),
@@ -519,8 +550,9 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
     sf::st_drop_geometry() |>
     dplyr::select(CMA_UID) |>
     dplyr::distinct() |>
-    dplyr::arrange(CMA_UID) |>
-    dplyr::rename(id = CMA_UID)
+    dplyr::arrange(CMA_UID) |> 
+    dplyr::rename(id = CMA_UID)|>
+    dplyr::filter(id == "10001")
   
   cmhc_vectors <- list(CT = list())
   
@@ -537,13 +569,11 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
       results_list <- list()  # Collect results for one request
       
       for (cma in cma_all$id) {
-        message(paste("Processing CMA:", cma))
-        
         for (year in years) {
+          message(paste("Fetching data for:", cma, "year:", year))
           if (!is.null(months)) {
             for (month in months) {
-              message(paste("Fetching data for:", cma, "year:", year))
-              
+              message(paste("Fetching data for:", cma, "year:", year, "month:", sprintf("%02d", month)))
               tryCatch({
                 data <- cmhc_fetch_ct_data(
                   survey = survey,
@@ -554,21 +584,15 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
                   year = year,
                   month = month
                 )
-                
                 if (!is.null(data) && nrow(data) > 0) {
-                  message("Data successfully retrieved.")
                   data <- apply_ct_correspondence(data, ct_correspondence_list)
                   results_list <- append(results_list, list(data))
-                } else {
-                  message("No data retrieved for this id")
                 }
               }, error = function(e) {
                 message(paste("Error during data retrieval:", e$message))
               })
             }
           } else {
-            message(paste("Fetching data for:", cma, "year:", year))
-            
             tryCatch({
               data <- cmhc_fetch_ct_data(
                 survey = survey,
@@ -580,11 +604,8 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
               )
               
               if (!is.null(data) && nrow(data) > 0) {
-                message("Data successfully retrieved.")
                 data <- apply_ct_correspondence(data, ct_correspondence_list)
                 results_list <- append(results_list, list(data))
-              } else {
-                message("No data retrieved for this id")
               }
             }, error = function(e) {
               message(paste("Error during data retrieval:", e$message))
@@ -596,12 +617,21 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
       # Bind and process all results for this request
       if (length(results_list) > 0) {
         results <- dplyr::bind_rows(results_list)
-        cmhc_vectors <- cmhc_process_ct(results, cmhc_vectors, dimension)
+        results <- cmhc_process_ct(results)
+        reshaped_data <- cmhc_reshape_ct_results(results, dimension)
+        
+        for (key in names(reshaped_data)) {
+          if (is.null(cmhc_vectors$CT[[key]])) {
+            cmhc_vectors$CT[[key]] <- reshaped_data[[key]]
+          } else {
+            cmhc_vectors$CT[[key]] <- dplyr::bind_rows(cmhc_vectors$CT[[key]], reshaped_data[[key]])
+          }
+        }
       }
     }
   }
   
-  # Rename 'geouid' column to 'id' in the output
+  # Rename 'geouid' column to 'id'
   cmhc_vectors$CT <- lapply(cmhc_vectors$CT, function(df) {
     if ("geouid" %in% names(df)) {
       names(df)[names(df) == "geouid"] <- "id"
