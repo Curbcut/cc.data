@@ -515,11 +515,11 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
     level = "CT"
   )
   
-  cma_all <- ct_21 %>%
-    sf::st_drop_geometry() %>%
-    dplyr::select(CMA_UID) %>%
-    dplyr::distinct() %>%
-    dplyr::arrange(CMA_UID) %>%
+  cma_all <- ct_21 |>
+    sf::st_drop_geometry() |>
+    dplyr::select(CMA_UID) |>
+    dplyr::distinct() |>
+    dplyr::arrange(CMA_UID) |>
     dplyr::rename(id = CMA_UID)
   
   cmhc_vectors <- list(CT = list())
