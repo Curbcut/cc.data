@@ -551,8 +551,7 @@ cmhc_get_ct <- function(requests, ct_correspondence_list) {
     dplyr::select(CMA_UID) |>
     dplyr::distinct() |>
     dplyr::arrange(CMA_UID) |> 
-    dplyr::rename(id = CMA_UID)|>
-    dplyr::filter(id == "10001")
+    dplyr::rename(id = CMA_UID)
   
   cmhc_vectors <- list(CT = list())
   
