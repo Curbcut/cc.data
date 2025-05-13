@@ -1,153 +1,203 @@
-#' CMHC CMA Data load
+#' Fetch CMHC Data for a Specific CMA
 #'
-#' This script provides a suite of functions to fetch, process, reshape, and standardize
-#' CMHC housing data for CMAs using cmhc package.
-#' It includes functions to retrieve data from the CMHC API, clean and format the results,
-#' reshape the data into a structured format, and apply standardized abbreviations to column
-#' and table names.
+#' Downloads CMHC data for a given CMA using specified parameters. Handles API errors
+#' gracefully using `tryCatch`, and returns `NULL` if the query fails.
 #'
-#' The function line is designed to handle multiple requests, process data for different geographical
-#' identifiers.
+#' @param survey Character. The CMHC survey code (e.g., "Rms", "Scss").
+#' @param series Character. The series to extract (e.g., "Vacancy Rate").
+#' @param dimension Character. The breakdown dimension (e.g., "Bedroom Type"). Can be `NULL`.
+#' @param geo_uid Character. Geographic identifier of the CMA (e.g., "24462").
+#' @param frequency Character. Must be either "Monthly" or "Annual".
 #'
-
-#' Fetch CMHC Data
-#'
-#' Retrieves data from the CMHC API for a specified CMA level.
-#'
-#' @param survey The CMHC survey to query (e.g., "Rms").
-#' @param series The data series to retrieve (e.g., "Vacancy Rate").
-#' @param dimension The dimension to filter by (e.g., "Structure Type").
-#' @param breakdown The breakdown level for the data (e.g., "Historical Time Periods").
-#' @param geo_uid The geographical identifier for the CMA.
-#' @return A data frame containing the retrieved CMHC data, or `NULL` if an error occurs.
-cmhc_fetch_cma_data <- function(survey, series, dimension, breakdown, geo_uid) {
+#' @return A raw CMHC `data.frame`, or `NULL` if an error occurs.
+cmhc_fetch_cma_data <- function(survey, series, dimension, geo_uid, frequency) {
+  if (missing(frequency)) {
+    stop("Argument `frequency` is required and must be either 'Monthly' or 'Annual'.")
+  }
+  
   tryCatch(
     cmhc::get_cmhc(
-      survey = survey, 
-      series = series, 
-      dimension = dimension, 
-      breakdown = breakdown, 
-      geo_uid = geo_uid),
+      survey = survey,
+      series = series,
+      dimension = dimension,
+      breakdown = "Historical Time Periods",
+      geo_uid = geo_uid,
+      frequency = frequency
+    ),
     error = function(e) {
+      warning(sprintf("CMA %s: error during get_cmhc() -> %s", geo_uid, e$message))
       return(NULL)
     }
   )
 }
 
-#' Process CMHC Results
+#' Clean and standardize variable or column names
 #'
-#' Cleans and formats the retrieved CMHC data. Converts `GeoUID` to character,
-#' extracts year and month from `DateString`, and renames columns for consistency.
+#' This function takes a character vector and applies a series of transformations
+#' to produce clean, consistent, and R-friendly names. It is useful for harmonizing
+#' raw column names from external data sources (e.g., Statistics Canada, CSV files).
+#' @param name_vector A character vector of names to be cleaned.
+#' @return A character vector of cleaned and standardized names (lowercase, no special characters).
+cmhc_clean_names <- function(name_vector) {
+  name_vector |>
+    stringr::str_trim() |>                           # Remove leading/trailing whitespace
+    stringr::str_to_lower() |>                       # Convert to lowercase
+    stringr::str_replace_all("[^a-z0-9_ ]", "_") |>  # Replace non-alphanumeric characters with "_"
+    stringr::str_replace_all("\\s+", "_") |>         # Replace spaces with "_"
+    stringr::str_replace_all("_+", "_") |>           # Collapse multiple underscores into one
+    stringr::str_replace_all("_$", "")               # Remove trailing underscore if present
+}
+
+
+#' Clean CMHC Results (CMA Annual, Monthly, or CT)
 #'
-#' @param results A data frame containing raw CMHC data.
-#' @return A cleaned and processed data frame with standardized column names and formats.
-cmhc_process_cma <- function(results) {
-  if (!is.null(results) && nrow(results) > 0) {
-    results <- results |> dplyr::mutate(GeoUID = as.character(GeoUID))  
-    
-    if ("DateString" %in% colnames(results)) {
-      results <- results |> 
-        dplyr::rename(year_month = DateString) |> 
-        dplyr::mutate(
-          year = as.numeric(stringr::str_extract(year_month, "\\d{4}")),
-          month = dplyr::case_when(
-            stringr::str_detect(year_month, "Jan|January") ~ "01",
-            stringr::str_detect(year_month, "Feb|February") ~ "02",
-            stringr::str_detect(year_month, "Mar|March") ~ "03",
-            stringr::str_detect(year_month, "Apr|April") ~ "04",
-            stringr::str_detect(year_month, "May") ~ "05",
-            stringr::str_detect(year_month, "Jun|June") ~ "06",
-            stringr::str_detect(year_month, "Jul|July") ~ "07",
-            stringr::str_detect(year_month, "Aug|August") ~ "08",
-            stringr::str_detect(year_month, "Sep|September") ~ "09",
-            stringr::str_detect(year_month, "Oct|October") ~ "10",
-            stringr::str_detect(year_month, "Nov|November") ~ "11",
-            stringr::str_detect(year_month, "Dec|December") ~ "12",
-            TRUE ~ ""
-          ),
-          year_month = paste0(year, month)
-        ) |> dplyr::select(-month)
-    } else if ("Year" %in% colnames(results)) {
-      results <- results |> 
-        dplyr::rename(year_month = Year) |> 
-        dplyr::mutate(year_month = as.character(year_month))
+#' Cleans CMHC results in annual or monthly format for CMA data (with `DateString`)
+#' or CT data (with `Year` and `Month`). Adds the `year_month` column, standardizes
+#' the dimension values, and prepares the data frame for reshaping.
+#'
+#' @param df A raw `data.frame` returned by the CMHC API.
+#' @param geo_uid Optional. Geographic identifier used in warning messages.
+#'
+#' @return A cleaned `data.frame` ready for reshaping, or `NULL` if the input is invalid.
+cmhc_clean_results <- function(df, geo_uid = NULL) {
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  
+  # Format CMA avec DateString (annual ou monthly)
+  if ("DateString" %in% names(df)) {
+    if (all(grepl("^[0-9]{4}$", stringr::str_extract(df$DateString, "\\d{4}")))) {
+      df$year <- stringr::str_extract(df$DateString, "\\d{4}")
+      month_str <- stringr::str_extract(df$DateString, "[A-Za-z]+")
+      month_str <- tolower(month_str[!is.na(month_str)])
+      if (length(unique(month_str)) > 1) return(NULL)
+      df$year_month <- df$year
+      df <- df[, !(names(df) %in% c("year"))]
+    } else {
+      # Monthly format: "Jan 2021" or "2021 Jan"
+      year_month_vec <- character(nrow(df))
+      is_valid_monthly <- logical(nrow(df))
+      for (i in seq_len(nrow(df))) {
+        x <- trimws(df$DateString[i])
+        if (grepl("^[0-9]{4} [A-Za-z]+$", x)) {
+          parts <- strsplit(x, " ")[[1]]
+          year <- parts[1]; month <- parts[2]
+        } else if (grepl("^[A-Za-z]+ [0-9]{4}$", x)) {
+          parts <- strsplit(x, " ")[[1]]
+          month <- parts[1]; year <- parts[2]
+        } else {
+          next
+        }
+        month_num <- match(tolower(substr(month, 1, 3)), tolower(month.abb))
+        if (!is.na(month_num)) {
+          year_month_vec[i] <- sprintf("%s%02d", year, month_num)
+          is_valid_monthly[i] <- TRUE
+        }
+      }
+      if (!any(is_valid_monthly)) {
+        warning(sprintf("CMA %s: no valid monthly format detected. Skipping entry.", geo_uid))
+        return(NULL)
+      }
+      ym_valid <- year_month_vec[is_valid_monthly]
+      months_only <- substr(ym_valid, 5, 6)
+      if (length(unique(months_only)) == 1) {
+        warning(sprintf("CMA %s: likely annual format (only month %s detected). Skipping entry.", geo_uid, unique(months_only)))
+        return(NULL)
+      }
+      df$year_month <- year_month_vec
+      df <- df[is_valid_monthly, ]
     }
   }
-  return(results)
+  
+  # Format CT avec Year et Month
+  else if (all(c("Year", "GeoUID") %in% names(df))) {
+    df <- df |> dplyr::filter(!is.na(Value))
+    if ("Month" %in% names(df) && !all(is.na(df$Month))) {
+      df$year_month <- sprintf("%d%02d", as.integer(df$Year), as.integer(df$Month))
+    } else {
+      df$year_month <- as.character(df$Year)
+    }
+  } else {
+    return(NULL)
+  }
+  
+  base_cols <- c(
+    "GeoUID", "Date", "DateString", "year_month", "year", "Year", "Month",
+    "Value", "Survey", "Series", "Quality", "Census geography"
+  )
+  
+  dimension_cols <- setdiff(colnames(df), base_cols)
+  
+  if (length(dimension_cols) > 0) {
+    for (col in dimension_cols) {
+      df[[col]] <- cmhc_clean_names(as.character(df[[col]]))
+    }
+  }
+  
+  keep_cols <- c("GeoUID", "year_month", "Value", "Survey", "Series", "Quality")
+  keep_cols <- keep_cols[keep_cols %in% names(df)]
+  
+  df <- df |>
+    dplyr::select(dplyr::all_of(keep_cols), tidyselect::all_of(dimension_cols)) |>
+    dplyr::filter(!is.na(GeoUID))
+  
+  return(df)
 }
 
-#' Clean Column Names
-#'
-#' Standardizes column names by trimming spaces, converting to lowercase,
-#' replacing special characters with underscores, and removing trailing underscores.
-#'
-#' @param name_vector A vector of column names to clean.
-#' @return A vector of cleaned and standardized column names.
-cmhc_clean_cma_names <- function(name_vector) {
-  name_vector |> 
-    stringr::str_trim() |>  
-    stringr::str_to_lower() |>  
-    stringr::str_replace_all("[^a-z0-9_ ]", "_") |>  
-    stringr::str_replace_all("\\s+", "_") |>  
-    stringr::str_replace_all("_+", "_") |>  
-    stringr::str_replace_all("_$", "")  
-}
 
-#' @title Reshape CMHC Results
+#' Reshape CMHC Results to Wide Format
 #'
-#' @description Transforms the CMHC raw data into a structured format by filtering and pivoting
-#' based on series and dimension values. Automatically simplifies column names when the data is annual.
+#' Converts long-format CMHC data to wide format, grouping by `Series`, `year_month`, and optionally by a breakdown dimension.
 #'
-#' @param results The CMHC data frame to reshape.
-#' @param dimension The column name used as a filter for restructuring (e.g., "Structure Type").
-#' @return A named list of reshaped data frames, each corresponding to a unique Series and Dimension.
-cmhc_reshape_cma_results <- function(results, dimension) {
+#' @param df A cleaned `data.frame` containing at least `GeoUID`, `Series`, `year_month`, and `Value`.
+#' @param dimension Character. Optional name of a breakdown column (e.g., "Bedroom Type").
+#' @param series_prefix Logical. If `TRUE`, prefixes column names with the series name.
+#' @return A named list of reshaped data frames.
+cmhc_reshape_results <- function(df, dimension, series_prefix = TRUE) {
   results_list <- list()
   
-  if (!is.null(results) && nrow(results) > 0) {
-    for (s in unique(results$Series)) {
-      
-      if (!is.null(dimension)) {
-        for (d in unique(results[[dimension]])) {
+  if (!is.null(df) && nrow(df) > 0) {
+    for (s in unique(df$Series)) {
+      if (!is.null(dimension) && dimension %in% names(df)) {
+        for (d in sort(unique(df[[dimension]]))) {
+          d_clean <- cmhc_clean_names(d)
           
-          df_filtered <- results |> 
-            dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |> 
-            dplyr::select(GeoUID, year_month, Value) |> 
+          df_filtered <- df |>
+            dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |>
+            dplyr::select(GeoUID, year_month, Value) |>
+            dplyr::distinct() |>
             tidyr::pivot_wider(
-              names_from = year_month, 
+              names_from = year_month,
               values_from = Value,
-              names_prefix = paste0(s, "_", dimension, "_", d, "_")
-            ) |> 
+              names_prefix = if (series_prefix) {
+                paste0(s, "_", dimension, "_", d_clean, "_")
+              } else {
+                paste0(dimension, "_", d_clean, "_")
+              },
+              values_fn = list(Value = ~ if (length(.) == 1) . else mean(., na.rm = TRUE)),
+              values_fill = NA
+            ) |>
             dplyr::filter(!is.na(GeoUID))
           
-          colnames(df_filtered) <- cmhc_clean_cma_names(colnames(df_filtered))
-          colnames(df_filtered) <- cmhc_simplify_if_single_month(colnames(df_filtered))
-          
-          list_name <- cmhc_clean_cma_names(paste(s, dimension, d, sep = "_"))
-          
-          if (nrow(df_filtered) > 0) {
-            results_list[[list_name]] <- df_filtered
-          }
-        }
-      } else {
-        df_filtered <- results |> 
-          dplyr::filter(Series == s) |> 
-          dplyr::select(GeoUID, year_month, Value) |> 
-          tidyr::pivot_wider(
-            names_from = year_month, 
-            values_from = Value,
-            names_prefix = paste0(s, "_")
-          ) |> 
-          dplyr::filter(!is.na(GeoUID))
-        
-        colnames(df_filtered) <- cmhc_clean_cma_names(colnames(df_filtered))
-        colnames(df_filtered) <- cmhc_simplify_if_single_month(colnames(df_filtered))
-        
-        list_name <- cmhc_clean_cma_names(s)
-        
-        if (nrow(df_filtered) > 0) {
+          colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+          list_name <- cmhc_clean_names(paste(s, dimension, d_clean, sep = "_"))
           results_list[[list_name]] <- df_filtered
         }
+      } else {
+        df_filtered <- df |>
+          dplyr::filter(Series == s) |>
+          dplyr::select(GeoUID, year_month, Value) |>
+          dplyr::distinct() |>
+          tidyr::pivot_wider(
+            names_from = year_month,
+            values_from = Value,
+            names_prefix = paste0(s, "_"),
+            values_fn = list(Value = ~ if (length(.) == 1) . else mean(., na.rm = TRUE)),
+            values_fill = NA
+          ) |>
+          dplyr::filter(!is.na(GeoUID))
+        
+        colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+        list_name <- cmhc_clean_names(s)
+        results_list[[list_name]] <- df_filtered
       }
     }
   }
@@ -156,105 +206,181 @@ cmhc_reshape_cma_results <- function(results, dimension) {
 }
 
 
-#' Apply CMHC Data Abbreviations to Columns and Table Names
+#' Finalize GeoUID Column in CMHC Results
 #'
-#' This function replaces long column names and table names with standardized abbreviations
-#' using the predefined named list `cmhc_data_abbreviations`.
-#'
-#' @param cmhc_cma_vectors A list containing CMHC data frames.
-#' @return A modified list of data frames with standardized names.
-cmhc_abbreviations <- function(cmhc_cma_vectors) {
-  if (exists("cmhc_data_abbreviations") && is.list(cmhc_data_abbreviations)) {
-    
-    # Convert list to named vector for string replacement
-    abbreviation_vector <- unlist(cmhc_data_abbreviations)
-    names(abbreviation_vector) <- names(cmhc_data_abbreviations)
-    
-    # Apply abbreviations to column names
-    cmhc_cma_vectors$CMA <- lapply(cmhc_cma_vectors$CMA, function(df) {
-      if (is.data.frame(df)) {
-        colnames(df) <- stringr::str_replace_all(colnames(df), abbreviation_vector)
+#' Standardizes the geographic identifier column in all result tables by renaming
+#' `GeoUID` or `geouid` to `id`. This ensures consistency across all outputs.
+#' @param results_list A named list of `data.frame`s resulting from CMHC data processing.
+#' @return A list of `data.frame`s with a standardized `id` column as the geographic identifier.
+cmhc_finalize_results <- function(results_list) {
+  lapply(results_list, function(df) {
+    if (is.data.frame(df)) {
+      if ("GeoUID" %in% colnames(df)) {
+        df <- dplyr::rename(df, id = GeoUID)
+      } else if ("geouid" %in% colnames(df)) {
+        df <- dplyr::rename(df, id = geouid)
       }
-      return(df)
-    })
-    
-    # Apply abbreviations to table names
-    names(cmhc_cma_vectors$CMA) <- stringr::str_replace_all(names(cmhc_cma_vectors$CMA), abbreviation_vector)
-  }
-  
-  return(cmhc_cma_vectors)
-}
-
-#' Simplify column names by removing month if all are annual (same MM)
-#'
-#' @param col_names Character vector of column names.
-#' @return Vector with simplified names (_YYYYMM → _YYYY if all MM identical).
-cmhc_simplify_if_single_month <- function(col_names) {
-  # Extraire tous les suffixes YYYYMM dans les noms de colonnes
-  ym_matches <- stringr::str_extract(col_names, "\\d{6}")
-  ym_matches <- ym_matches[!is.na(ym_matches)]
-  
-  months <- substr(ym_matches, 5, 6)
-  
-  # Si tous les mois sont les mêmes, enlever MM des noms
-  if (length(months) > 0 && length(unique(months)) == 1) {
-    # Remplacer tous les _YYYYMM par _YYYY
-    col_names <- stringr::str_replace_all(col_names, "_(\\d{4})(\\d{2})", "_\\1")
-  }
-  
-  return(col_names)
+    }
+    return(df)
+  })
 }
 
 
-#' Get CMHC Data for CMA
+#' Retrieve Annual CMHC Data for All CMAs
 #'
-#' Fetches, processes, and formats CMHC  data for CMAs.
-#' This function loops through predefined requests, retrieves data, processes it,
-#' reshapes it, and applies abbreviation transformations.
+#' Loops over all CMAs and request configurations to fetch, clean, reshape,
+#' and aggregate CMHC data with annual frequency.
 #'
-#' @param requests A list of requests, each specifying a CMHC survey, series, dimension, and breakdown.
-#' @param cma_list A data frame containing all CMAs with geographical identifiers.
-#' @return A structured list containing processed CMHC data with applied abbreviations.
+#' @param requests A list of request objects. Each must include `survey`, `series`, and `dimension`.
+#' @return A named list under `$CMA` containing wide-format CMHC data for all valid entries.
 #' @export
-cmhc_get_cma <- function(requests, cma_list) {
+cmhc_get_annual_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
   results_list <- list()
+  cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
+  any_valid_annual <- FALSE
   
-  for (geo_uid in unique(cma_list$id)) {
+  for (geo_uid in unique(cma_all$id)) {
     for (req in requests) {
       survey <- req$survey
       series <- req$series
       dimension <- req$dimension
-      breakdown <- req$breakdown
+      frequency <- if (!is.null(req$frequency)) req$frequency else "Annual"
       
-      if (breakdown == "Historical Time Periods") {
-        results <- cmhc_fetch_cma_data(survey, series, dimension, breakdown, geo_uid)
-        results <- cmhc_process_cma(results)
-        reshaped_data <- cmhc_reshape_cma_results(results, dimension)
-        
-        for (key in names(reshaped_data)) {
-          if (is.null(results_list[[key]])) {
-            results_list[[key]] <- reshaped_data[[key]]
-          } else {
-            results_list[[key]] <- dplyr::bind_rows(results_list[[key]], reshaped_data[[key]])
-          }
-        }
+      message(sprintf("Processing CMA %s — %s — %s / %s", geo_uid, frequency, survey, series))
+      
+      results <- cmhc_fetch_cma_data(survey, series, dimension, geo_uid, frequency)
+      cleaned <- cmhc_clean_results(results, geo_uid = geo_uid)
+      
+      if (is.null(cleaned)) {
+        warning(sprintf("CMA %s: No valid annual data found. Entry skipped.", geo_uid))
+        next
+      }
+      
+      any_valid_annual <- TRUE
+      reshaped_data <- cmhc_reshape_results(cleaned, dimension)
+      
+      for (key in names(reshaped_data)) {
+        results_list[[key]] <- dplyr::bind_rows(results_list[[key]], reshaped_data[[key]])
       }
     }
   }
   
-  cmhc_vectors$CMA <- results_list
+  if (!any_valid_annual) {
+    stop("ERROR: No valid annual data found. Try using cmhc_get_monthly_cma().")
+  }
   
-  # Apply abbreviations to column and table names
-  cmhc_vectors <- cmhc_abbreviations(cmhc_vectors)
+  cmhc_vectors$CMA <- cmhc_finalize_results(results_list)
+  return(cmhc_vectors)
+}
+
+
+#' Extract Year-Month from DateString
+#'
+#' Parses the `DateString` column in raw CMHC monthly data to create a `year_month` column in `YYYYMM` format.
+#' Filters out rows that do not follow valid monthly formatting.
+#'
+#' @param df A `data.frame` containing a `DateString` column.
+#' @param geo_uid Optional. Used in warnings to identify the CMA.
+#'
+#' @return A filtered `data.frame` with a `year_month` column, or `NULL` if no valid rows are found.
+cmhc_add_year_month <- function(df, geo_uid = NULL) {
+  if (!"DateString" %in% colnames(df)) {
+    stop("The column 'DateString' is required.")
+  }
   
-  cmhc_vectors$CMA <- lapply(cmhc_vectors$CMA, function(df) {
-    if (is.data.frame(df) && "geouid" %in% colnames(df)) {
-      df <- df |> dplyr::rename(id = geouid)
+  year_month_vec <- character(nrow(df))
+  is_valid_monthly <- logical(nrow(df))
+  
+  for (i in seq_len(nrow(df))) {
+    x <- trimws(df$DateString[i])
+    if (grepl("^[0-9]{4} [A-Za-z]+$", x)) {
+      parts <- strsplit(x, " ")[[1]]
+      year <- parts[1]
+      month <- parts[2]
+    } else if (grepl("^[A-Za-z]+ [0-9]{4}$", x)) {
+      parts <- strsplit(x, " ")[[1]]
+      month <- parts[1]
+      year <- parts[2]
+    } else {
+      next
     }
-    return(df)
-  })
+    
+    month_num <- match(tolower(substr(month, 1, 3)), tolower(month.abb))
+    if (!is.na(month_num)) {
+      year_month_vec[i] <- sprintf("%s%02d", year, month_num)
+      is_valid_monthly[i] <- TRUE
+    }
+  }
   
+  if (!any(is_valid_monthly)) {
+    warning(sprintf("CMA %s: no valid monthly format detected. Skipping entry.", geo_uid))
+    return(NULL)
+  }
+  
+  ym_valid <- year_month_vec[is_valid_monthly]
+  months_only <- substr(ym_valid, 5, 6)
+  
+  if (length(unique(months_only)) == 1) {
+    warning(sprintf("CMA %s: likely annual format (only month %s detected). Skipping entry.", geo_uid, unique(months_only)))
+    return(NULL)
+  }
+  
+  df$year_month <- year_month_vec
+  df <- df[is_valid_monthly, ]
+  return(df)
+}
+
+#' Retrieve Monthly CMHC Data for All CMAs
+#'
+#' Loops through all CMAs to fetch, clean, reshape, and aggregate monthly CMHC data.
+#' Filters out invalid or annual-format results.
+#'
+#' @param requests A list of request objects. Each must include `survey`, `series`, and optionally `dimension` and `frequency`.
+#'
+#' @return A named list under `$CMA` containing reshaped CMHC monthly data.
+#' @export
+cmhc_get_monthly_cma <- function(requests) {
+  cmhc_vectors <- list(CMA = list())
+  results_list <- list()
+  cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
+  any_valid_monthly <- FALSE
+  
+  for (geo_uid in unique(cma_all$id)) {
+    for (req in requests) {
+      survey <- req$survey
+      series <- req$series
+      dimension <- req$dimension
+      frequency <- if (!is.null(req$frequency)) req$frequency else "Monthly"
+      
+      message(sprintf("Processing CMA %s — %s — %s / %s", geo_uid, frequency, survey, series))
+      
+      raw_results <- cmhc_fetch_cma_data(survey, series, dimension, geo_uid, frequency)
+      if (is.null(raw_results) || nrow(raw_results) == 0) next
+      
+      if (!"Series" %in% colnames(raw_results)) raw_results$Series <- series
+      if (!"Survey" %in% colnames(raw_results)) raw_results$Survey <- survey
+      
+      raw_results <- cmhc_add_year_month(raw_results, geo_uid = geo_uid)
+      if (is.null(raw_results)) {
+        warning(sprintf("CMA %s: No valid monthly-format data found. Entry skipped.", geo_uid))
+        next
+      }
+      
+      any_valid_monthly <- TRUE
+      reshaped_data <- cmhc_reshape_results(raw_results, dimension)
+      
+      for (key in names(reshaped_data)) {
+        results_list[[key]] <- dplyr::bind_rows(results_list[[key]], reshaped_data[[key]])
+      }
+    }
+  }
+  
+  if (!any_valid_monthly) {
+    stop("ERROR: No valid monthly-format data found. Try using cmhc_get_annual_cma() instead.")
+  }
+  
+  cmhc_vectors$CMA <- cmhc_finalize_results(results_list)
   return(cmhc_vectors)
 }
 
@@ -352,290 +478,261 @@ cmhc_ct_correspondences <- function(census_years = c("CA1996", "CA01", "CA06", "
   return(result)
 }
 
-#' @title Fetch CMHC Census Tract Data
-#' @description Retrieves CMHC data for a specified census tract (CT) and year, optionally for a specific month.
+#' Fetch CMHC Data for a Specific CT
 #'
-#' @param survey Character. The CMHC survey identifier (e.g., "Scss", "Msss").
-#' @param series Character. The series within the survey (e.g., "Starts", "Vacancy Rates").
-#' @param dimension Character. The dimension of the data (e.g., "Dwelling Type", "Bedroom Type").
-#' @param breakdown Character. The geographic breakdown (e.g., "Census Tracts").
-#' @param geo_uid Character. The GeoUID of the census tract or area.
-#' @param year Integer. The year of the data to fetch.
-#' @param month Integer, optional. The month of the data to fetch. 
+#' Sends a request to the CMHC API to retrieve data for a specific Census Tract (CT),
+#' given the survey, series, dimension, year, and optionally the month.
+#' Catches errors and returns `NULL` if the API call fails.
 #'
-#' @return A tibble with the requested CMHC data if successful, or NULL if the query fails.
-cmhc_fetch_ct_data <- function(survey, series, dimension, breakdown, geo_uid, year, month = NULL) {
+#' @param survey Character. CMHC survey identifier (e.g., "Rms", "Scss").
+#' @param series Character. Data series to retrieve (e.g., "Starts", "Vacancy Rate").
+#' @param dimension Character. Optional breakdown dimension (e.g., "Bedroom Type"). Can be `NULL`.
+#' @param geo_uid Character. Geographic identifier for the Census Tract (CT).
+#' @param year Integer. Year of the data request.
+#' @param month Integer or NULL. Optional month (1–12). If `NULL`, annual data will be fetched.
+#'
+#' @return A `data.frame` returned by the CMHC API, or `NULL` if an error occurs.
+cmhc_fetch_ct_data <- function(survey, series, dimension, geo_uid, year, month = NULL) {
   tryCatch({
-    if (!is.null(month)) {
-      cmhc::get_cmhc(
-        survey = survey,
-        series = series,
-        dimension = dimension,
-        breakdown = breakdown,
-        geo_uid = geo_uid,
-        year = year,
-        month = sprintf("%02d", month)
-      )
-    } else {
-      cmhc::get_cmhc(
-        survey = survey,
-        series = series,
-        dimension = dimension,
-        breakdown = breakdown,
-        geo_uid = geo_uid,
-        year = year
-      )
-    }
+    cmhc::get_cmhc(
+      survey = survey,
+      series = series,
+      dimension = dimension,
+      breakdown = "Census Tracts",
+      geo_uid = geo_uid,
+      year = year,
+      month = if (!is.null(month)) sprintf("%02d", as.integer(month)) else NULL
+    )
   }, error = function(e) {
+    warning(sprintf("CT %s (%s-%s): get_cmhc() error -> %s", geo_uid, year, month %||% "--", e$message))
     return(NULL)
   })
 }
 
-
-#' Apply Census Tract Correspondence
+#' Apply Census Tract Correspondence Table
 #'
-#' Applies the appropriate correspondence table to adjust GeoUIDs from historical census geography to the 2021 geography.
+#' Harmonizes CT-level CMHC data to 2021 census geography by applying the appropriate
+#' correspondence table. The function dynamically detects the census vintage and
+#' matches the GeoUID using the correct mapping table.
 #'
-#' @param data A data frame containing CMHC data with a Census geography column and a GeoUID column.
-#' @param ct_correspondence_list A named list of correspondence tables linking older GeoUIDs to 2021 GeoUIDs.
-#' @return A data frame where GeoUIDs have been updated to the 2021 census geography, or an error if correspondence cannot be applied.
-apply_ct_correspondence <- function(data, ct_correspondence_list) {
+#' @param data A `data.frame` with a `Census geography` column and historical `GeoUID`s.
+#' @param ct_correspondence_list A named list of correspondence tables between historical and 2021 GeoUIDs.
+#'
+#' @return A `data.frame` with GeoUIDs harmonized to 2021 geography.
+cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
   if (!is.null(data) && "Census geography" %in% colnames(data)) {
+    
+    # Detect which census year the data comes from
     census_geo <- unique(data$`Census geography`)
+    if (length(census_geo) != 1) stop("Invalid input: multiple or missing census geography identifiers.")
     
-    if (length(census_geo) != 1) {
-      stop("ERROR: Census geography contains multiple values")
-    }
-    
+    # Build correspondence table name
     corr_table_name <- paste0("correspondence_2021_", census_geo)
-    
-    if (corr_table_name %in% names(ct_correspondence_list)) {
-      correspondence_table <- ct_correspondence_list[[corr_table_name]]
-      
-      if (nrow(correspondence_table) == 0) {
-        stop("ERROR: The correspondence table is empty")
-      }
-      
-      old_geouid_col <- setdiff(names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))], "geouid_21")
-      
-      if (length(old_geouid_col) == 1) {
-        data <- data |>
-          dplyr::rename(!!rlang::sym(old_geouid_col) := GeoUID) |>
-          dplyr::left_join(correspondence_table, by = old_geouid_col) |>
-          dplyr::select(geouid_21, geometry, dplyr::everything()) |>
-          dplyr::rename(GeoUID = geouid_21) |>
-          dplyr::select(-dplyr::one_of(old_geouid_col))
-      } else {
-        stop("ERROR: Unable to find a valid geouid_XX column")
-      }
-    } else {
-      stop("ERROR: Correspondence table not found")
+    if (!corr_table_name %in% names(ct_correspondence_list)) {
+      stop("Missing correspondence table: ", corr_table_name)
     }
+    
+    correspondence_table <- ct_correspondence_list[[corr_table_name]]
+    if (nrow(correspondence_table) == 0) stop("Correspondence table is empty.")
+    
+    # Identify the original GeoUID column in the correspondence table (e.g., geouid_2016)
+    old_geouid_col <- setdiff(
+      names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))],
+      "geouid_21"
+    )
+    if (length(old_geouid_col) != 1) stop("Ambiguous original GeoUID column in correspondence table.")
+    
+    # Match GeoUID column name in the input data
+    geouid_col <- intersect(c("GeoUID", "geouid", "id"), colnames(data))
+    colnames(data)[which(colnames(data) == geouid_col)] <- old_geouid_col
+    
+    # Join with correspondence table
+    data <- dplyr::inner_join(data, correspondence_table, by = old_geouid_col)
+    
+    # Keep only 2021 GeoUID and clean up extra metadata columns
+    data <- data |>
+      dplyr::select(geouid_21, dplyr::everything()) |>
+      dplyr::rename(GeoUID = geouid_21) |>
+      dplyr::select(-dplyr::all_of(old_geouid_col),
+                    -dplyr::any_of(c("geometry", "status", "cma_code", "Census geography")))
+    
+    return(data)
+    
   } else {
-    stop("ERROR: Census geography column missing from CMHC data")
+    stop("Invalid input: 'Census geography' column is missing.")
   }
-  
-  return(data)
 }
 
-#' Process CMHC Census Tract Data
+#' Retrieve Annual CMHC Data for All CTs (by CMA and Year)
 #'
-#' Processes raw CMHC data for census tracts by reshaping it and organizing it into a structured list format.
+#' Downloads and reshapes annual CMHC Census Tract (CT) data for each CMA and year
+#' specified in the request list. Data is harmonized to the 2021 geography using
+#' correspondence tables.
 #'
-#' @param results A data frame containing raw CMHC data for census tracts.
-#' @param cmhc_vectors A list where the processed census tract data will be stored.
-#' @param dimension The name of the column to use for creating subcategories (e.g., dwelling type, bedroom type).
-#' @return A list of data frames with census tract data organized by series and dimension.
-cmhc_process_ct <- function(results) {
-  if (!is.null(results) && nrow(results) > 0) {
-    results <- results |> dplyr::mutate(GeoUID = as.character(GeoUID))
-    
-    if ("DateString" %in% colnames(results)) {
-      results <- results |> 
-        dplyr::rename(date_string = DateString) |> 
-        dplyr::mutate(
-          year = as.numeric(stringr::str_extract(date_string, "\\d{4}")),
-          month = dplyr::case_when(
-            stringr::str_detect(date_string, "Jan|January") ~ "01",
-            stringr::str_detect(date_string, "Feb|February") ~ "02",
-            stringr::str_detect(date_string, "Mar|March") ~ "03",
-            stringr::str_detect(date_string, "Apr|April") ~ "04",
-            stringr::str_detect(date_string, "May") ~ "05",
-            stringr::str_detect(date_string, "Jun|June") ~ "06",
-            stringr::str_detect(date_string, "Jul|July") ~ "07",
-            stringr::str_detect(date_string, "Aug|August") ~ "08",
-            stringr::str_detect(date_string, "Sep|September") ~ "09",
-            stringr::str_detect(date_string, "Oct|October") ~ "10",
-            stringr::str_detect(date_string, "Nov|November") ~ "11",
-            stringr::str_detect(date_string, "Dec|December") ~ "12",
-            TRUE ~ "00"
-          ),
-          year_month = paste0(year, month)
-        )
-      
-    } else if ("Year" %in% colnames(results) & "Month" %in% colnames(results)) {
-      results <- results |> 
-        dplyr::mutate(
-          year_month = paste0(Year, sprintf("%02d", as.integer(Month)))
-        )
-    } else if ("Year" %in% colnames(results)) {
-      results <- results |> 
-        dplyr::rename(year_month = Year) |> 
-        dplyr::mutate(year_month = as.character(year_month))
-    }
-  }
-  return(results)
-}
-
-#' Reshape CMHC CT Results
+#' @param requests A list of request objects. Each must include the keys `survey`, `series`, `dimension`, and `years`.
+#' @param ct_correspondence_list A named list of correspondence tables to convert older CT GeoUIDs to 2021 equivalents.
+#' @param cma_uids Optional. A character vector of CMAUIDs to include. If NULL, all available CMAUIDs from CT 2021 are used.
 #'
-#' Transforms the CMHC raw data for census tracts into a structured format by filtering and pivoting
-#' based on the series and dimension values. Automatically simplifies column names when the data is annual.
-#'
-#' @param results A data frame containing CMHC census tract data after processing.
-#' @param dimension A character string indicating the column to use for disaggregation (e.g., "Dwelling Type").
-#'
-#' @return A named list of reshaped data frames, each corresponding to a unique combination of Series and Dimension.
-cmhc_reshape_ct_results <- function(results, dimension) {
-  results_list <- list()
-  
-  if (!is.null(results) && nrow(results) > 0) {
-    for (s in unique(results$Series)) {
-      for (d in unique(results[[dimension]])) {
-        df_filtered <- results |> 
-          dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |> 
-          dplyr::select(GeoUID, year_month, Value) |> 
-          tidyr::pivot_wider(
-            names_from = year_month, 
-            values_from = Value,
-            names_prefix = paste0(s, "_", dimension, "_", d, "_"),
-            values_fn = dplyr::first
-          ) |> 
-          dplyr::filter(!is.na(GeoUID))
-        
-        colnames(df_filtered) <- cmhc_clean_cma_names(colnames(df_filtered))
-
-        list_name <- cmhc_clean_cma_names(paste(s, dimension, d, sep = "_"))
-        
-        if (nrow(df_filtered) > 0) {
-          results_list[[list_name]] <- df_filtered
-        }
-      }
-    }
-  }
-  
-  return(results_list)
-}
-
-#' Retrieve and Process CMHC Census Tract Data
-#'
-#' Retrieves CMHC data for census tracts across multiple CMAs and processes the results into structured tables.
-#'
-#' @param requests A list of request objects, each containing survey, series, dimension, breakdown, years, and optional months.
-#' @param ct_correspondence_list A named list of correspondence tables linking older GeoUIDs to 2021 GeoUIDs.
-#' @param cma_all (Optional) A data frame of CMA IDs. If NULL, the function will auto-generate the list from CT 2021 data.
-#' @return A list containing processed census tract data for each series and dimension combination.
+#' @return A named list `CT` containing reshaped and harmonized data frames for each variable.
+#'         Each data frame uses standardized 2021 GeoUIDs and columns by year.
 #' @export
-cmhc_get_ct <- function(requests, ct_correspondence_list) {
+cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
+  cmhc_vectors <- list(CT = list())
   
-  # Auto-load CMA list from 2021 CT geometries
-  ct_21 <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    geo_format = "sf",
-    level = "CT"
-  )
-  
+  # Load all 2021 CTs and extract unique CMAUIDs
+  ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
   cma_all <- ct_21 |>
     sf::st_drop_geometry() |>
     dplyr::select(CMA_UID) |>
     dplyr::distinct() |>
-    dplyr::arrange(CMA_UID) |> 
     dplyr::rename(id = CMA_UID)
   
-  cmhc_vectors <- list(CT = list())
+  if (is.null(cma_uids)) {
+    cma_uids <- unique(cma_all$id)
+  }
   
-  for (req in requests) {
-    survey <- req$survey
-    series <- req$series
-    dimension <- req$dimension
-    breakdown <- req$breakdown
-    years <- req$years
-    months <- req$months  
-    
-    if (breakdown == "Census Tracts" & !is.null(years)) {
+  all_years_results <- list()
+  
+  for (geo_uid in cma_uids) {
+    for (req in requests) {
+      survey <- req$survey
+      series <- req$series
+      dimension <- if (!is.null(req$dimension)) req$dimension else NULL
+      years <- req$years
       
-      results_list <- list()  # Collect results for one request
-      
-      for (cma in cma_all$id) {
-        for (year in years) {
-          message(paste("Fetching data for:", cma, "year:", year))
-          if (!is.null(months)) {
-            for (month in months) {
-              message(paste("Fetching data for:", cma, "year:", year, "month:", sprintf("%02d", month)))
-              tryCatch({
-                data <- cmhc_fetch_ct_data(
-                  survey = survey,
-                  series = series,
-                  dimension = dimension,
-                  breakdown = breakdown,
-                  geo_uid = cma,
-                  year = year,
-                  month = month
-                )
-                if (!is.null(data) && nrow(data) > 0) {
-                  data <- apply_ct_correspondence(data, ct_correspondence_list)
-                  results_list <- append(results_list, list(data))
-                }
-              }, error = function(e) {
-                message(paste("Error during data retrieval:", e$message))
-              })
-            }
-          } else {
-            tryCatch({
-              data <- cmhc_fetch_ct_data(
-                survey = survey,
-                series = series,
-                dimension = dimension,
-                breakdown = breakdown,
-                geo_uid = cma,
-                year = year
-              )
-              
-              if (!is.null(data) && nrow(data) > 0) {
-                data <- apply_ct_correspondence(data, ct_correspondence_list)
-                results_list <- append(results_list, list(data))
-              }
-            }, error = function(e) {
-              message(paste("Error during data retrieval:", e$message))
-            })
-          }
-        }
-      }
-      
-      # Bind and process all results for this request
-      if (length(results_list) > 0) {
-        results <- dplyr::bind_rows(results_list)
-        results <- cmhc_process_ct(results)
-        reshaped_data <- cmhc_reshape_ct_results(results, dimension)
+      for (year in years) {
+        message(sprintf("Processing CMA %s — year %s — %s / %s", geo_uid, year, survey, series))
         
-        for (key in names(reshaped_data)) {
-          if (is.null(cmhc_vectors$CT[[key]])) {
-            cmhc_vectors$CT[[key]] <- reshaped_data[[key]]
+        raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year)
+        if (is.null(raw) || nrow(raw) == 0) next
+        
+        cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
+        if (is.null(cleaned)) next
+        
+        reshaped <- cmhc_reshape_results(cleaned, dimension)
+        
+        census_geo <- unique(raw$`Census geography`)
+        if (length(census_geo) != 1) {
+          warning(sprintf("CMA %s year %s: non-unique census geography detected", geo_uid, year))
+          next
+        }
+        
+        reshaped <- lapply(reshaped, function(df) {
+          df$`Census geography` <- census_geo
+          cmhc_ct_correspondence(df, ct_correspondence_list)
+        })
+        
+        for (key in names(reshaped)) {
+          cma_name <- paste0("cma_", geo_uid)
+          
+          if (!key %in% names(all_years_results)) all_years_results[[key]] <- list()
+          
+          if (!cma_name %in% names(all_years_results[[key]])) {
+            all_years_results[[key]][[cma_name]] <- reshaped[[key]]
           } else {
-            cmhc_vectors$CT[[key]] <- dplyr::bind_rows(cmhc_vectors$CT[[key]], reshaped_data[[key]])
+            common_cols <- intersect(setdiff(names(all_years_results[[key]][[cma_name]]), "GeoUID"), names(reshaped[[key]]))
+            all_years_results[[key]][[cma_name]] <- dplyr::full_join(
+              dplyr::select(all_years_results[[key]][[cma_name]], -all_of(common_cols)),
+              reshaped[[key]],
+              by = "GeoUID"
+            )
           }
         }
       }
     }
   }
   
-  # Rename 'geouid' column to 'id'
-  cmhc_vectors$CT <- lapply(cmhc_vectors$CT, function(df) {
-    if ("geouid" %in% names(df)) {
-      names(df)[names(df) == "geouid"] <- "id"
+  cmhc_vectors$CT <- lapply(all_years_results, function(ct_results_by_cma) {
+    final_df <- dplyr::bind_rows(ct_results_by_cma)
+    cmhc_finalize_results(list(final_df))[[1]]
+  })
+  
+  return(cmhc_vectors)
+}
+
+#' Retrieve Monthly CMHC Data for All CTs (by CMA and Year/Month)
+#'
+#' Downloads and reshapes monthly CMHC Census Tract (CT) data for each CMA, year, and month
+#' specified in the request list. Data is harmonized to the 2021 geography using correspondence tables.
+#'
+#' @param requests A list of request objects. Each must include the keys `survey`, `series`, `dimension`, `years`, and `months`.
+#' @param ct_correspondence_list A named list of correspondence tables used to map older GeoUIDs to 2021 equivalents.
+#' @param cma_uids Optional. A vector of CMAUIDs to include. If NULL, all CMAUIDs available in the 2021 CT geography will be used.
+#'
+#' @return A named list `CT` containing reshaped and harmonized data frames for each variable,
+#'         with columns formatted as "YYYYMM" for each month.
+#' @export
+cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
+  cmhc_vectors <- list(CT = list())
+  
+  # Load 2021 CTs and extract all unique CMAUIDs
+  ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
+  cma_all <- ct_21 |>
+    sf::st_drop_geometry() |>
+    dplyr::select(CMA_UID) |>
+    dplyr::distinct() |>
+    dplyr::rename(id = CMA_UID)
+  
+  if (is.null(cma_uids)) {
+    cma_uids <- unique(cma_all$id)
+  }
+  
+  all_months_results <- list()
+  
+  for (geo_uid in cma_uids) {
+    for (req in requests) {
+      survey <- req$survey
+      series <- req$series
+      dimension <- if (!is.null(req$dimension)) req$dimension else NULL
+      years <- req$years
+      months <- req$months
+      
+      for (year in years) {
+        for (month in months) {
+          message(sprintf("Processing CMA %s — %s-%s — %s / %s", geo_uid, year, month, survey, series))
+          
+          raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year, month)
+          if (is.null(raw) || nrow(raw) == 0) next
+          
+          cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
+          if (is.null(cleaned)) next
+          
+          reshaped <- cmhc_reshape_results(cleaned, dimension)
+          
+          census_geo <- unique(raw$`Census geography`)
+          if (length(census_geo) != 1) {
+            warning(sprintf("CMA %s %s-%s: non-unique census geography detected", geo_uid, year, month))
+            next
+          }
+          
+          reshaped <- lapply(reshaped, function(df) {
+            df$`Census geography` <- census_geo
+            cmhc_ct_correspondence(df, ct_correspondence_list)
+          })
+          
+          for (key in names(reshaped)) {
+            cma_name <- paste0("cma_", geo_uid)
+            if (!key %in% names(all_months_results)) all_months_results[[key]] <- list()
+            
+            if (!cma_name %in% names(all_months_results[[key]])) {
+              all_months_results[[key]][[cma_name]] <- reshaped[[key]]
+            } else {
+              common_cols <- intersect(setdiff(names(all_months_results[[key]][[cma_name]]), "GeoUID"), names(reshaped[[key]]))
+              all_months_results[[key]][[cma_name]] <- dplyr::full_join(
+                dplyr::select(all_months_results[[key]][[cma_name]], -all_of(common_cols)),
+                reshaped[[key]],
+                by = "GeoUID"
+              )
+            }
+          }
+        }
+      }
     }
-    return(df)
+  }
+  
+  cmhc_vectors$CT <- lapply(all_months_results, function(ct_results_by_cma) {
+    final_df <- dplyr::bind_rows(ct_results_by_cma)
+    cmhc_finalize_results(list(final_df))[[1]]
   })
   
   return(cmhc_vectors)
