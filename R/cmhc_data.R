@@ -428,34 +428,42 @@ cmhc_fetch_ct_data <- function(survey, series, dimension, geo_uid, year, month =
 cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
   if (!is.null(data) && "Census geography" %in% colnames(data)) {
     
-    # Detect which census year the data comes from
     census_geo <- unique(data$`Census geography`)
-    if (length(census_geo) != 1) stop("Invalid input: multiple or missing census geography identifiers.")
+    if (length(census_geo) != 1) {
+      stop("Invalid input: multiple or missing census geography identifiers.")
+    }
     
-    # Build correspondence table name
+    if (census_geo == "2021") {
+      col_uid <- intersect(c("GeoUID", "geouid", "id"), names(data))
+      if (length(col_uid) == 1 && col_uid != "GeoUID") {
+        names(data)[names(data) == col_uid] <- "GeoUID"
+      }
+      return(data |> dplyr::select(-"Census geography"))
+    }
+    
     corr_table_name <- paste0("correspondence_2021_", census_geo)
     if (!corr_table_name %in% names(ct_correspondence_list)) {
       stop("Missing correspondence table: ", corr_table_name)
     }
     
     correspondence_table <- ct_correspondence_list[[corr_table_name]]
-    if (nrow(correspondence_table) == 0) stop("Correspondence table is empty.")
+    if (nrow(correspondence_table) == 0) {
+      stop("Correspondence table is empty.")
+    }
     
-    # Identify the original GeoUID column in the correspondence table (e.g., geouid_2016)
     old_geouid_col <- setdiff(
       names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))],
       "geouid_21"
     )
-    if (length(old_geouid_col) != 1) stop("Ambiguous original GeoUID column in correspondence table.")
+    if (length(old_geouid_col) != 1) {
+      stop("Ambiguous original GeoUID column in correspondence table.")
+    }
     
-    # Match GeoUID column name in the input data
     geouid_col <- intersect(c("GeoUID", "geouid", "id"), colnames(data))
     colnames(data)[which(colnames(data) == geouid_col)] <- old_geouid_col
     
-    # Join with correspondence table
     data <- dplyr::inner_join(data, correspondence_table, by = old_geouid_col)
     
-    # Keep only 2021 GeoUID and clean up extra metadata columns
     data <- data |>
       dplyr::select(geouid_21, dplyr::everything()) |>
       dplyr::rename(GeoUID = geouid_21) |>
