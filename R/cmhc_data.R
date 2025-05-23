@@ -139,6 +139,8 @@ cmhc_clean_results <- function(df, geo_uid = NULL) {
     dplyr::select(dplyr::all_of(keep_cols), tidyselect::all_of(dimension_cols)) |>
     dplyr::filter(!is.na(GeoUID))
   
+  df <- df[!grepl("NA$", df$GeoUID), ]
+
   return(df)
 }
 
