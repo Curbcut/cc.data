@@ -240,7 +240,7 @@ cmhc_get_annual_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
   cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
   
-  future::plan(future::multisession)
+  future::plan(future::multisession, seed = TRUE)
   
   cma_results <- future.apply::future_lapply(unique(cma_all$id), function(geo_uid) {
     local_results <- list()
@@ -358,7 +358,7 @@ cmhc_get_monthly_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
   cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
   
-  future::plan(future::multisession)
+  future::plan(future::multisession, seed = TRUE)
   
   cma_results <- future.apply::future_lapply(unique(cma_all$id), function(geo_uid) {
     local_results <- list()
@@ -550,7 +550,7 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
   }
   
   local_ct_correspondence_list <- ct_correspondence_list
-  future::plan(future::multisession)
+  future::plan(future::multisession, seed = TRUE)
   
   cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
     local_results <- list()
@@ -660,7 +660,7 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
 
   # Préparer pour future_lapply
   local_ct_correspondence_list <- ct_correspondence_list
-  future::plan(future::multisession)
+  future::plan(future::multisession, seed = TRUE)
 
   cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
     local_results <- list()
