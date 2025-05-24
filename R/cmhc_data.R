@@ -453,12 +453,16 @@ cmhc_fetch_ct_data <- function(survey, series, dimension, geo_uid, year, month =
 #' @return A `data.frame` with GeoUIDs harmonized to 2021 geography.
 cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
   if (!is.null(data) && "Census geography" %in% colnames(data)) {
-    
+
+    if ("geometry" %in% names(data)) {
+      data <- sf::st_drop_geometry(data)
+    }
+
     census_geo <- unique(data$`Census geography`)
     if (length(census_geo) != 1) {
       stop("Invalid input: multiple or missing census geography identifiers.")
     }
-    
+
     if (census_geo == "2021") {
       col_uid <- intersect(c("GeoUID", "geouid", "id"), names(data))
       if (length(col_uid) == 1 && col_uid != "GeoUID") {
@@ -466,17 +470,17 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
       }
       return(data |> dplyr::select(-"Census geography"))
     }
-    
+
     corr_table_name <- paste0("correspondence_2021_", census_geo)
     if (!corr_table_name %in% names(ct_correspondence_list)) {
       stop("Missing correspondence table: ", corr_table_name)
     }
-    
+
     correspondence_table <- ct_correspondence_list[[corr_table_name]]
     if (nrow(correspondence_table) == 0) {
       stop("Correspondence table is empty.")
     }
-    
+
     old_geouid_col <- setdiff(
       names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))],
       "geouid_21"
@@ -484,24 +488,24 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
     if (length(old_geouid_col) != 1) {
       stop("Ambiguous original GeoUID column in correspondence table.")
     }
-    
+
     geouid_col <- intersect(c("GeoUID", "geouid", "id"), colnames(data))
     colnames(data)[which(colnames(data) == geouid_col)] <- old_geouid_col
-    
+
     data <- dplyr::inner_join(data, correspondence_table, by = old_geouid_col)
-    
+
     data <- data |>
       dplyr::select(geouid_21, dplyr::everything()) |>
       dplyr::rename(GeoUID = geouid_21) |>
       dplyr::select(-dplyr::all_of(old_geouid_col),
                     -dplyr::any_of(c("geometry", "status", "cma_code", "Census geography")))
-    
+
     return(data)
-    
   } else {
     stop("Invalid input: 'Census geography' column is missing.")
   }
 }
+
 
 #' Retrieve Annual CMHC Data for All CTs (by CMA and Year)
 #'
