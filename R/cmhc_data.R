@@ -453,16 +453,19 @@ cmhc_fetch_ct_data <- function(survey, series, dimension, geo_uid, year, month =
 #' @return A `data.frame` with GeoUIDs harmonized to 2021 geography.
 cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
   if (!is.null(data) && "Census geography" %in% colnames(data)) {
-
+    
+    # Remove geometry from input data if it exists
     if ("geometry" %in% names(data)) {
       data <- sf::st_drop_geometry(data)
     }
-
+    
+    # Extract the census year identifier
     census_geo <- unique(data$`Census geography`)
     if (length(census_geo) != 1) {
       stop("Invalid input: multiple or missing census geography identifiers.")
     }
-
+    
+    # If already 2021, standardize column names and return
     if (census_geo == "2021") {
       col_uid <- intersect(c("GeoUID", "geouid", "id"), names(data))
       if (length(col_uid) == 1 && col_uid != "GeoUID") {
@@ -470,17 +473,25 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
       }
       return(data |> dplyr::select(-"Census geography"))
     }
-
+    
+    # Build correspondence table name
     corr_table_name <- paste0("correspondence_2021_", census_geo)
     if (!corr_table_name %in% names(ct_correspondence_list)) {
       stop("Missing correspondence table: ", corr_table_name)
     }
-
+    
     correspondence_table <- ct_correspondence_list[[corr_table_name]]
+    
+    # Fix: drop geometry to prevent sfc issues in parallel environments
+    if ("geometry" %in% names(correspondence_table)) {
+      correspondence_table <- sf::st_drop_geometry(correspondence_table)
+    }
+    
     if (nrow(correspondence_table) == 0) {
       stop("Correspondence table is empty.")
     }
-
+    
+    # Identify old GeoUID column in the correspondence table
     old_geouid_col <- setdiff(
       names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))],
       "geouid_21"
@@ -488,23 +499,27 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
     if (length(old_geouid_col) != 1) {
       stop("Ambiguous original GeoUID column in correspondence table.")
     }
-
+    
+    # Match GeoUID column in data
     geouid_col <- intersect(c("GeoUID", "geouid", "id"), colnames(data))
     colnames(data)[which(colnames(data) == geouid_col)] <- old_geouid_col
-
+    
+    # Join with correspondence table to get geouid_21
     data <- dplyr::inner_join(data, correspondence_table, by = old_geouid_col)
-
+    
+    # Clean and reorder columns
     data <- data |>
       dplyr::select(geouid_21, dplyr::everything()) |>
       dplyr::rename(GeoUID = geouid_21) |>
       dplyr::select(-dplyr::all_of(old_geouid_col),
                     -dplyr::any_of(c("geometry", "status", "cma_code", "Census geography")))
-
+    
     return(data)
   } else {
     stop("Invalid input: 'Census geography' column is missing.")
   }
 }
+
 
 
 #' Retrieve Annual CMHC Data for All CTs (by CMA and Year)
@@ -534,7 +549,7 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
     cma_uids <- unique(cma_all$id)
   }
 
-  # 🔒 capture dans une variable locale avant future_lapply
+  # capture dans une variable locale avant future_lapply
   local_ct_correspondence_list <- ct_correspondence_list
   future::plan(future::multisession)
 
@@ -623,7 +638,7 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
     cma_uids <- unique(cma_all$id)
   }
 
-  # 👇 Préparer pour future_lapply
+  # Préparer pour future_lapply
   local_ct_correspondence_list <- ct_correspondence_list
   future::plan(future::multisession)
 
