@@ -516,7 +516,7 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
 #' @return A named list `CT` containing reshaped and harmonized data frames for each variable.
 #'         Each data frame uses standardized 2021 GeoUIDs and columns by year.
 #' @export
-cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
+cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
   cmhc_vectors <- list(CT = list())
 
   ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
@@ -530,6 +530,8 @@ cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
     cma_uids <- unique(cma_all$id)
   }
 
+  # 🔒 capture dans une variable locale avant future_lapply
+  local_ct_correspondence_list <- ct_correspondence_list
   future::plan(future::multisession)
 
   cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
@@ -543,7 +545,6 @@ cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
 
       for (year in years) {
         message(sprintf("Processing CMA %s — year %s — %s / %s", geo_uid, year, survey, series))
-
         raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year)
         if (is.null(raw) || nrow(raw) == 0) next
 
@@ -560,7 +561,7 @@ cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
 
         reshaped <- lapply(reshaped, function(df) {
           df$`Census geography` <- census_geo
-          cmhc_ct_correspondence(df, cc.data::census_ct_correspondences_list)
+          cmhc_ct_correspondence(df, local_ct_correspondence_list)
         })
 
         for (key in names(reshaped)) {
@@ -574,6 +575,7 @@ cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
     return(local_results)
   })
 
+  # fusion
   all_years_results <- list()
   for (cma_result in cma_parallel_results) {
     for (key in names(cma_result)) {
@@ -602,9 +604,10 @@ cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
 #' @return A named list `CT` containing reshaped and harmonized data frames for each variable,
 #'         with columns formatted as "YYYYMM" for each month.
 #' @export
-cmhc_get_monthly_ct <- function(requests, cma_uids = NULL) {
+cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
   cmhc_vectors <- list(CT = list())
 
+  # Charger CMAUID depuis CT 2021
   ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
   cma_all <- ct_21 |>
     sf::st_drop_geometry() |>
@@ -616,6 +619,8 @@ cmhc_get_monthly_ct <- function(requests, cma_uids = NULL) {
     cma_uids <- unique(cma_all$id)
   }
 
+  # 👇 Préparer pour future_lapply
+  local_ct_correspondence_list <- ct_correspondence_list
   future::plan(future::multisession)
 
   cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
@@ -648,7 +653,7 @@ cmhc_get_monthly_ct <- function(requests, cma_uids = NULL) {
 
           reshaped <- lapply(reshaped, function(df) {
             df$`Census geography` <- census_geo
-            cmhc_ct_correspondence(df, cc.data::census_ct_correspondences_list)
+            cmhc_ct_correspondence(df, local_ct_correspondence_list)
           })
 
           for (key in names(reshaped)) {
@@ -677,3 +682,4 @@ cmhc_get_monthly_ct <- function(requests, cma_uids = NULL) {
 
   return(cmhc_vectors)
 }
+
