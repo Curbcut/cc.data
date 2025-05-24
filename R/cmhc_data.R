@@ -239,39 +239,46 @@ cmhc_finalize_results <- function(results_list) {
 cmhc_get_annual_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
   cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
-  
-  future::plan(future::multisession, seed = TRUE)
-  
-  cma_results <- future.apply::future_lapply(unique(cma_all$id), function(geo_uid) {
-    local_results <- list()
-    for (req in requests) {
-      survey <- req$survey
-      series <- req$series
-      dimension <- req$dimension
-      frequency <- if (!is.null(req$frequency)) req$frequency else "Annual"
-      
-      message(sprintf("Processing CMA %s — %s — %s / %s", geo_uid, frequency, survey, series))
-      
-      results <- cmhc_fetch_cma_data(survey, series, dimension, geo_uid, frequency)
-      cleaned <- cmhc_clean_results(results, geo_uid = geo_uid)
-      
-      if (is.null(cleaned)) {
-        warning(sprintf("CMA %s: No valid annual data found. Entry skipped.", geo_uid))
-        next
+
+  # Set up parallel processing (seed is handled in future_lapply)
+  future::plan(future::multisession)
+
+  # Loop through each CMA
+  cma_results <- future.apply::future_lapply(
+    unique(cma_all$id),
+    function(geo_uid) {
+      local_results <- list()
+      for (req in requests) {
+        survey <- req$survey
+        series <- req$series
+        dimension <- req$dimension
+        frequency <- if (!is.null(req$frequency)) req$frequency else "Annual"
+
+        message(sprintf("Processing CMA %s — %s — %s / %s", geo_uid, frequency, survey, series))
+
+        results <- cmhc_fetch_cma_data(survey, series, dimension, geo_uid, frequency)
+        cleaned <- cmhc_clean_results(results, geo_uid = geo_uid)
+
+        if (is.null(cleaned)) {
+          warning(sprintf("CMA %s: No valid annual data found. Entry skipped.", geo_uid))
+          next
+        }
+
+        reshaped_data <- cmhc_reshape_results(cleaned, dimension)
+
+        for (key in names(reshaped_data)) {
+          local_results[[key]] <- dplyr::bind_rows(local_results[[key]], reshaped_data[[key]])
+        }
       }
-      
-      reshaped_data <- cmhc_reshape_results(cleaned, dimension)
-      
-      for (key in names(reshaped_data)) {
-        local_results[[key]] <- dplyr::bind_rows(local_results[[key]], reshaped_data[[key]])
-      }
-    }
-    return(local_results)
-  })
-  
+      return(local_results)
+    },
+    future.seed = TRUE  # Ensures safe and reproducible parallel processing
+  )
+
+  # Combine results from all CMAs
   results_list <- list()
   any_valid_annual <- FALSE
-  
+
   for (res in cma_results) {
     if (is.null(res)) next
     any_valid_annual <- TRUE
@@ -279,14 +286,15 @@ cmhc_get_annual_cma <- function(requests) {
       results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
     }
   }
-  
+
   if (!any_valid_annual) {
     stop("ERROR: No valid annual data found. Try using cmhc_get_monthly_cma().")
   }
-  
+
   cmhc_vectors$CMA <- cmhc_finalize_results(results_list)
   return(cmhc_vectors)
 }
+
 
 
 #' Extract Year-Month from DateString
@@ -357,43 +365,50 @@ cmhc_add_year_month <- function(df, geo_uid = NULL) {
 cmhc_get_monthly_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
   cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
-  
-  future::plan(future::multisession, seed = TRUE)
-  
-  cma_results <- future.apply::future_lapply(unique(cma_all$id), function(geo_uid) {
-    local_results <- list()
-    for (req in requests) {
-      survey <- req$survey
-      series <- req$series
-      dimension <- req$dimension
-      frequency <- if (!is.null(req$frequency)) req$frequency else "Monthly"
-      
-      message(sprintf("Processing CMA %s — %s — %s / %s", geo_uid, frequency, survey, series))
-      
-      raw_results <- cmhc_fetch_cma_data(survey, series, dimension, geo_uid, frequency)
-      if (is.null(raw_results) || nrow(raw_results) == 0) next
-      
-      if (!"Series" %in% colnames(raw_results)) raw_results$Series <- series
-      if (!"Survey" %in% colnames(raw_results)) raw_results$Survey <- survey
-      
-      raw_results <- cmhc_add_year_month(raw_results, geo_uid = geo_uid)
-      if (is.null(raw_results)) {
-        warning(sprintf("CMA %s: No valid monthly-format data found. Entry skipped.", geo_uid))
-        next
+
+  # Set up parallel processing (seed handled inside future_lapply)
+  future::plan(future::multisession)
+
+  # Loop through each CMA
+  cma_results <- future.apply::future_lapply(
+    unique(cma_all$id),
+    function(geo_uid) {
+      local_results <- list()
+      for (req in requests) {
+        survey <- req$survey
+        series <- req$series
+        dimension <- req$dimension
+        frequency <- if (!is.null(req$frequency)) req$frequency else "Monthly"
+
+        message(sprintf("Processing CMA %s — %s — %s / %s", geo_uid, frequency, survey, series))
+
+        raw_results <- cmhc_fetch_cma_data(survey, series, dimension, geo_uid, frequency)
+        if (is.null(raw_results) || nrow(raw_results) == 0) next
+
+        if (!"Series" %in% colnames(raw_results)) raw_results$Series <- series
+        if (!"Survey" %in% colnames(raw_results)) raw_results$Survey <- survey
+
+        raw_results <- cmhc_add_year_month(raw_results, geo_uid = geo_uid)
+        if (is.null(raw_results)) {
+          warning(sprintf("CMA %s: No valid monthly-format data found. Entry skipped.", geo_uid))
+          next
+        }
+
+        reshaped_data <- cmhc_reshape_results(raw_results, dimension)
+
+        for (key in names(reshaped_data)) {
+          local_results[[key]] <- dplyr::bind_rows(local_results[[key]], reshaped_data[[key]])
+        }
       }
-      
-      reshaped_data <- cmhc_reshape_results(raw_results, dimension)
-      
-      for (key in names(reshaped_data)) {
-        local_results[[key]] <- dplyr::bind_rows(local_results[[key]], reshaped_data[[key]])
-      }
-    }
-    return(local_results)
-  })
-  
+      return(local_results)
+    },
+    future.seed = TRUE  # Ensures reproducible parallel computation
+  )
+
+  # Combine results from all CMAs
   results_list <- list()
   any_valid_monthly <- FALSE
-  
+
   for (res in cma_results) {
     if (is.null(res)) next
     any_valid_monthly <- TRUE
@@ -401,14 +416,15 @@ cmhc_get_monthly_cma <- function(requests) {
       results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
     }
   }
-  
+
   if (!any_valid_monthly) {
     stop("ERROR: No valid monthly-format data found. Try using cmhc_get_annual_cma() instead.")
   }
-  
+
   cmhc_vectors$CMA <- cmhc_finalize_results(results_list)
   return(cmhc_vectors)
 }
+
 
 #' Fetch CMHC Data for a Specific CT
 #'
@@ -537,74 +553,75 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
 #' @export
 cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
   cmhc_vectors <- list(CT = list())
-  
+
+  # Load CMAUIDs from 2021 CTs
   ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
   cma_all <- ct_21 |>
     sf::st_drop_geometry() |>
     dplyr::select(CMA_UID) |>
     dplyr::distinct() |>
     dplyr::rename(id = CMA_UID)
-  
+
   if (is.null(cma_uids)) {
     cma_uids <- unique(cma_all$id)
   }
-  
+
   local_ct_correspondence_list <- ct_correspondence_list
-  future::plan(future::multisession, seed = TRUE)
-  
-  cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
-    local_results <- list()
-    
-    for (req in requests) {
-      survey <- req$survey
-      series <- req$series
-      dimension <- req$dimension
-      years <- req$years
-      
-      for (year in years) {
-        message(sprintf("Processing CMA %s — year %s — %s / %s", geo_uid, year, survey, series))
-        raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year)
-        if (is.null(raw) || nrow(raw) == 0) next
-        
-        cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
-        if (is.null(cleaned)) next
-        
-        reshaped <- cmhc_reshape_results(cleaned, dimension)
-        
-        census_geo <- unique(raw$`Census geography`)
-        if (length(census_geo) != 1) {
-          warning(sprintf("CMA %s year %s: non-unique census geography detected", geo_uid, year))
-          next
-        }
-        
-        reshaped <- lapply(reshaped, function(df) {
-          df$`Census geography` <- census_geo
-          cmhc_ct_correspondence(df, local_ct_correspondence_list)
-        })
-        
-        for (key in names(reshaped)) {
-          cma_name <- paste0("cma_", geo_uid)
-          if (!key %in% names(local_results)) {
-            local_results[[key]] <- list()
+  future::plan(future::multisession)
+
+  # Fetch and reshape data for each CMA and year
+  cma_parallel_results <- future.apply::future_lapply(
+    cma_uids,
+    function(geo_uid) {
+      local_results <- list()
+      for (req in requests) {
+        survey <- req$survey
+        series <- req$series
+        dimension <- req$dimension
+        years <- req$years
+
+        for (year in years) {
+          message(sprintf("Processing CMA %s — year %s — %s / %s", geo_uid, year, survey, series))
+          raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year)
+          if (is.null(raw) || nrow(raw) == 0) next
+
+          cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
+          if (is.null(cleaned)) next
+
+          reshaped <- cmhc_reshape_results(cleaned, dimension)
+
+          census_geo <- unique(raw$`Census geography`)
+          if (length(census_geo) != 1) {
+            warning(sprintf("CMA %s year %s: non-unique census geography detected", geo_uid, year))
+            next
           }
-          if (!cma_name %in% names(local_results[[key]])) {
-            local_results[[key]][[cma_name]] <- reshaped[[key]]
-          } else {
-            # merge preserving all columns
-            local_results[[key]][[cma_name]] <- dplyr::full_join(
-              local_results[[key]][[cma_name]],
-              reshaped[[key]],
-              by = "GeoUID"
-            )
+
+          reshaped <- lapply(reshaped, function(df) {
+            df$`Census geography` <- census_geo
+            cmhc_ct_correspondence(df, local_ct_correspondence_list)
+          })
+
+          for (key in names(reshaped)) {
+            cma_name <- paste0("cma_", geo_uid)
+            if (!key %in% names(local_results)) local_results[[key]] <- list()
+            if (!cma_name %in% names(local_results[[key]])) {
+              local_results[[key]][[cma_name]] <- reshaped[[key]]
+            } else {
+              local_results[[key]][[cma_name]] <- dplyr::full_join(
+                local_results[[key]][[cma_name]],
+                reshaped[[key]],
+                by = "GeoUID"
+              )
+            }
           }
         }
       }
-    }
-    
-    return(local_results)
-  })
-  
-  # fusion finale
+      return(local_results)
+    },
+    future.seed = TRUE  # Ensures deterministic parallel behavior
+  )
+
+  # Merge all results across CMAs
   all_years_results <- list()
   for (cma_result in cma_parallel_results) {
     for (key in names(cma_result)) {
@@ -622,14 +639,15 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
       }
     }
   }
-  
+
   cmhc_vectors$CT <- lapply(all_years_results, function(ct_results_by_cma) {
     final_df <- dplyr::bind_rows(ct_results_by_cma)
     cmhc_finalize_results(list(final_df))[[1]]
   })
-  
+
   return(cmhc_vectors)
 }
+
 
 #' Retrieve Monthly CMHC Data for All CTs (by CMA and Year/Month)
 #'
@@ -646,7 +664,7 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
 cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
   cmhc_vectors <- list(CT = list())
 
-  # Charger CMAUID depuis CT 2021
+  # Load CMAUIDs from 2021 CTs
   ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
   cma_all <- ct_21 |>
     sf::st_drop_geometry() |>
@@ -658,55 +676,60 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
     cma_uids <- unique(cma_all$id)
   }
 
-  # Préparer pour future_lapply
   local_ct_correspondence_list <- ct_correspondence_list
-  future::plan(future::multisession, seed = TRUE)
+  future::plan(future::multisession)
 
-  cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
-    local_results <- list()
+  # Fetch and reshape data for each CMA, year, and month
+  cma_parallel_results <- future.apply::future_lapply(
+    cma_uids,
+    function(geo_uid) {
+      local_results <- list()
 
-    for (req in requests) {
-      survey <- req$survey
-      series <- req$series
-      dimension <- req$dimension
-      years <- req$years
-      months <- req$months
+      for (req in requests) {
+        survey <- req$survey
+        series <- req$series
+        dimension <- req$dimension
+        years <- req$years
+        months <- req$months
 
-      for (year in years) {
-        for (month in months) {
-          message(sprintf("Processing CMA %s — %s-%s — %s / %s", geo_uid, year, month, survey, series))
+        for (year in years) {
+          for (month in months) {
+            message(sprintf("Processing CMA %s — %s-%s — %s / %s", geo_uid, year, month, survey, series))
 
-          raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year, month)
-          if (is.null(raw) || nrow(raw) == 0) next
+            raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year, month)
+            if (is.null(raw) || nrow(raw) == 0) next
 
-          cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
-          if (is.null(cleaned)) next
+            cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
+            if (is.null(cleaned)) next
 
-          reshaped <- cmhc_reshape_results(cleaned, dimension)
+            reshaped <- cmhc_reshape_results(cleaned, dimension)
 
-          census_geo <- unique(raw$`Census geography`)
-          if (length(census_geo) != 1) {
-            warning(sprintf("CMA %s %s-%s: non-unique census geography detected", geo_uid, year, month))
-            next
-          }
+            census_geo <- unique(raw$`Census geography`)
+            if (length(census_geo) != 1) {
+              warning(sprintf("CMA %s %s-%s: non-unique census geography detected", geo_uid, year, month))
+              next
+            }
 
-          reshaped <- lapply(reshaped, function(df) {
-            df$`Census geography` <- census_geo
-            cmhc_ct_correspondence(df, local_ct_correspondence_list)
-          })
+            reshaped <- lapply(reshaped, function(df) {
+              df$`Census geography` <- census_geo
+              cmhc_ct_correspondence(df, local_ct_correspondence_list)
+            })
 
-          for (key in names(reshaped)) {
-            cma_name <- paste0("cma_", geo_uid)
-            if (!key %in% names(local_results)) local_results[[key]] <- list()
-            local_results[[key]][[cma_name]] <- reshaped[[key]]
+            for (key in names(reshaped)) {
+              cma_name <- paste0("cma_", geo_uid)
+              if (!key %in% names(local_results)) local_results[[key]] <- list()
+              local_results[[key]][[cma_name]] <- reshaped[[key]]
+            }
           }
         }
       }
-    }
 
-    return(local_results)
-  })
+      return(local_results)
+    },
+    future.seed = TRUE  # Ensures deterministic behavior in parallel execution
+  )
 
+  # Merge results from all CMA-month combinations
   all_months_results <- list()
   for (cma_result in cma_parallel_results) {
     for (key in names(cma_result)) {
