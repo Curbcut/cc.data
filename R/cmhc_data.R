@@ -595,12 +595,25 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
   })
 
   # fusion
-  all_years_results <- list()
-  for (cma_result in cma_parallel_results) {
-    for (key in names(cma_result)) {
-      all_years_results[[key]] <- append(all_years_results[[key]], cma_result[[key]])
+all_years_results <- list()
+for (cma_result in cma_parallel_results) {
+  for (key in names(cma_result)) {
+    for (cma_name in names(cma_result[[key]])) {
+      if (!key %in% names(all_years_results)) all_years_results[[key]] <- list()
+      if (!cma_name %in% names(all_years_results[[key]])) {
+        all_years_results[[key]][[cma_name]] <- cma_result[[key]][[cma_name]]
+      } else {
+        common_cols <- intersect(setdiff(names(all_years_results[[key]][[cma_name]]), "GeoUID"),
+                                 names(cma_result[[key]][[cma_name]]))
+        all_years_results[[key]][[cma_name]] <- dplyr::full_join(
+          dplyr::select(all_years_results[[key]][[cma_name]], -all_of(common_cols)),
+          cma_result[[key]][[cma_name]],
+          by = "GeoUID"
+        )
+      }
     }
   }
+}
 
   cmhc_vectors$CT <- lapply(all_years_results, function(ct_results_by_cma) {
     final_df <- dplyr::bind_rows(ct_results_by_cma)
