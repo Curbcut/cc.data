@@ -238,11 +238,12 @@ cmhc_finalize_results <- function(results_list) {
 #' @export
 cmhc_get_annual_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
-  results_list <- list()
   cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
-  any_valid_annual <- FALSE
   
-  for (geo_uid in unique(cma_all$id)) {
+  future::plan(future::multisession)
+  
+  cma_results <- future.apply::future_lapply(unique(cma_all$id), function(geo_uid) {
+    local_results <- list()
     for (req in requests) {
       survey <- req$survey
       series <- req$series
@@ -259,12 +260,23 @@ cmhc_get_annual_cma <- function(requests) {
         next
       }
       
-      any_valid_annual <- TRUE
       reshaped_data <- cmhc_reshape_results(cleaned, dimension)
       
       for (key in names(reshaped_data)) {
-        results_list[[key]] <- dplyr::bind_rows(results_list[[key]], reshaped_data[[key]])
+        local_results[[key]] <- dplyr::bind_rows(local_results[[key]], reshaped_data[[key]])
       }
+    }
+    return(local_results)
+  })
+  
+  results_list <- list()
+  any_valid_annual <- FALSE
+  
+  for (res in cma_results) {
+    if (is.null(res)) next
+    any_valid_annual <- TRUE
+    for (key in names(res)) {
+      results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
     }
   }
   
@@ -344,11 +356,12 @@ cmhc_add_year_month <- function(df, geo_uid = NULL) {
 #' @export
 cmhc_get_monthly_cma <- function(requests) {
   cmhc_vectors <- list(CMA = list())
-  results_list <- list()
   cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
-  any_valid_monthly <- FALSE
   
-  for (geo_uid in unique(cma_all$id)) {
+  future::plan(future::multisession)
+  
+  cma_results <- future.apply::future_lapply(unique(cma_all$id), function(geo_uid) {
+    local_results <- list()
     for (req in requests) {
       survey <- req$survey
       series <- req$series
@@ -369,12 +382,23 @@ cmhc_get_monthly_cma <- function(requests) {
         next
       }
       
-      any_valid_monthly <- TRUE
       reshaped_data <- cmhc_reshape_results(raw_results, dimension)
       
       for (key in names(reshaped_data)) {
-        results_list[[key]] <- dplyr::bind_rows(results_list[[key]], reshaped_data[[key]])
+        local_results[[key]] <- dplyr::bind_rows(local_results[[key]], reshaped_data[[key]])
       }
+    }
+    return(local_results)
+  })
+  
+  results_list <- list()
+  any_valid_monthly <- FALSE
+  
+  for (res in cma_results) {
+    if (is.null(res)) next
+    any_valid_monthly <- TRUE
+    for (key in names(res)) {
+      results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
     }
   }
   
@@ -492,79 +516,79 @@ cmhc_ct_correspondence <- function(data, ct_correspondence_list) {
 #' @return A named list `CT` containing reshaped and harmonized data frames for each variable.
 #'         Each data frame uses standardized 2021 GeoUIDs and columns by year.
 #' @export
-cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
+cmhc_get_annual_ct <- function(requests, cma_uids = NULL) {
   cmhc_vectors <- list(CT = list())
-  
-  # Load all 2021 CTs and extract unique CMAUIDs
+
   ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
   cma_all <- ct_21 |>
     sf::st_drop_geometry() |>
     dplyr::select(CMA_UID) |>
     dplyr::distinct() |>
     dplyr::rename(id = CMA_UID)
-  
+
   if (is.null(cma_uids)) {
     cma_uids <- unique(cma_all$id)
   }
-  
-  all_years_results <- list()
-  
-  for (geo_uid in cma_uids) {
+
+  future::plan(future::multisession)
+
+  cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
+    local_results <- list()
+
     for (req in requests) {
       survey <- req$survey
       series <- req$series
-      dimension <- if (!is.null(req$dimension)) req$dimension else NULL
+      dimension <- req$dimension
       years <- req$years
-      
+
       for (year in years) {
         message(sprintf("Processing CMA %s — year %s — %s / %s", geo_uid, year, survey, series))
-        
+
         raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year)
         if (is.null(raw) || nrow(raw) == 0) next
-        
+
         cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
         if (is.null(cleaned)) next
-        
+
         reshaped <- cmhc_reshape_results(cleaned, dimension)
-        
+
         census_geo <- unique(raw$`Census geography`)
         if (length(census_geo) != 1) {
           warning(sprintf("CMA %s year %s: non-unique census geography detected", geo_uid, year))
           next
         }
-        
+
         reshaped <- lapply(reshaped, function(df) {
           df$`Census geography` <- census_geo
-          cmhc_ct_correspondence(df, ct_correspondence_list)
+          cmhc_ct_correspondence(df, cc.data::census_ct_correspondences_list)
         })
-        
+
         for (key in names(reshaped)) {
           cma_name <- paste0("cma_", geo_uid)
-          
-          if (!key %in% names(all_years_results)) all_years_results[[key]] <- list()
-          
-          if (!cma_name %in% names(all_years_results[[key]])) {
-            all_years_results[[key]][[cma_name]] <- reshaped[[key]]
-          } else {
-            common_cols <- intersect(setdiff(names(all_years_results[[key]][[cma_name]]), "GeoUID"), names(reshaped[[key]]))
-            all_years_results[[key]][[cma_name]] <- dplyr::full_join(
-              dplyr::select(all_years_results[[key]][[cma_name]], -all_of(common_cols)),
-              reshaped[[key]],
-              by = "GeoUID"
-            )
-          }
+          if (!key %in% names(local_results)) local_results[[key]] <- list()
+          local_results[[key]][[cma_name]] <- reshaped[[key]]
         }
       }
     }
+
+    return(local_results)
+  })
+
+  all_years_results <- list()
+  for (cma_result in cma_parallel_results) {
+    for (key in names(cma_result)) {
+      all_years_results[[key]] <- append(all_years_results[[key]], cma_result[[key]])
+    }
   }
-  
+
   cmhc_vectors$CT <- lapply(all_years_results, function(ct_results_by_cma) {
     final_df <- dplyr::bind_rows(ct_results_by_cma)
     cmhc_finalize_results(list(final_df))[[1]]
   })
-  
+
   return(cmhc_vectors)
 }
+
 
 #' Retrieve Monthly CMHC Data for All CTs (by CMA and Year/Month)
 #'
@@ -578,78 +602,78 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
 #' @return A named list `CT` containing reshaped and harmonized data frames for each variable,
 #'         with columns formatted as "YYYYMM" for each month.
 #' @export
-cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NULL) {
+cmhc_get_monthly_ct <- function(requests, cma_uids = NULL) {
   cmhc_vectors <- list(CT = list())
-  
-  # Load 2021 CTs and extract all unique CMAUIDs
+
   ct_21 <- cancensus::get_census(dataset = "CA21", regions = list(C = "01"), level = "CT", geo_format = "sf")
   cma_all <- ct_21 |>
     sf::st_drop_geometry() |>
     dplyr::select(CMA_UID) |>
     dplyr::distinct() |>
     dplyr::rename(id = CMA_UID)
-  
+
   if (is.null(cma_uids)) {
     cma_uids <- unique(cma_all$id)
   }
-  
-  all_months_results <- list()
-  
-  for (geo_uid in cma_uids) {
+
+  future::plan(future::multisession)
+
+  cma_parallel_results <- future.apply::future_lapply(cma_uids, function(geo_uid) {
+    local_results <- list()
+
     for (req in requests) {
       survey <- req$survey
       series <- req$series
-      dimension <- if (!is.null(req$dimension)) req$dimension else NULL
+      dimension <- req$dimension
       years <- req$years
       months <- req$months
-      
+
       for (year in years) {
         for (month in months) {
           message(sprintf("Processing CMA %s — %s-%s — %s / %s", geo_uid, year, month, survey, series))
-          
+
           raw <- cmhc_fetch_ct_data(survey, series, dimension, geo_uid, year, month)
           if (is.null(raw) || nrow(raw) == 0) next
-          
+
           cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
           if (is.null(cleaned)) next
-          
+
           reshaped <- cmhc_reshape_results(cleaned, dimension)
-          
+
           census_geo <- unique(raw$`Census geography`)
           if (length(census_geo) != 1) {
             warning(sprintf("CMA %s %s-%s: non-unique census geography detected", geo_uid, year, month))
             next
           }
-          
+
           reshaped <- lapply(reshaped, function(df) {
             df$`Census geography` <- census_geo
-            cmhc_ct_correspondence(df, ct_correspondence_list)
+            cmhc_ct_correspondence(df, cc.data::census_ct_correspondences_list)
           })
-          
+
           for (key in names(reshaped)) {
             cma_name <- paste0("cma_", geo_uid)
-            if (!key %in% names(all_months_results)) all_months_results[[key]] <- list()
-            
-            if (!cma_name %in% names(all_months_results[[key]])) {
-              all_months_results[[key]][[cma_name]] <- reshaped[[key]]
-            } else {
-              common_cols <- intersect(setdiff(names(all_months_results[[key]][[cma_name]]), "GeoUID"), names(reshaped[[key]]))
-              all_months_results[[key]][[cma_name]] <- dplyr::full_join(
-                dplyr::select(all_months_results[[key]][[cma_name]], -all_of(common_cols)),
-                reshaped[[key]],
-                by = "GeoUID"
-              )
-            }
+            if (!key %in% names(local_results)) local_results[[key]] <- list()
+            local_results[[key]][[cma_name]] <- reshaped[[key]]
           }
         }
       }
     }
+
+    return(local_results)
+  })
+
+  all_months_results <- list()
+  for (cma_result in cma_parallel_results) {
+    for (key in names(cma_result)) {
+      all_months_results[[key]] <- append(all_months_results[[key]], cma_result[[key]])
+    }
   }
-  
+
   cmhc_vectors$CT <- lapply(all_months_results, function(ct_results_by_cma) {
     final_df <- dplyr::bind_rows(ct_results_by_cma)
     cmhc_finalize_results(list(final_df))[[1]]
   })
-  
+
   return(cmhc_vectors)
 }
