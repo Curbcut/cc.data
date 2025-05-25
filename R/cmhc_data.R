@@ -679,7 +679,6 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
   local_ct_correspondence_list <- ct_correspondence_list
   future::plan(future::multisession)
 
-  # Fetch and reshape data for each CMA, year, and month
   cma_parallel_results <- future.apply::future_lapply(
     cma_uids,
     function(geo_uid) {
@@ -718,7 +717,15 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
             for (key in names(reshaped)) {
               cma_name <- paste0("cma_", geo_uid)
               if (!key %in% names(local_results)) local_results[[key]] <- list()
-              local_results[[key]][[cma_name]] <- reshaped[[key]]
+              if (!cma_name %in% names(local_results[[key]])) {
+                local_results[[key]][[cma_name]] <- reshaped[[key]]
+              } else {
+                local_results[[key]][[cma_name]] <- dplyr::full_join(
+                  local_results[[key]][[cma_name]],
+                  reshaped[[key]],
+                  by = "GeoUID"
+                )
+              }
             }
           }
         }
@@ -726,14 +733,25 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
 
       return(local_results)
     },
-    future.seed = TRUE  # Ensures deterministic behavior in parallel execution
+    future.seed = TRUE
   )
 
-  # Merge results from all CMA-month combinations
+  # Final merge of all CMA-month combinations
   all_months_results <- list()
   for (cma_result in cma_parallel_results) {
     for (key in names(cma_result)) {
-      all_months_results[[key]] <- append(all_months_results[[key]], cma_result[[key]])
+      for (cma_name in names(cma_result[[key]])) {
+        if (!key %in% names(all_months_results)) all_months_results[[key]] <- list()
+        if (!cma_name %in% names(all_months_results[[key]])) {
+          all_months_results[[key]][[cma_name]] <- cma_result[[key]][[cma_name]]
+        } else {
+          all_months_results[[key]][[cma_name]] <- dplyr::full_join(
+            all_months_results[[key]][[cma_name]],
+            cma_result[[key]][[cma_name]],
+            by = "GeoUID"
+          )
+        }
+      }
     }
   }
 
@@ -744,4 +762,3 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
 
   return(cmhc_vectors)
 }
-
