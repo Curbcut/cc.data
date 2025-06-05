@@ -312,3 +312,25 @@
 #'
 #' @source Computed using `cancensus` and spatial intersections between CT shapefiles.
 "census_ct_correspondences_list"
+
+
+
+#' Correspondence Tables for CTs Across Census Years
+#'
+#' A list of correspondence tables matching Census Tracts (CTs) between the reference year (CA21)
+#' and previous census years (e.g., CA16, CA11, etc.), based on spatial intersection.
+#'
+#' These tables are used to track changes in CT boundaries over time for consistent longitudinal analysis.
+#'
+#' @format ## `census_csd_correspondences_list`
+#' A named list of data frames. Each element corresponds to a pair of census years, and contains:
+#' \describe{
+#'   \item{geouid_21}{GeoUID of the CT in the reference year (2021)}
+#'   \item{geouid_XX}{GeoUID of the CT in the comparison year (e.g., 2016, 2011, etc.)}
+#'   \item{status}{Indicates if the CT has remained stable or changed ("stable", "changed")}
+#'   \item{cma_code}{CMA code used to generate the correspondence}
+#' }
+#' The list is named using the format `"correspondence_2021_2016"`, `"correspondence_2021_2011"`, etc.
+#'
+#' @source Computed using `cancensus` and spatial intersections between CT shapefiles.
+"census_csd_correspondences_list"
