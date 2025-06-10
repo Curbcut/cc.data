@@ -18,8 +18,8 @@ make_and_check_valid <- function(sf_obj) {
 csd_ref <- make_and_check_valid(csd_ref)
 csd_cmp <- make_and_check_valid(csd_cmp)
 
-csd_ref$area_1 <- get_area(csd_ref)
-csd_cmp$area_2 <- get_area(csd_cmp)
+csd_ref$area_1 <- cc.data::get_area(csd_ref)
+csd_cmp$area_2 <- cc.data::get_area(csd_cmp)
 
 make_and_check_valid <- function(sf_obj) {
   sf_obj <- sf::st_make_valid(sf_obj)
@@ -145,4 +145,3 @@ census_csd_correspondences_list <- cmhc_csd_correspondences(
 )
 
 usethis::use_data(census_csd_correspondences_list, overwrite = TRUE)
-
