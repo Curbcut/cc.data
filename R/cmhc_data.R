@@ -765,18 +765,17 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
 #' Fetch CMHC Data for a Specific CSD
 #'
 #' Sends a request to the CMHC API to retrieve data for a specific Census Subdivision (CSD),
-#' given the survey, series, dimension, year, and optionally the month.
-#' Adds the GeoUID column manually to ensure downstream compatibility.
-#' Catches errors and returns `NULL` if the API call fails.
+#' given the survey, series, dimension, year, and optionally month.
+#' Automatically adds the `GeoUID` column since it is missing in API results for CSDs.
 #'
 #' @param survey Character. CMHC survey identifier (e.g., "Rms", "Scss").
 #' @param series Character. Data series to retrieve (e.g., "Starts", "Vacancy Rate").
-#' @param dimension Character. Optional breakdown dimension (e.g., "Bedroom Type"). Can be `NULL`.
+#' @param dimension Character. Optional breakdown dimension (e.g., "Dwelling Type"). Can be `NULL`.
 #' @param geo_uid Character. Geographic identifier for the Census Subdivision (CSD).
 #' @param year Integer. Year of the data request.
-#' @param month Integer or NULL. Optional month (1–12). If `NULL`, annual data will be fetched.
+#' @param month Integer or NULL. Optional month (1–12). If `NULL`, retrieves annual data.
 #'
-#' @return A `data.frame` with the added `GeoUID` column, or `NULL` if an error occurs.
+#' @return A `data.frame` with results and an added `GeoUID` column, or `NULL` on error.
 cmhc_fetch_csd_data <- function(survey, series, dimension, geo_uid, year, month = NULL) {
   tryCatch({
     df <- cmhc::get_cmhc(
@@ -788,14 +787,79 @@ cmhc_fetch_csd_data <- function(survey, series, dimension, geo_uid, year, month 
       year = year,
       month = if (!is.null(month)) sprintf("%02d", as.integer(month)) else NULL
     )
-    df$GeoUID <- geo_uid
+    
+    if (!is.null(df) && nrow(df) > 0) {
+      df$GeoUID <- geo_uid  # injecte manuellement l'identifiant
+    }
+    
     return(df)
+    
   }, error = function(e) {
     warning(sprintf("CSD %s (%s-%s): get_cmhc() error -> %s", geo_uid, year, month %||% "--", e$message))
     return(NULL)
   })
 }
 
+#' Clean CMHC Results for Census Subdivisions (CSD)
+#'
+#' Cleans and standardizes CMHC data at the Census Subdivision (CSD) level by:
+#' - Detecting whether the data is annual or monthly based on the presence or variation of `Month` or `Date`
+#' - Generating a `year_month` column from `Year` and `Month`, or parsing it from `Date`
+#' - Standardizing values in the `Dimension` column
+#' - Keeping only relevant columns required for reshaping
+#'
+#' @param df A raw `data.frame` returned by `cmhc_fetch_csd_data()`, which must include at minimum the `GeoUID` column.
+#'
+#' @return A cleaned `data.frame` ready for reshaping, or `NULL` if the input is invalid.
+cmhc_clean_results_csd <- function(df) {
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  if (!"GeoUID" %in% names(df)) stop("Missing 'GeoUID' column. Ensure it was added manually.")
+  
+  # Création de year_month à partir de Date ou Year + Month
+  if ("Date" %in% names(df)) {
+    months_unique <- unique(format(df$Date, "%m"))
+    if (length(months_unique) == 1) {
+      df$year_month <- format(df$Date, "%Y")
+    } else {
+      df$year_month <- format(df$Date, "%Y%m")
+    }
+    
+  } else if (all(c("Year", "Month") %in% names(df))) {
+    unique_months <- unique(df$Month)
+    if (length(unique_months) == 1) {
+      df$year_month <- as.character(df$Year)
+    } else {
+      df$year_month <- sprintf("%d%02d", as.integer(df$Year), as.integer(df$Month))
+    }
+    
+  } else if ("Year" %in% names(df)) {
+    df$year_month <- as.character(df$Year)
+    
+  } else {
+    stop("Cannot derive 'year_month' from the data.")
+  }
+  
+  # Identifier les colonnes de dimensions
+  base_cols <- c("GeoUID", "year_month", "Value", "Survey", "Series", "Date", "Year", "Month", "Census Subdivision")
+  dimension_cols <- setdiff(names(df), base_cols)
+  
+  # Nettoyage des colonnes de dimension
+  if (length(dimension_cols) > 0) {
+    for (col in dimension_cols) {
+      df[[col]] <- cmhc_clean_names(as.character(df[[col]]))
+    }
+  }
+  
+  # Garder les colonnes essentielles
+  keep_cols <- c("GeoUID", "year_month", "Value", "Survey", "Series")
+  keep_cols <- keep_cols[keep_cols %in% names(df)]
+  
+  df_clean <- df |>
+    dplyr::select(dplyr::all_of(keep_cols), tidyselect::all_of(dimension_cols)) |>
+    dplyr::filter(!is.na(GeoUID))
+  
+  return(df_clean)
+}
 #' Apply Census Subdivision Correspondence Table
 #'
 #' Harmonizes CSD-level CMHC data to 2021 census geography by applying the appropriate
@@ -807,268 +871,335 @@ cmhc_fetch_csd_data <- function(survey, series, dimension, geo_uid, year, month 
 #'
 #' @return A `data.frame` with GeoUIDs harmonized to 2021 geography.
 cmhc_csd_correspondence <- function(data, csd_correspondence_list) {
-  if (!is.null(data) && "Census geography" %in% colnames(data)) {
-    
-    if ("geometry" %in% names(data)) {
-      data <- sf::st_drop_geometry(data)
-    }
-    
-    census_geo <- unique(data$`Census geography`)
-    if (length(census_geo) != 1) {
-      stop("Invalid input: multiple or missing census geography identifiers.")
-    }
-    
-    if (census_geo == "2021") {
-      col_uid <- intersect(c("GeoUID", "geouid", "id"), names(data))
-      if (length(col_uid) == 1 && col_uid != "GeoUID") {
-        names(data)[names(data) == col_uid] <- "GeoUID"
-      }
-      return(data |> dplyr::select(-"Census geography"))
-    }
-    
-    corr_table_name <- paste0("correspondence_2021_", census_geo)
-    if (!corr_table_name %in% names(csd_correspondence_list)) {
-      stop("Missing correspondence table: ", corr_table_name)
-    }
-    
-    correspondence_table <- csd_correspondence_list[[corr_table_name]]
-    
-    if ("geometry" %in% names(correspondence_table)) {
-      correspondence_table <- sf::st_drop_geometry(correspondence_table)
-    }
-    
-    if (nrow(correspondence_table) == 0) {
-      stop("Correspondence table is empty.")
-    }
-    
-    old_geouid_col <- setdiff(
-      names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))],
-      "geouid_21"
-    )
-    if (length(old_geouid_col) != 1) {
-      stop("Ambiguous original GeoUID column in correspondence table.")
-    }
-    
-    geouid_col <- intersect(c("GeoUID", "geouid", "id"), colnames(data))
-    colnames(data)[which(colnames(data) == geouid_col)] <- old_geouid_col
-    
-    data <- dplyr::inner_join(data, correspondence_table, by = old_geouid_col)
-    
-    data <- data |>
-      dplyr::select(geouid_21, dplyr::everything()) |>
-      dplyr::rename(GeoUID = geouid_21) |>
-      dplyr::select(-dplyr::all_of(old_geouid_col),
-                    -dplyr::any_of(c("geometry", "status", "cma_code", "Census geography")))
-    
-    return(data)
-  } else {
-    stop("Invalid input: 'Census geography' column is missing.")
+  if (is.null(data)) stop("Invalid input: data is NULL.")
+  
+  # Supprime la géométrie si elle existe
+  if ("geometry" %in% names(data)) {
+    data <- sf::st_drop_geometry(data)
   }
+  
+  # Cas où la colonne "Census geography" est absente
+  if (!"Census geography" %in% colnames(data)) {
+    if ("Year" %in% colnames(data)) {
+      census_geo <- dplyr::case_when(
+        as.integer(data$Year[1]) <= 2000 ~ "1996",
+        as.integer(data$Year[1]) <= 2005 ~ "2001",
+        as.integer(data$Year[1]) <= 2010 ~ "2006",
+        as.integer(data$Year[1]) <= 2015 ~ "2011",
+        as.integer(data$Year[1]) <= 2020 ~ "2016",
+        TRUE ~ "2021"
+      )
+      data$`Census geography` <- census_geo
+    } else {
+      stop("Cannot determine census geography: missing 'Census geography' and 'Year' columns.")
+    }
+  }
+  
+  # ---- Suite inchangée ----
+  census_geo <- unique(data$`Census geography`)
+  if (length(census_geo) != 1) {
+    stop("Invalid input: multiple or missing census geography identifiers.")
+  }
+  
+  if (census_geo == "2021") {
+    col_uid <- intersect(c("GeoUID", "geouid", "id"), names(data))
+    if (length(col_uid) == 1 && col_uid != "GeoUID") {
+      names(data)[names(data) == col_uid] <- "GeoUID"
+    }
+    return(data |> dplyr::select(-"Census geography"))
+  }
+  
+  corr_table_name <- paste0("correspondence_2021_", census_geo)
+  if (!corr_table_name %in% names(csd_correspondence_list)) {
+    stop("Missing correspondence table: ", corr_table_name)
+  }
+  
+  correspondence_table <- csd_correspondence_list[[corr_table_name]]
+  if ("geometry" %in% names(correspondence_table)) {
+    correspondence_table <- sf::st_drop_geometry(correspondence_table)
+  }
+  if (nrow(correspondence_table) == 0) {
+    stop("Correspondence table is empty.")
+  }
+  
+  old_geouid_col <- setdiff(
+    names(correspondence_table)[grepl("^geouid_\\d+$", names(correspondence_table))],
+    "geouid_21"
+  )
+  if (length(old_geouid_col) != 1) {
+    stop("Ambiguous original GeoUID column in correspondence table.")
+  }
+  
+  geouid_col <- intersect(c("GeoUID", "geouid", "id"), colnames(data))
+  colnames(data)[which(colnames(data) == geouid_col)] <- old_geouid_col
+  
+  data <- dplyr::inner_join(data, correspondence_table, by = old_geouid_col)
+  data <- data |>
+    dplyr::select(geouid_21, dplyr::everything()) |>
+    dplyr::rename(GeoUID = geouid_21) |>
+    dplyr::select(-dplyr::all_of(old_geouid_col),
+                  -dplyr::any_of(c("geometry", "status", "cma_code", "Census geography")))
+  
+  return(data)
+}
+#' Finalize CMHC reshaped result
+#'
+#' Cleans up the final reshaped CMHC data frame:
+#' - Removes join artifacts (e.g., Year.x, Year.y)
+#' - Sorts columns by time
+#' - Keeps 'GeoUID' first
+#'
+#' @param reshaped_list A list of reshaped data.frames.
+#' @return A cleaned list of data.frames.
+cmhc_finalize_results <- function(reshaped_list) {
+  purrr::map(reshaped_list, function(df) {
+    # Supprimer les colonnes comme Year.x, Year.y
+    year_cols_to_remove <- grep("^Year(\\..*)?$", names(df), value = TRUE)
+    df <- df[, !(names(df) %in% year_cols_to_remove)]
+    
+    # Réorganiser les colonnes : GeoUID en premier, puis colonnes par année (ex: *_2005, *_2006, ...)
+    year_pattern <- "_(\\d{4})$"
+    data_cols <- names(df)[names(df) != "GeoUID"]
+    
+    sorted_cols <- data_cols[order(stringr::str_extract(data_cols, year_pattern))]
+    df <- df[, c("GeoUID", sorted_cols)]
+    
+    return(df)
+  })
 }
 
-
-#' Retrieve Annual CMHC Data for All CSDs (by CMA and Year)
+#' Reshape CMHC Results to Wide Format
+#' Converts long-format CMHC data to wide format, grouping by `Series`, `year_month`, and optionally by a breakdown dimension.
 #'
-#' Downloads and reshapes annual CMHC Census Subdivision (CSD) data for each CMA and year
-#' specified in the request list. Data is harmonized to the 2021 geography using
-#' correspondence tables.
-#'
-#' @param requests A list of request objects. Each must include the keys `survey`, `series`, `dimension`, and `years`.
-#' @param csd_correspondence_list A named list of correspondence tables to convert older CSD GeoUIDs to 2021 equivalents.
-#' @param csd_uids Optional. A character vector of CMAUIDs to include. If NULL, all available CMAUIDs from CSD 2021 are used.
-#'
-#' @return A named list `CSD` containing reshaped and harmonized data frames for each variable.
-#'         Each data frame uses standardized 2021 GeoUIDs and columns by year.
-#' @export
-cmhc_get_annual_csd <- function(requests, csd_correspondence_list, csd_uids = NULL) {
-  cmhc_vectors <- list(CSD = list())
+#' @param df A cleaned `data.frame` containing at least `GeoUID`, `Series`, `year_month`, and `Value`.
+#' @param dimension Character. Optional name of a breakdown column (e.g., "Bedroom Type").
+#' @param series_prefix Logical. If `TRUE`, prefixes column names with the series name.
+#' @return A named list of reshaped data frames.
+cmhc_reshape_results <- function(df, dimension, series_prefix = TRUE) {
+  results_list <- list()
   
-  csd_all <- cc.pipe::get_census_digital_scales(scales = "csd")$csd
-  if (is.null(csd_uids)) {
-    csd_uids <- unique(csd_all$id)
+  if (!is.null(df) && nrow(df) > 0) {
+    for (s in unique(df$Series)) {
+      if (!is.null(dimension) && dimension %in% names(df)) {
+        for (d in sort(unique(df[[dimension]]))) {
+          d_clean <- cmhc_clean_names(d)
+          
+          df_filtered <- df |>
+            dplyr::filter(Series == s, !!rlang::sym(dimension) == d) |>
+            dplyr::select(GeoUID, year_month, Value) |>
+            dplyr::distinct() |>
+            tidyr::pivot_wider(
+              names_from = year_month,
+              values_from = Value,
+              names_prefix = if (series_prefix) {
+                paste0(s, "_", dimension, "_", d_clean, "_")
+              } else {
+                paste0(dimension, "_", d_clean, "_")
+              },
+              values_fn = list(Value = ~ if (length(.) == 1) . else mean(., na.rm = TRUE)),
+              values_fill = NA
+            ) |>
+            dplyr::filter(!is.na(GeoUID))
+          
+          colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+          list_name <- cmhc_clean_names(paste(s, dimension, d_clean, sep = "_"))
+          results_list[[list_name]] <- df_filtered
+        }
+      } else {
+        df_filtered <- df |>
+          dplyr::filter(Series == s) |>
+          dplyr::select(GeoUID, year_month, Value) |>
+          dplyr::distinct() |>
+          tidyr::pivot_wider(
+            names_from = year_month,
+            values_from = Value,
+            names_prefix = paste0(s, "_"),
+            values_fn = list(Value = ~ if (length(.) == 1) . else mean(., na.rm = TRUE)),
+            values_fill = NA
+          ) |>
+          dplyr::filter(!is.na(GeoUID))
+        
+        colnames(df_filtered) <- cmhc_clean_names(colnames(df_filtered))
+        list_name <- cmhc_clean_names(s)
+        results_list[[list_name]] <- df_filtered
+      }
+    }
   }
   
-  local_csd_correspondence_list <- csd_correspondence_list
-  
-  csd_parallel_results <- future.apply::future_lapply(
-    csd_uids,
-    function(geo_uid) {
-      local_results <- list()
-      for (req in requests) {
-        survey <- req$survey
-        series <- req$series
-        dimension <- req$dimension
-        years <- req$years
+  return(results_list)
+}
+
+#' Downloads and reshapes annual CMHC Census Subdivision (CSD) data
+#' for each year and CSD specified in the request list.
+#' Data is harmonized to the 2021 geography using correspondence tables.
+#'
+#' @param requests A list of request objects. Each must include `survey`, `series`, `dimension`, and `years`.
+#' @param csd_correspondence_list A named list of correspondence tables to convert older CSD GeoUIDs to 2021 equivalents.
+#' @param csd_uids A character vector of CSD GeoUIDs to include.
+#'
+#' @return A named list `CSD` containing reshaped and harmonized data frames for each variable.
+#' @export
+cmhc_get_annual_csd <- function(requests, csd_correspondence_list, csd_uids) {
+  process_csd <- function(geo_uid) {
+    local_results <- list()
+    
+    for (req in requests) {
+      survey <- req$survey
+      series <- req$series
+      dimension <- req$dimension
+      years <- req$years
+      
+      for (year in years) {
+        message(sprintf("Processing CSD %s — year %s — %s / %s", geo_uid, year, survey, series))
+        raw <- cmhc_fetch_csd_data(survey, series, dimension, geo_uid, year)
+        if (is.null(raw) || nrow(raw) == 0) next
         
-        for (year in years) {
-          message(sprintf("Processing CSD %s — year %s — %s / %s", geo_uid, year, survey, series))
-          
-          raw <- cmhc_fetch_csd_data(survey, series, dimension, geo_uid, year)
-          if (is.null(raw) || nrow(raw) == 0) next
-          
-          cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
-          if (is.null(cleaned)) next
-          
-          reshaped <- cmhc_reshape_results(cleaned, dimension)
-          
-          reshaped <- lapply(reshaped, function(df) {
-            df$Year <- year
-            cmhc_csd_correspondence(df, local_csd_correspondence_list)
-          })
-          
-          for (key in names(reshaped)) {
-            csd_name <- paste0("csd_", geo_uid)
-            if (!key %in% names(local_results)) local_results[[key]] <- list()
-            if (!csd_name %in% names(local_results[[key]])) {
-              local_results[[key]][[csd_name]] <- reshaped[[key]]
-            } else {
-              tmp_join <- dplyr::full_join(
-                local_results[[key]][[csd_name]],
-                reshaped[[key]],
-                by = "GeoUID"
-              )
-              tmp_join <- tmp_join[, !grepl("^Year(\\.x|\\.y)?$", names(tmp_join))]
-              local_results[[key]][[csd_name]] <- tmp_join
-            }
+        cleaned <- cmhc_clean_results_csd(raw)
+        if (is.null(cleaned)) next
+        
+        reshaped <- cmhc_reshape_results(cleaned, dimension)
+        
+        reshaped <- lapply(reshaped, function(df) {
+          df$`Census geography` <- dplyr::case_when(
+            year <= 2000 ~ "1996",
+            year <= 2005 ~ "2001",
+            year <= 2010 ~ "2006",
+            year <= 2015 ~ "2011",
+            year <= 2020 ~ "2016",
+            TRUE ~ "2021"
+          )
+          cmhc_csd_correspondence(df, csd_correspondence_list)
+        })
+        
+        for (key in names(reshaped)) {
+          if (!key %in% names(local_results)) {
+            local_results[[key]] <- reshaped[[key]]
+          } else {
+            local_results[[key]] <- dplyr::full_join(
+              local_results[[key]], reshaped[[key]], by = "GeoUID"
+            )
           }
         }
       }
-      return(local_results)
-    },
-    future.seed = TRUE
-  )
+    }
+    
+    return(local_results)
+  }
   
-  all_years_results <- list()
-  for (csd_result in csd_parallel_results) {
-    for (key in names(csd_result)) {
-      for (csd_name in names(csd_result[[key]])) {
-        if (!key %in% names(all_years_results)) all_years_results[[key]] <- list()
-        if (!csd_name %in% names(all_years_results[[key]])) {
-          all_years_results[[key]][[csd_name]] <- csd_result[[key]][[csd_name]]
-        } else {
-          all_years_results[[key]][[csd_name]] <- dplyr::full_join(
-            all_years_results[[key]][[csd_name]],
-            csd_result[[key]][[csd_name]],
-            by = "GeoUID"
-          )
-        }
+  # PARALLÈLE si future::plan() est actif
+  all_results <- future.apply::future_lapply(csd_uids, process_csd)
+  
+  # Combine toutes les sorties
+  cmhc_vectors <- list(CSD = list())
+  for (res in all_results) {
+    for (key in names(res)) {
+      if (!key %in% names(cmhc_vectors$CSD)) {
+        cmhc_vectors$CSD[[key]] <- res[[key]]
+      } else {
+        cmhc_vectors$CSD[[key]] <- dplyr::bind_rows(cmhc_vectors$CSD[[key]], res[[key]])
       }
     }
   }
   
-  cmhc_vectors$CSD <- lapply(all_years_results, function(csd_results_by_csd) {
-    final_df <- dplyr::bind_rows(csd_results_by_csd)
-    cmhc_finalize_results(list(final_df))[[1]]
+  cmhc_vectors$CSD <- lapply(cmhc_vectors$CSD, function(df) {
+    cmhc_finalize_results(list(df))[[1]]
   })
   
   return(cmhc_vectors)
 }
 
-#' Retrieve Monthly CMHC Data for All CSDs (by CMA and Year/Month)
+#' Retrieve Monthly CMHC Data for All CSDs (Parallel Version)
 #'
-#' Downloads and reshapes monthly CMHC Census Subdivision (CSD) data for each CMA, year, and month
-#' specified in the request list. Data is harmonized to the 2021 geography using correspondence tables.
+#' Downloads and reshapes monthly CMHC Census Subdivision (CSD) data
+#' and harmonizes it to the 2021 geography using correspondence tables.
 #'
 #' @param requests A list of request objects. Each must include the keys `survey`, `series`, `dimension`, `years`, and `months`.
 #' @param csd_correspondence_list A named list of correspondence tables used to map older GeoUIDs to 2021 equivalents.
-#' @param csd_uids Optional. A vector of CMAUIDs to include. If NULL, all CMAUIDs available in the 2021 CSD geography will be used.
+#' @param csd_uids A vector of CSD GeoUIDs to include.
 #'
 #' @return A named list `CSD` containing reshaped and harmonized data frames for each variable,
 #'         with columns formatted as "YYYYMM" for each month.
 #' @export
-cmhc_get_monthly_csd <- function(requests, csd_correspondence_list, csd_uids = NULL) {
-  cmhc_vectors <- list(CSD = list())
-  
-  csd_all <- cc.pipe::get_census_digital_scales(scales = "csd")$csd
-  if (is.null(csd_uids)) {
-    csd_uids <- unique(csd_all$id)
-  }
-  
-  local_csd_correspondence_list <- csd_correspondence_list
-  
-  csd_parallel_results <- future.apply::future_lapply(
-    csd_uids,
-    function(geo_uid) {
-      local_results <- list()
-      for (req in requests) {
-        survey <- req$survey
-        series <- req$series
-        dimension <- req$dimension
-        years <- req$years
-        months <- req$months
-        
-        for (year in years) {
-          for (month in months) {
-            message(sprintf("Processing CSD %s — %s-%02d — %s / %s", geo_uid, year, month, survey, series))
-            
-            raw <- cmhc_fetch_csd_data(survey, series, dimension, geo_uid, year, month)
-            if (is.null(raw) || nrow(raw) == 0) next
-            
-            cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
-            if (is.null(cleaned)) next
-            
-            reshaped <- cmhc_reshape_results(cleaned, dimension)
-            
-            reshaped <- lapply(reshaped, function(df) {
-              df$Year <- year
-              df$Month <- sprintf("%04d%02d", year, month)
-              cmhc_csd_correspondence(df, local_csd_correspondence_list)
-            })
-            
-            for (key in names(reshaped)) {
-              csd_name <- paste0("csd_", geo_uid)
-              if (!key %in% names(local_results)) local_results[[key]] <- list()
-              if (!csd_name %in% names(local_results[[key]])) {
-                local_results[[key]][[csd_name]] <- reshaped[[key]]
-              } else {
-                tmp_join <- dplyr::full_join(
-                  local_results[[key]][[csd_name]],
-                  reshaped[[key]],
-                  by = "GeoUID"
-                )
-                tmp_join <- tmp_join[, !grepl("^Month(\\.x|\\.y)?$", names(tmp_join))]
-                local_results[[key]][[csd_name]] <- tmp_join
-              }
+cmhc_get_monthly_csd <- function(requests, csd_correspondence_list, csd_uids) {
+  process_csd <- function(geo_uid) {
+    local_results <- list()
+    
+    for (req in requests) {
+      survey <- req$survey
+      series <- req$series
+      dimension <- req$dimension
+      years <- req$years
+      months <- req$months
+      
+      for (year in years) {
+        for (month in months) {
+          message(sprintf("Processing CSD %s — %04d-%02d — %s / %s", geo_uid, year, month, survey, series))
+          
+          raw <- cmhc_fetch_csd_data(survey, series, dimension, geo_uid, year, month)
+          if (is.null(raw) || nrow(raw) == 0) next
+          
+          cleaned <- cmhc_clean_results_csd(raw)
+          if (is.null(cleaned)) next
+          
+          reshaped <- cmhc_reshape_results(cleaned, dimension)
+          
+          census_geo <- dplyr::case_when(
+            year <= 2000 ~ "1996",
+            year <= 2005 ~ "2001",
+            year <= 2010 ~ "2006",
+            year <= 2015 ~ "2011",
+            year <= 2020 ~ "2016",
+            TRUE ~ "2021"
+          )
+          
+          reshaped <- lapply(reshaped, function(df) {
+            df$`Census geography` <- census_geo
+            cmhc_csd_correspondence(df, csd_correspondence_list)
+          })
+          
+          suffix <- sprintf("%04d%02d", year, month)
+          reshaped <- lapply(reshaped, function(df) {
+            data_cols <- setdiff(names(df), c("GeoUID", "Census geography"))
+            names(df)[names(df) %in% data_cols] <- paste0(data_cols, "_", suffix)
+            df
+          })
+          
+          for (key in names(reshaped)) {
+            if (!key %in% names(local_results)) {
+              local_results[[key]] <- reshaped[[key]]
+            } else {
+              local_results[[key]] <- dplyr::full_join(
+                local_results[[key]],
+                reshaped[[key]],
+                by = "GeoUID"
+              )
             }
           }
         }
       }
-      return(local_results)
-    },
-    future.seed = TRUE
-  )
+    }
+    
+    return(local_results)
+  }
   
-  all_months_results <- list()
-  for (csd_result in csd_parallel_results) {
-    for (key in names(csd_result)) {
-      for (csd_name in names(csd_result[[key]])) {
-        if (!key %in% names(all_months_results)) all_months_results[[key]] <- list()
-        if (!csd_name %in% names(all_months_results[[key]])) {
-          all_months_results[[key]][[csd_name]] <- csd_result[[key]][[csd_name]]
-        } else {
-          all_months_results[[key]][[csd_name]] <- dplyr::full_join(
-            all_months_results[[key]][[csd_name]],
-            csd_result[[key]][[csd_name]],
-            by = "GeoUID"
-          )
-        }
+  # Parallel processing using future.apply
+  all_results <- future.apply::future_lapply(csd_uids, process_csd)
+  
+  cmhc_vectors <- list(CSD = list())
+  for (res in all_results) {
+    for (key in names(res)) {
+      if (!key %in% names(cmhc_vectors$CSD)) {
+        cmhc_vectors$CSD[[key]] <- res[[key]]
+      } else {
+        cmhc_vectors$CSD[[key]] <- dplyr::bind_rows(
+          cmhc_vectors$CSD[[key]], res[[key]]
+        )
       }
     }
   }
   
-  cmhc_vectors$CSD <- lapply(all_months_results, function(csd_results_by_csd) {
-    final_df <- dplyr::bind_rows(csd_results_by_csd)
-    cmhc_finalize_results(list(final_df))[[1]]
-  })
-  
-  cmhc_vectors$CSD <- lapply(all_months_results, function(csd_results_by_csd) {
-    final_df <- dplyr::bind_rows(csd_results_by_csd)
-    final_df <- cmhc_finalize_results(list(final_df))[[1]]
-    
-    # Supprimer toutes les colonnes "Year", "Year.x", "Year.y", etc.
-    final_df <- final_df[, !grepl("^Year(\\.|$)", names(final_df))]
-    
-    return(final_df)
+  cmhc_vectors$CSD <- lapply(cmhc_vectors$CSD, function(df) {
+    cmhc_finalize_results(list(df))[[1]]
   })
   
   return(cmhc_vectors)
