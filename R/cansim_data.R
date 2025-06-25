@@ -378,3 +378,36 @@ boc_interest_rates <- function() {
   
   return(interest_rates)
 }
+
+#' Retrieve and reshape Canada-level monthly mortgage rate data
+#'
+#' Downloads and reshapes monthly mortgage rate data from Statistics Canada (CANSIM table 34-10-0145-01),
+#' restricted to dates starting from January 1990. Returns a single-row data frame with one column per month.
+#'
+#' @return A data frame with one row (id = "01") and columns in the format `mortgage_rate_YYYYMM`
+#' @export
+cansim_mortgage_rates <- function() {
+  
+  # Step 1: Download and normalize CANSIM table
+  tab <- cansim::get_cansim("34-10-0145-01") |>
+    cansim::normalize_cansim_values()
+  
+  # Step 2: Filter from January 1990 onward and assign constant ID
+  df <- tab |>
+    dplyr::mutate(id = "01") |>
+    dplyr::filter(REF_DATE >= "1990-01") |>
+    dplyr::select(REF_DATE, id, val_norm)
+  
+  # Step 3: Reshape to wide format with one column per REF_DATE
+  df_wide <- df |>
+    tidyr::pivot_wider(
+      names_from = REF_DATE,
+      values_from = val_norm,
+      names_prefix = "mortgage_rate_"
+    ) |>
+    # Step 4: Clean column names: remove dashes from YYYY-MM
+    dplyr::rename_with(~ gsub("-", "", .x, fixed = TRUE))
+  
+  return(df_wide)
+}
+
