@@ -933,16 +933,24 @@ cmhc_csd_correspondence <- function(data, csd_correspondence_list) {
 #' @return A cleaned list of data.frames.
 cmhc_finalize_results <- function(reshaped_list) {
   purrr::map(reshaped_list, function(df) {
-    # Supprimer les colonnes comme Year.x, Year.y
-    year_cols_to_remove <- grep("^Year(\\..*)?$", names(df), value = TRUE)
-    df <- df[, !(names(df) %in% year_cols_to_remove)]
     
-    # Réorganiser les colonnes : geouid en premier, puis colonnes par année (ex: *_2005, *_2006, ...)
+    # Ensure the GeoUID column is lowercase before processing
+    if ("GeoUID" %in% names(df)) {
+      df <- dplyr::rename(df, geouid = GeoUID)
+    }
+
+    year_cols_to_remove <- grep("^Year(\\..*)?$", names(df), value = TRUE)
+    if (length(year_cols_to_remove) > 0) {
+      df <- df[, !(names(df) %in% year_cols_to_remove)]
+    }
+    
     year_pattern <- "_(\\d{4})$"
     data_cols <- names(df)[names(df) != "geouid"]
     
     sorted_cols <- data_cols[order(stringr::str_extract(data_cols, year_pattern))]
+    
     df <- df[, c("geouid", sorted_cols)]
+    
     df <- dplyr::rename(df, id = geouid)
 
     return(df)
