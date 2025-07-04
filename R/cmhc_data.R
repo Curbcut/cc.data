@@ -208,26 +208,6 @@ cmhc_reshape_results <- function(df, dimension, series_prefix = TRUE) {
 }
 
 
-#' Finalize GeoUID Column in CMHC Results
-#'
-#' Standardizes the geographic identifier column in all result tables by renaming
-#' `GeoUID` or `geouid` to `id`. This ensures consistency across all outputs.
-#' @param results_list A named list of `data.frame`s resulting from CMHC data processing.
-#' @return A list of `data.frame`s with a standardized `id` column as the geographic identifier.
-cmhc_finalize_results <- function(results_list) {
-  lapply(results_list, function(df) {
-    if (is.data.frame(df)) {
-      if ("GeoUID" %in% colnames(df)) {
-        df <- dplyr::rename(df, id = GeoUID)
-      } else if ("geouid" %in% colnames(df)) {
-        df <- dplyr::rename(df, id = geouid)
-      }
-    }
-    return(df)
-  })
-}
-
-
 #' Retrieve Annual CMHC Data for All CMAs
 #'
 #' Loops over all CMAs and request configurations to fetch, clean, reshape,
@@ -957,13 +937,14 @@ cmhc_finalize_results <- function(reshaped_list) {
     year_cols_to_remove <- grep("^Year(\\..*)?$", names(df), value = TRUE)
     df <- df[, !(names(df) %in% year_cols_to_remove)]
     
-    # Réorganiser les colonnes : GeoUID en premier, puis colonnes par année (ex: *_2005, *_2006, ...)
+    # Réorganiser les colonnes : geouid en premier, puis colonnes par année (ex: *_2005, *_2006, ...)
     year_pattern <- "_(\\d{4})$"
-    data_cols <- names(df)[names(df) != "GeoUID"]
+    data_cols <- names(df)[names(df) != "geouid"]
     
     sorted_cols <- data_cols[order(stringr::str_extract(data_cols, year_pattern))]
-    df <- df[, c("GeoUID", sorted_cols)]
-    
+    df <- df[, c("geouid", sorted_cols)]
+    df <- dplyr::rename(df, id = geouid)
+
     return(df)
   })
 }
