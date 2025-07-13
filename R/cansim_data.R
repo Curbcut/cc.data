@@ -492,7 +492,7 @@ ircc_international_students_data <- function() {
     dplyr::mutate(
       id = stringr::str_remove(id, "Total$"),
       id = stringr::str_trim(id),
-      dplyr::across(dplyr::starts_with("..."), ~ as.numeric(na_if(., "--")))
+      dplyr::across(dplyr::starts_with("..."), ~ as.numeric(dplyr::na_if(., "--")))
     )
   
   # Step 3: Get GeoUIDs for provinces
@@ -670,7 +670,7 @@ ircc_admission_tfwp_data <- function() {
   tableau <- cleaned |>
     dplyr::select(dplyr::all_of(indices_a_garder)) |>
     rlang::set_names(nouveaux_noms) |>
-    dplyr::mutate(across(.cols = -Destination, .fns = ~ as.numeric(na_if(., "--"))))
+    dplyr::mutate(across(.cols = -Destination, .fns = ~ as.numeric(dplyr::na_if(., "--"))))
   
   # Étape 5 : Ajout des GeoUIDs
   provinces <- cancensus::get_census(
