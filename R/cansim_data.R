@@ -463,7 +463,7 @@ ircc_pr_data <- function() {
     dplyr::left_join(cma_lookup, by = "join_key") |>
     dplyr::filter(!is.na(id)) |>
     dplyr::select(id, dplyr::starts_with("20")) |>
-    dplyr::rename_with(~ paste0("pr_admission_", .x), .cols = -id)
+    dplyr::rename_with(~ paste0("rp_admission_", .x), .cols = -id)
   
   return(output)
 }
@@ -545,7 +545,7 @@ ircc_international_students_data <- function() {
 
 #' Process IRCC monthly work permit data at the province/territory level
 #'
-#' Downloads and processes the IRCC CSV file containing monthly totals of work permit holders,
+#' Downloads and processes the IRCC CSV file containing monthly totals of work permit holders (International Mobility Program),
 #' and joins with 2021 provincial GeoUIDs from the Census.
 #'
 #' @return A tibble with columns: `id` (GeoUID), monthly and annual totals renamed
@@ -623,56 +623,60 @@ ircc_imp_admission_data <- function() {
 #' Downloads and processes the IRCC Excel file containing monthly totals of TFWP work permit holders,
 #' and joins with 2021 provincial GeoUIDs from the Census.
 #'
-#' @return A tibble with columns: `id` (GeoUID), monthly permit counts (e.g., 201501), and yearly totals (e.g., 2015)
+#' @return A tibble with columns: `id` (GeoUID), monthly and annual totals renamed
+#'         as `tfwp_admission_<yearmonth>` or `tfwp_admission_<year>`.
 #' @export
 ircc_admission_tfwp_data <- function() {
-  # Étape 1 : Télécharger et lire le fichier Excel
+  # Step 1: Download and read the Excel file
   url <- "https://www.ircc.canada.ca/opendata-donneesouvertes/data/EN_ODP-TR-Work-TFWP_PT_program_sign.xlsx"
   temp_file <- tempfile(fileext = ".xlsx")
   httr::GET(url, httr::write_disk(temp_file, overwrite = TRUE))
   raw <- readxl::read_excel(temp_file, col_names = FALSE)
   
-  # Étape 2 : Nettoyage de base
+  # Step 2: Basic cleaning
   cleaned <- raw |>
     dplyr::filter(!is.na(...1)) |>
     dplyr::rename(Destination = ...1) |>
     dplyr::select(-...2) |>
-    dplyr::mutate(Destination = stringr::str_remove(Destination, "Total$"),
-                  Destination = stringr::str_trim(Destination)) |>
+    dplyr::mutate(
+      Destination = Destination |> stringr::str_remove("Total$") |> stringr::str_trim()
+    ) |>
     dplyr::filter(
-      !Destination %in% c("Canada - Temporary Foreign Worker Program (TFWP) work permit holders by province/territoire of intended destination, program and year in which permit(s) became effective, January 2015 - March 2025",
-                          "Province/territory and program", "Total", "Province/territory not stated") &
-        !stringr::str_starts(Destination, "Notes:") &
-        !stringr::str_starts(Destination, "For further") &
-        !stringr::str_starts(Destination, "Source:")
+      !Destination %in% c(
+        "Canada - Temporary Foreign Worker Program (TFWP) work permit holders by province/territoire of intended destination, program and year in which permit(s) became effective, January 2015 - March 2025",
+        "Province/territory and program", "Total", "Province/territory not stated"
+      ),
+      !stringr::str_starts(Destination, "Notes:"),
+      !stringr::str_starts(Destination, "For further"),
+      !stringr::str_starts(Destination, "Source:")
     )
   
-  # Étape 3 : Sélection et renommage des colonnes utiles
-  indices_a_garder <- c(1)
-  nouveaux_noms <- c("Destination")
-  col_depart_annee <- 2
+  # Step 3: Column selection and renaming
+  indices_to_keep <- c(1)
+  new_names <- c("Destination")
+  col_start <- 2
   
-  for (annee in 2015:2024) {
-    indices_mois <- c(
-      col_depart_annee, col_depart_annee + 1, col_depart_annee + 2,
-      col_depart_annee + 4, col_depart_annee + 5, col_depart_annee + 6,
-      col_depart_annee + 8, col_depart_annee + 9, col_depart_annee + 10,
-      col_depart_annee + 12, col_depart_annee + 13, col_depart_annee + 14
+  for (year in 2015:2024) {
+    month_indices <- c(
+      col_start, col_start + 1, col_start + 2,
+      col_start + 4, col_start + 5, col_start + 6,
+      col_start + 8, col_start + 9, col_start + 10,
+      col_start + 12, col_start + 13, col_start + 14
     )
-    indice_total_annuel <- col_depart_annee + 16
-    indices_a_garder <- c(indices_a_garder, indices_mois, indice_total_annuel)
-    noms_mois <- paste0(annee, sprintf("%02d", 1:12))
-    nouveaux_noms <- c(nouveaux_noms, noms_mois, as.character(annee))
-    col_depart_annee <- col_depart_annee + 17
+    year_total_index <- col_start + 16
+    indices_to_keep <- c(indices_to_keep, month_indices, year_total_index)
+    month_names <- paste0(year, sprintf("%02d", 1:12))
+    new_names <- c(new_names, month_names, as.character(year))
+    col_start <- col_start + 17
   }
   
-  # Étape 4 : Appliquer sélection et noms
-  tableau <- cleaned |>
-    dplyr::select(dplyr::all_of(indices_a_garder)) |>
-    rlang::set_names(nouveaux_noms) |>
-    dplyr::mutate(across(.cols = -Destination, .fns = ~ as.numeric(dplyr::na_if(., "--"))))
+  # Step 4: Apply selection and convert data
+  table <- cleaned |>
+    dplyr::select(dplyr::all_of(indices_to_keep)) |>
+    rlang::set_names(new_names) |>
+    dplyr::mutate(across(-Destination, ~ as.numeric(dplyr::na_if(., "--"))))
   
-  # Étape 5 : Ajout des GeoUIDs
+  # Step 5: Join with GeoUIDs
   provinces <- cancensus::get_census(
     dataset = 'CA21',
     regions = list(C = "01"),
@@ -684,17 +688,17 @@ ircc_admission_tfwp_data <- function() {
     dplyr::select(GeoUID, region_name_census = `Region Name`) |>
     dplyr::mutate(Destination = stringr::str_remove(region_name_census, " \\(.*\\)$"))
   
-  joined <- dplyr::left_join(tableau, provinces, by = "Destination") |>
+  joined <- dplyr::left_join(table, provinces, by = "Destination") |>
     dplyr::filter(!is.na(GeoUID)) |>
-    dplyr::select(GeoUID, Destination, dplyr::everything(), -region_name_census)
+    dplyr::select(GeoUID, dplyr::everything(), -Destination, -region_name_census)
   
-  # Étape 6 : Réorganisation finale
-  noms <- names(joined)
-  mois <- sort(noms[grepl("^\\d{6}$", noms)])
-  annees <- sort(noms[grepl("^\\d{4}$", noms)])
-  final <- joined |>
-    dplyr::rename(id = GeoUID, province = Destination) |>
-    dplyr::select(id, dplyr::all_of(mois), dplyr::all_of(annees))
+  # Step 6: Rename columns and finalize output
+  output <- joined |>
+    dplyr::rename(id = GeoUID) |>
+    dplyr::rename_with(
+      .fn = ~ paste0("tfwp_admission_", .x),
+      .cols = dplyr::matches("^\\d{6}$|^\\d{4}$")
+    )
   
-  return(final)
+  return(output)
 }
