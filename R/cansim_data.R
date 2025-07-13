@@ -463,7 +463,7 @@ ircc_pr_data <- function() {
     dplyr::left_join(cma_lookup, by = "join_key") |>
     dplyr::filter(!is.na(id)) |>
     dplyr::select(id, dplyr::starts_with("20")) |>
-    dplyr::rename_with(~ paste0("rp_admission_", .x), .cols = -id)
+    dplyr::rename_with(~ paste0("pr_admission_", .x), .cols = -id)
   
   return(output)
 }
