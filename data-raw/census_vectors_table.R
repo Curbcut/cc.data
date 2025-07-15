@@ -974,7 +974,25 @@ census_vectors_householdsize <-
     rankings_chr = list(NULL),
     parent_vec = "private_households",
     parent = FALSE
-  )
+  ) |>
+    tibble::add_row(
+      var_code = "average_household_size",
+      type = list("avg"),
+      theme = "Households",
+      vec_2021 = list("v_CA21_452"),
+      vec_2016 = list("v_CA16_425"),
+      vec_2011 = list("v_CA11F_217"),
+      vec_2006 = list("v_CA06_135"),
+      vec_2001 = list("v_CA01_128"),
+      vec_1996 = list("v_CA1996_1699"),
+      var_title = "Average household size",
+      var_short = "Avgsize",
+      explanation = "the average number of people per private household",
+      exp_q5 = "are occupied on average by a certain number of people",
+      rankings_chr = list(NULL),
+      parent_vec = "private_households",
+      parent = FALSE
+    )
 
 # The parent is shared with housing
 from_hou <- census_vectors_housing_parent[
@@ -991,7 +1009,7 @@ usethis::use_data(census_vectors_householdsize, overwrite = TRUE)
 census_vectors_income <-
   tibble::tibble(
     var_code = "inc_median_income",
-    type = list(c("dollar")),
+    type = list(c("dollar","median")),
     theme = "Income",
     vec_2021 = list("v_CA21_906"),
     vec_2016 = list("v_CA16_2397"),
@@ -1007,6 +1025,24 @@ census_vectors_income <-
     parent_vec = "private_households",
     parent = FALSE
   ) |>
+    tibble::add_row(
+      var_code = "inc_average_income",
+      type = list("dollar","average"),
+      theme = "Income",
+      vec_2021 = list("v_CA21_915"),
+      vec_2016 = list("v_CA16_4985"),
+      vec_2011 = list("v_CA11N_2563"),
+      vec_2006 = list("v_CA06_2001"),
+      vec_2001 = list("v_CA01_1633"),
+      vec_1996 = list("v_CA1996_1626"),
+      var_title = "Average household income ($)",
+      var_short = "Avg. inc.",
+      explanation = "the average before-tax household income",
+      exp_q5 = "the average household income is",
+      rankings_chr = list(NULL),
+      parent_vec = "private_households",
+      parent = FALSE
+    ) |>
   tibble::add_row(
     var_code = "inc_50",
     type = list("pct"),
