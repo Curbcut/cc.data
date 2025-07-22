@@ -1027,7 +1027,7 @@ census_vectors_income <-
   ) |>
     tibble::add_row(
       var_code = "inc_average_income",
-      type = list("dollar","average"),
+      type = list(c("dollar","average")),
       theme = "Income",
       vec_2021 = list("v_CA21_915"),
       vec_2016 = list("v_CA16_4985"),
