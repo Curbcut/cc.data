@@ -702,3 +702,109 @@ ircc_admission_tfwp_data <- function() {
   
   return(output)
 }
+
+#' @title Process CANSIM population data for specified age groups
+#' @description Downloads and restructures population data from table 17-10-0148-01 for selected age groups at the CMA level.
+#'
+#' @param age_groups Character vector of age group labels (e.g., c("All ages", "0 to 14 years"))
+#'
+#' @return A data frame (if one age group) or a named list of data frames (if multiple)
+#' @export
+cansim_population_by_age_groups <- function(age_groups) {
+  if (missing(age_groups) || !is.character(age_groups)) {
+    stop("You must provide a character vector of age groups (e.g., c(\"All ages\", \"0 to 14 years\"))")
+  }
+  
+  # Charger et filtrer les données
+  population <- cansim::get_cansim("17-10-0148-01") |>
+    janitor::clean_names() |>
+    dplyr::filter(
+      gender == "Total - gender",
+      !geo %in% c(
+        "Ottawa - Gatineau (CMA), Ontario part, Ontario",
+        "Ottawa - Gatineau (CMA), Quebec part, Quebec"
+      )
+    )
+  
+  # Charger les CMA (sans modification)
+  cma_all <- cancensus::list_census_regions("CA21",use_cache = F) |>
+    dplyr::filter(level == "CMA") |>
+    dplyr::select(region, name)
+  
+  # Fonction pour nommer les variables
+  clean_group_label <- function(label) {
+    dplyr::case_when(
+      label == "All ages" ~ "pop_total",
+      label == "0 to 14 years" ~ "age_0_14",
+      label == "15 to 64 years" ~ "age_15_64",
+      label == "65 years and older" ~ "age_65_plus",
+      TRUE ~ paste0("age_", stringr::str_replace_all(tolower(label), "[^a-z0-9]+", "_"))
+    )
+  }
+  
+  # Traiter un groupe à la fois
+  process_one_group <- function(group_label) {
+    label_clean <- clean_group_label(group_label)
+    
+    population_grouped <- population |>
+      dplyr::filter(age_group == group_label) |>
+      dplyr::select(geo_uid, geo, ref_date, value) |>
+      dplyr::mutate(
+        year = substr(ref_date, 1, 4),
+        variable = paste0(label_clean, "_", year)
+      )
+    
+    population_wide <- population_grouped |>
+      dplyr::select(geo_uid, geo, variable, value) |>
+      tidyr::pivot_wider(names_from = variable, values_from = value)
+    
+    population_cleaned <- population_wide |>
+      dplyr::mutate(cma_name = stringr::str_extract(geo, ".*(?= \\(CMA\\))"))
+    
+    population_merged <- population_cleaned |>
+      dplyr::inner_join(cma_all, by = c("cma_name" = "name"))
+    
+    population_final <- population_merged |>
+      dplyr::select(region, dplyr::everything()) |>
+      dplyr::rename(id = region) |>
+      dplyr::select(-geo, -cma_name, -geo_uid)
+    
+    return(population_final)
+  }
+  
+  # Appliquer pour chaque groupe
+  result <- lapply(age_groups, process_one_group)
+  names(result) <- age_groups
+  
+  # Retourner selon le nombre
+  if (length(result) == 1) {
+    return(result[[1]])
+  } else {
+    return(result)
+  }
+}
+
+
+#' @title Get interprovincial net migration by province and year
+#' @description Downloads and processes CANSIM table 17-10-0021-01 to extract net interprovincial migration
+#' by province or territory, and returns the data in wide format with one column per year.
+#'
+#' @return A data frame with columns: `id` (GeoUID) and `net_migration_YYYY` for each year available.
+#' @export
+cansim_net_migration<- function() {
+  migration <- cansim::get_cansim("17-10-0021-01") |>
+    janitor::clean_names()
+  
+  migration_net <- migration |>
+    dplyr::filter(interprovincial_migrants == "Net-migration") |>
+    dplyr::mutate(
+      year = format(date, "%Y"),
+      variable = paste0("net_migration_", year)
+    ) |>
+    dplyr::select(geo_uid, variable, value) |>
+    tidyr::pivot_wider(names_from = variable, values_from = value) |>
+    dplyr::filter(!is.na(geo_uid)) |>
+    dplyr::rename(id = geo_uid)
+  
+  return(migration_net)
+}
