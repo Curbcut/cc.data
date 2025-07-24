@@ -31,7 +31,8 @@ Imports:
     dplyr,
     terra,
     cmhc,
-    cansim
+    cansim,
+    tidyr
 Suggests:
     aws.s3,
     gtfsrouter,

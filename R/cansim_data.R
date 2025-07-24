@@ -808,3 +808,89 @@ cansim_net_migration<- function() {
   
   return(migration_net)
 }
+
+#' Extraire les revenus médians annuels pour les CMA du Canada
+#'
+#' Cette fonction télécharge les données de revenu total médian des personnes ayant un revenu
+#' (table StatCan 11-10-0008-01), filtre pour les CMA sélectionnées, fait la correspondance
+#' avec une table de noms géographiques, puis retourne un tableau en format wide avec une colonne
+#' `id` (GeoUID) et des colonnes `median_income_YYYY` pour chaque année.
+#'
+#' @return Un data.frame au format large avec un identifiant `id` (GeoUID) par CMA, et une colonne par année.
+#' @import dplyr tidyr stringr cancensus cansim
+#' @export
+cansim_income_median <- function() {
+  # Charger la table des CMA (GeoUID + nom propre)
+  cma_all <- cancensus::get_census(
+    dataset = "CA21",
+    regions = list(C = "01"),
+    geo_format = NA,
+    level = "CMA"
+  ) |>
+    dplyr::select(region_name = `Region Name`, GeoUID)
+  
+  # Table de correspondance GEO (nom long) → region_name (nom court cancensus)
+  geo_mapping_df <- tibble::tibble(
+    region_name = c(
+      "St. John's (B)",
+      "Halifax (B)",
+      "Moncton (B)",
+      "Montréal (B)",
+      "Ottawa - Gatineau (B)",
+      "Toronto (B)",
+      "Winnipeg (B)",
+      "Saskatoon (B)",
+      "Calgary (B)",
+      "Edmonton (B)",
+      "Vancouver (B)",
+      "Hamilton (B)"
+    ),
+    GEO = c(
+      "St. John's, Newfoundland and Labrador",
+      "Halifax, Nova Scotia",
+      "Moncton, New Brunswick",
+      "Montréal, Quebec",
+      "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+      "Toronto, Ontario",
+      "Winnipeg, Manitoba",
+      "Saskatoon, Saskatchewan",
+      "Calgary, Alberta",
+      "Edmonton, Alberta",
+      "Vancouver, British Columbia",
+      "Hamilton, Ontario"
+    )
+  )
+  
+  # Fusion pour obtenir id = GeoUID
+  geo_final_mapping <- geo_mapping_df %>%
+    dplyr::left_join(cma_all, by = "region_name") %>%
+    dplyr::mutate(id = GeoUID)
+  
+  # Charger les données StatCan
+  income_median_ann <- cansim::get_cansim("11-10-0008-01")
+  
+  # Filtrer et structurer les données pertinentes
+  income_median_filtered <- income_median_ann %>%
+    dplyr::filter(
+      `Persons with income` == "Median total income",
+      Sex == "Both sexes",
+      `Age group` == "All age groups"
+    ) %>%
+    dplyr::select(year = REF_DATE, GEO, value = VALUE)
+  
+  # Joindre avec le mapping géographique
+  income_median_final <- income_median_filtered %>%
+    dplyr::inner_join(geo_final_mapping, by = "GEO") %>%
+    dplyr::select(id, year, value)
+  
+  # Passer en format large
+  df <- income_median_final %>%
+    tidyr::pivot_wider(
+      names_from = year,
+      values_from = value,
+      names_prefix = "income_median_ann_"
+    ) %>%
+    dplyr::arrange(id)
+  
+  return(df)
+}
