@@ -814,7 +814,7 @@ cansim_net_migration<- function() {
 #' Cette fonction télécharge les données de revenu total médian des personnes ayant un revenu
 #' (table StatCan 11-10-0008-01), filtre pour les CMA sélectionnées, fait la correspondance
 #' avec une table de noms géographiques, puis retourne un tableau en format wide avec une colonne
-#' `id` (GeoUID) et des colonnes `median_income_YYYY` pour chaque année.
+#' `id` (GeoUID) et des colonnes `income_median_ann_YYYY` pour chaque année.
 #'
 #' @return Un data.frame au format large avec un identifiant `id` (GeoUID) par CMA, et une colonne par année.
 #' @import dplyr tidyr stringr cancensus cansim
@@ -829,66 +829,163 @@ cansim_income_median <- function() {
   ) |>
     dplyr::select(region_name = `Region Name`, GeoUID)
   
-  # Table de correspondance GEO (nom long) → region_name (nom court cancensus)
+  # Table GEO (StatCan) -> region_name (cancensus)
   geo_mapping_df <- tibble::tibble(
     region_name = c(
-      "St. John's (B)",
-      "Halifax (B)",
-      "Moncton (B)",
-      "Montréal (B)",
-      "Ottawa - Gatineau (B)",
-      "Toronto (B)",
-      "Winnipeg (B)",
-      "Saskatoon (B)",
-      "Calgary (B)",
-      "Edmonton (B)",
-      "Vancouver (B)",
-      "Hamilton (B)"
+      "Vancouver (B)", "Victoria (B)", "Edmonton (B)", "Calgary (B)",
+      "Winnipeg (B)", "Toronto (B)", "Hamilton (B)", "Ottawa - Gatineau (B)",
+      "Québec (B)", "Montréal (B)", "Halifax (B)"
     ),
     GEO = c(
-      "St. John's, Newfoundland and Labrador",
-      "Halifax, Nova Scotia",
-      "Moncton, New Brunswick",
-      "Montréal, Quebec",
-      "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
-      "Toronto, Ontario",
-      "Winnipeg, Manitoba",
-      "Saskatoon, Saskatchewan",
-      "Calgary, Alberta",
-      "Edmonton, Alberta",
       "Vancouver, British Columbia",
-      "Hamilton, Ontario"
+      "Victoria, British Columbia",
+      "Edmonton, Alberta",
+      "Calgary, Alberta",
+      "Winnipeg, Manitoba",
+      "Toronto, Ontario",
+      "Hamilton, Ontario",
+      "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+      "Québec, Quebec",
+      "Montréal, Quebec",
+      "Halifax, Nova Scotia"
     )
   )
   
-  # Fusion pour obtenir id = GeoUID
+  # Fusion des noms
   geo_final_mapping <- geo_mapping_df |>
     dplyr::left_join(cma_all, by = "region_name") |>
     dplyr::mutate(id = GeoUID)
   
   # Charger les données StatCan
-  income_median_ann <- cansim::get_cansim("11-10-0008-01")
+  income_all <- cansim::get_cansim("11-10-0008-01")
   
-  # Filtrer et structurer les données pertinentes
-  income_median_filtered <- income_median_ann |>
+  # Filtrer
+  income_filtered <- income_all |>
     dplyr::filter(
       `Persons with income` == "Median total income",
       Sex == "Both sexes",
       `Age group` == "All age groups"
     ) |>
-    dplyr::select(year = REF_DATE, GEO, value = VALUE)
+    dplyr::select(GEO, year = REF_DATE, value = VALUE)
   
-  # Joindre avec le mapping géographique
-  income_median_final <- income_median_filtered |>
+  # Regrouper Ottawa-Gatineau (2 parties → 1 ligne)
+  income_grouped <- income_filtered |>
+    dplyr::mutate(
+      GEO = dplyr::case_when(
+        GEO %in% c(
+          "Ottawa-Gatineau, Ontario part",
+          "Ottawa-Gatineau, Quebec part"
+        ) ~ "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+        TRUE ~ GEO
+      )
+    ) |>
+    dplyr::group_by(GEO, year) |>
+    dplyr::summarise(value = sum(value, na.rm = TRUE), .groups = "drop")
+  
+  # Joindre et transformer
+  df <- income_grouped |>
     dplyr::inner_join(geo_final_mapping, by = "GEO") |>
-    dplyr::select(id, year, value)
-  
-  # Passer en format large
-  df <- income_median_final |>
+    dplyr::select(id, year, value) |>
     tidyr::pivot_wider(
       names_from = year,
       values_from = value,
       names_prefix = "income_median_ann_"
+    ) |>
+    dplyr::arrange(id)
+  
+  return(df)
+}
+
+#' Calculer un indicateur d'inégalité basé sur les revenus extrêmes
+#'
+#' Cette fonction calcule le ratio entre le nombre de personnes avec un revenu de 250 000 $ ou plus
+#' et celles avec un revenu inférieur à 50 000 $, pour une sélection de CMA canadiennes.
+#' Les deux parties d'Ottawa-Gatineau sont agrégées.
+#'
+#' @return Un data.frame au format large avec `id` (GeoUID) et les colonnes `income_ratio_ineq_YYYY`.
+#' @import dplyr tidyr cancensus cansim
+#' @export
+cansim_income_inequity <- function() {
+  # Charger la table des CMA
+  cma_all <- cancensus::get_census(
+    dataset = "CA21",
+    regions = list(C = "01"),
+    geo_format = NA,
+    level = "CMA"
+  ) |>
+    dplyr::select(region_name = `Region Name`, GeoUID)
+  
+  # Table de correspondance GEO -> region_name
+  geo_mapping_df <- tibble::tibble(
+    region_name = c(
+      "Vancouver (B)", "Victoria (B)", "Edmonton (B)", "Calgary (B)",
+      "Winnipeg (B)", "Toronto (B)", "Hamilton (B)", "Ottawa - Gatineau (B)",
+      "Québec (B)", "Montréal (B)", "Halifax (B)"
+    ),
+    GEO = c(
+      "Vancouver, British Columbia",
+      "Victoria, British Columbia",
+      "Edmonton, Alberta",
+      "Calgary, Alberta",
+      "Winnipeg, Manitoba",
+      "Toronto, Ontario",
+      "Hamilton, Ontario",
+      "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+      "Québec, Quebec",
+      "Montréal, Quebec",
+      "Halifax, Nova Scotia"
+    )
+  )
+  
+  geo_final_mapping <- geo_mapping_df |>
+    dplyr::left_join(cma_all, by = "region_name") |>
+    dplyr::mutate(id = GeoUID)
+  
+  # Charger les données
+  income_all <- cansim::get_cansim("11-10-0008-01")
+  
+  income_filtered <- income_all |>
+    dplyr::filter(
+      Sex == "Both sexes",
+      `Age group` == "All age groups",
+      `Persons with income` %in% c(
+        "All persons with income",
+        "Persons with income of $50,000 and over",
+        "Persons with income of $250,000 and over"
+      )
+    ) |>
+    dplyr::select(GEO, year = REF_DATE, type = `Persons with income`, value = VALUE)
+  
+  # Regrouper Ottawa-Gatineau
+  income_grouped <- income_filtered |>
+    dplyr::mutate(
+      GEO = dplyr::case_when(
+        GEO %in% c(
+          "Ottawa-Gatineau, Ontario part",
+          "Ottawa-Gatineau, Quebec part"
+        ) ~ "Ottawa-Gatineau, Ontario part, Ontario/Quebec",
+        TRUE ~ GEO
+      )
+    ) |>
+    dplyr::group_by(GEO, year, type) |>
+    dplyr::summarise(value = sum(value, na.rm = TRUE), .groups = "drop")
+  
+  # Passer en large pour calculer le ratio
+  income_wide <- income_grouped |>
+    tidyr::pivot_wider(names_from = type, values_from = value) |>
+    dplyr::mutate(
+      low_income = `All persons with income` - `Persons with income of $50,000 and over`,
+      ratio_ineq = `Persons with income of $250,000 and over` / low_income
+    )
+  
+  # Joindre et restructurer
+  df <- income_wide |>
+    dplyr::inner_join(geo_final_mapping, by = "GEO") |>
+    dplyr::select(id, year, ratio_ineq) |>
+    tidyr::pivot_wider(
+      names_from = year,
+      values_from = ratio_ineq,
+      names_prefix = "income_ratio_ineq_"
     ) |>
     dplyr::arrange(id)
   
