@@ -862,34 +862,34 @@ cansim_income_median <- function() {
   )
   
   # Fusion pour obtenir id = GeoUID
-  geo_final_mapping <- geo_mapping_df %>%
-    dplyr::left_join(cma_all, by = "region_name") %>%
+  geo_final_mapping <- geo_mapping_df |>
+    dplyr::left_join(cma_all, by = "region_name") |>
     dplyr::mutate(id = GeoUID)
   
   # Charger les données StatCan
   income_median_ann <- cansim::get_cansim("11-10-0008-01")
   
   # Filtrer et structurer les données pertinentes
-  income_median_filtered <- income_median_ann %>%
+  income_median_filtered <- income_median_ann |>
     dplyr::filter(
       `Persons with income` == "Median total income",
       Sex == "Both sexes",
       `Age group` == "All age groups"
-    ) %>%
+    ) |>
     dplyr::select(year = REF_DATE, GEO, value = VALUE)
   
   # Joindre avec le mapping géographique
-  income_median_final <- income_median_filtered %>%
-    dplyr::inner_join(geo_final_mapping, by = "GEO") %>%
+  income_median_final <- income_median_filtered |>
+    dplyr::inner_join(geo_final_mapping, by = "GEO") |>
     dplyr::select(id, year, value)
   
   # Passer en format large
-  df <- income_median_final %>%
+  df <- income_median_final |>
     tidyr::pivot_wider(
       names_from = year,
       values_from = value,
       names_prefix = "income_median_ann_"
-    ) %>%
+    ) |>
     dplyr::arrange(id)
   
   return(df)
