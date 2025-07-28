@@ -32,7 +32,9 @@ Imports:
     terra,
     cmhc,
     cansim,
-    tidyr
+    tidyr,
+    fuzzyjoin,
+    rlang
 Suggests:
     aws.s3,
     gtfsrouter,

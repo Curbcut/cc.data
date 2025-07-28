@@ -207,7 +207,6 @@ cmhc_reshape_results <- function(df, dimension, series_prefix = TRUE) {
   return(results_list)
 }
 
-
 #' Retrieve Annual CMHC Data for All CMAs
 #'
 #' Loops over all CMAs and request configurations to fetch, clean, reshape,
