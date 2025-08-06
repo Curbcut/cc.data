@@ -334,3 +334,29 @@
 #'
 #' @source Computed using `cancensus` and spatial intersections between CT shapefiles.
 "census_csd_correspondences_list"
+
+
+#' Bilingual NAICS Classification Dictionary (2- to 5-digit)
+#'
+#' A list containing the full NAICS classification hierarchy (2-digit to 5-digit levels),
+#' scraped from the official Statistics Canada website in both English and French.
+#'
+#' This dictionary allows users to match NAICS codes with their official titles in both languages,
+#' and is useful for harmonizing business datasets or statistical analysis across industries.
+#'
+#' @format ## `naics_dictionary`
+#' A named list of two elements:
+#' \describe{
+#'   \item{en}{A named list (`digt2`, `digt3`, `digt4`, `digt5`) of data frames in English. Each data frame contains:}
+#'     \describe{
+#'       \item{code}{The NAICS code (2 to 5 digits)}
+#'       \item{description}{The official English title of the NAICS category}
+#'       \item{level}{The hierarchical level (e.g., 2, 3, 4, 5)}
+#'     }
+#'   \item{fr}{Same structure as `en`, but with official French titles.}
+#' }
+#'
+#' @source Statistics Canada – NAICS 2022 Version 1.0  
+#' ([English site](https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1181553),  
+#'  [French site](https://www23.statcan.gc.ca/imdb/p3VD_f.pl?Function=getVD&TVD=1181553))
+"naics_dictionary"
