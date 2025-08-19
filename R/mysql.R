@@ -369,13 +369,12 @@ db_write_table <- function(df, tb_name, primary_key = NULL, index = NULL,
 
 #' Write the list of processed census data to the MySQL database
 #'
-#' @param processed_census_full_geos <`named list`> The finalized process data
-#' normally coming out of the final processing, with the full geometries using:
-#' \code{\link[cc.data]{census_full_geos}}
+#' @param processed_census <`named list`> Final processed census tables
+#'   (typically list of `sf`/data.frames). Often obtained after running
+#'   \code{\link{census_full_geos}}; geometries will be dropped before writing.
 #'
-#' @return Returns an error or nothing if ran successfully. All tables in the
-#' list fed to `processed_census_full_geos` are written to the MySQL database with
-#' the spatial features dropped.
+#' @return Returns nothing (invisibly) on success; writes each table from
+#'   `processed_census` to MySQL with spatial features dropped.
 #' @export
 db_write_processed_data <- function(processed_census) {
 

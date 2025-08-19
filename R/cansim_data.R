@@ -2,7 +2,6 @@
 #' @description Downloads and processes CANSIM data on housing maintenance and repair expenditures by province. 
 #' The function reshapes the data into wide format and returns three data frames: total, owner-occupied, and tenant-occupied expenditures.
 #'
-#' @param table_id CANSIM table ID to download. Default is `"34-10-0095-01"`.
 #' @return A named list of three `data.frame`s: `housing_maint_exp_total`, `housing_maint_exp_owner`, `housing_maint_exp_tenant`.
 #' Each data frame contains one row per province (`id`) and one column per year of expenditure.
 #' @export
@@ -57,7 +56,6 @@ cansim_maintenance_exp <- function() {
 #' @description Retrieves and processes CANSIM wage rate index data, returning two datasets: 
 #' one for basic construction union wage rates and one for those including selected pay supplements.
 #'
-#' @param table_id A string specifying the CANSIM table ID (default: "18-10-0140-01").
 #' @return A list of two data frames:
 #'   \item{union_wage_index_basic}{Basic union wage rate indexes by CMA}
 #'   \item{union_wage_index_supp}{Union wage rate indexes with supplements by CMA}
@@ -163,7 +161,6 @@ cansim_wages <- function() {
 #' and returns three cleaned datasets: one for apartment buildings, one for residential buildings, 
 #' and another for non-residential buildings. It also merges the data with geographic information.
 #'
-#' @param table_id A string specifying the CANSIM table ID (default: "18-10-0276-01").
 #' @return A list containing three data frames:
 #'   \item{construction_price_apartment}{Construction price data for apartment buildings}
 #'   \item{construction_price_residential}{Construction price data for residential buildings}
@@ -249,16 +246,22 @@ cansim_construction_price <- function() {
   ))
 }
 
-  #' Helper function: Reformat column names from "YYYY-MM" to "YYYYMM"
-  format_date_names <- function(x) {
-    stringr::str_replace_all(x, "-", "")  # Remove hyphens to get YYYYMM format
-  }
+#' Helper: Reformat "YYYY-MM" to "YYYYMM"
+#'
+#' Remove hyphens from strings that look like year-month ("YYYY-MM") so
+#' they become "YYYYMM".
+#'
+#' @param x <character> Vector of strings (e.g., column names).
+#' @return <character> The input `x` with hyphens removed.
+#'
+format_date_names <- function(x) {
+  stringr::str_replace_all(x, "-", "")
+}
 
 #' @title Process Unemployment Data from CANSIM
 #' @description Downloads and reshapes CANSIM table 14-10-0287-03 to get monthly unemployment rates
 #'              for each geography (excluding Canada) in wide format (one column per month).
 #' @return A data frame with one row per geographic unit and columns for unemployment rates by month (YYYYMM).
-#' @export
 cansim_unemployment <- function() {
   
   # Load unemployment rate data from CANSIM

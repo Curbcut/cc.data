@@ -6,6 +6,8 @@ Authors@R:
     person("Maxime", "Bélanger De Blois", email = "maxime.belangerdeblois@mcgill.ca", role = "cre"),
     person("David", "Wachsmuth", email = "david.wachsmuth@mcgill.ca", role  = "ctb"))
 Description: The purpose of the cc.data package is to prepare and update several national datasets that can be used in Curbcut instances.
+Depends: 
+    R (>= 3.5)
 Imports: 
     cancensus,
     sf,
@@ -26,8 +28,6 @@ Imports:
     qs,
     stringr,
     rvest,
-    methods,
-    sp,
     dplyr,
     terra,
     cmhc,
@@ -39,16 +39,30 @@ Suggests:
     aws.s3,
     gtfsrouter,
     gtfstools,
-    rgeos,
-    matchr
+    matchr,
+    cc.buildr,
+    cc.pipe,
+    future,
+    janitor,
+    lubridate,
+    magick,
+    odbc,
+    pdftools,
+    purrr,
+    raster,
+    readr,
+    readxl,
+    stringi,
+    tesseract,
+    tidyselect,
+    sp
 Remotes:
     Curbcut/cc.buildr
 License: AGPL (>= 3)
 Encoding: UTF-8
+LazyData: true
+LazyDataCompression: xz
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 URL: https://github.com/MSSI-urban/cc.data
 BugReports: https://github.com/MSSI-urban/cc.data/issues
-Depends: 
-    R (>= 3.5)
-LazyData: true

@@ -19,9 +19,6 @@ census_data_raw(
 
 \item{census_years}{<\verb{numeric vector}> Should be equal to
 \code{\link[cc.data]{census_years}}}
-
-\item{census_vectors_table}{<\code{data.frame}> Should be equal to
-\code{\link[cc.data]{census_vectors_table}}}
 }
 \value{
 A list of scales and years of census data accompanied with the

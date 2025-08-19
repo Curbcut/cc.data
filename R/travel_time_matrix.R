@@ -1,20 +1,20 @@
-#' Create a docker local OSRM instance for faster travel time matrix
+#' Create a local OSRM instance with Docker
 #'
-#' For further information, read the
+#' Downloads OSM data (if needed), builds the OSRM graph for the chosen `mode`,
+#' and launches a local OSRM HTTP server in a Docker container.
+#' For details, see
 #' \href{https://github.com/Project-OSRM/osrm-backend}{Project-OSRM/osrm-backend}
-#' documentation
+#' and
+#' \href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}.
 #'
-#' @param dest_folder <`character`> Destination folder where to download
-#' and process the necessary data for the travel time matrix calculations.
-#' @param mode <`character`> Options are `bicycle`, `car` and `foot`. Here
-#' are the profiles:
-#' \href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}
-#' @param osm_pbf <`character`> Link to the wanted version of OSM. Defaults to
-#' Canada.
-#' @param dest_folder <`character`> Folder where OSM information should be
-#' downloaded. Defaults to temporary directory.
+#' @param mode <character> One of `"car"`, `"bicycle"`, or `"foot"`. Default `"car"`.
+#' @param port <integer> Port for the OSRM HTTP server. Default `5001L`.
+#' @param osm_pbf <character> Path or relative name of the OSM `.pbf` to use.
+#'   Default `"north-america/canada-latest.osm.pbf"`.
+#' @param dest_folder <character> Directory where data will be downloaded and
+#'   processed. Default `tempdir()`.
 #'
-#' @return Opens a terminal from which the docker image is created.
+#' @return <character> (invisibly) the `dest_folder`. Function is called for its side effects.
 #' @export
 tt_local_osrm <- function(mode = "car", port = 5001L,
                           osm_pbf = "north-america/canada-latest.osm.pbf",
@@ -136,17 +136,15 @@ tt_local_osrm <- function(mode = "car", port = 5001L,
 
 #' Create a travel time matrix using Dissemination Areas or Dissemination Blocks
 #'
-#' @param DA_table_centroids <`sf data.frame`> A \code{DA} or \code{DB} point
-#' sf data.frame
-#' @param max_dist <`numeric`> The maximum distance used to calculate or not
-#' the destination time from a point to another. For a 60 minutes maximum, we
-#' can set the `car` default to 120,000 (for 120km/h max), the `bicycle` default
-#' to 30,000 (for 30km/h max) and the `foot` default to 10,000 (for 10km/h max).
-#' As calculation is very fast, no reason not to let a certain buffer.
-#' @param routing_server <`character`> The base URL of the routing server. If
-#' a server has been initiated using \code{\link[cc.data]{tt_local_osrm}},
-#' the default URL will be `http://localhost:5001/`. Other services can be used
-#' like `http://router.project-osrm.org/`.
+#' @param centroids <`sf data.frame`> Points (DA ou DB) servant d'origines
+#'   et de destinations.
+#' @param max_dist <`numeric`> Distance max utilisée pour couper les destinations.
+#'   Exemples: `car` ~ 120000 (120 km/h), `bicycle` ~ 30000 (30 km/h),
+#'   `foot` ~ 10000 (10 km/h).
+#' @param routing_server <`character`> Base URL du serveur de routage.
+#'   Si \code{\link{tt_local_osrm}} a été lancé localement, la valeur par défaut
+#'   est `http://localhost:5001/`. D'autres services peuvent être utilisés,
+#'   p.ex. `http://router.project-osrm.org/`.
 #'
 #' @return The travel time matrix
 #' @export

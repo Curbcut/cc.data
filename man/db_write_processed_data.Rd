@@ -7,14 +7,13 @@
 db_write_processed_data(processed_census)
 }
 \arguments{
-\item{processed_census_full_geos}{<\verb{named list}> The finalized process data
-normally coming out of the final processing, with the full geometries using:
-\code{\link[cc.data]{census_full_geos}}}
+\item{processed_census}{<\verb{named list}> Final processed census tables
+(typically list of \code{sf}/data.frames). Often obtained after running
+\code{\link{census_full_geos}}; geometries will be dropped before writing.}
 }
 \value{
-Returns an error or nothing if ran successfully. All tables in the
-list fed to \code{processed_census_full_geos} are written to the MySQL database with
-the spatial features dropped.
+Returns nothing (invisibly) on success; writes each table from
+\code{processed_census} to MySQL with spatial features dropped.
 }
 \description{
 Write the list of processed census data to the MySQL database

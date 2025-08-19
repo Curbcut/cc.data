@@ -253,110 +253,86 @@ gtfs_get_traveltimes <- function(gtfs,
 #' each destination point (both are IDs of `DA_table`).
 #' @export
 gtfs_traveltime_matrix_prep <- function(gtfs, traveltimes,
-                                        DA_table,
-                                        maximum_walk_dist = 800,
-                                        routing_server = "http://localhost:5000/") {
+  DA_table,
+  maximum_walk_dist = 800,
+  routing_server = "http://localhost:5000/") {
 
-  if (!requireNamespace("rgeos", quietly = TRUE)) {
-    stop(
-      "Package \"rgeos\" must be installed to use this function.",
-      call. = FALSE
-    )
-  }
-
-  requireNamespace("sp", quietly = TRUE)
-  requireNamespace("sf", quietly = TRUE)
-
-  # Make it a buffer instead of a centroid
-  DA_table <- DA_table["ID"]
-  DA_table_centroid <- suppressWarnings(sf::st_centroid(DA_table))
-  DA_table <- sf::st_buffer(DA_table_centroid, maximum_walk_dist)
-  # DA table unprojected
-  DA_table_centroid <- sf::st_transform(DA_table_centroid, 4326)
-  DA_table <- sf::st_transform(DA_table, 4326)
-  DA_table_sp <- methods::as(DA_table, "Spatial")
-  DA_table_centroid_sp <- methods::as(DA_table_centroid, "Spatial")
-
-  # Get an SF version of all the stops
-  all_stops_sf <- sf::st_as_sf(tibble::as_tibble(gtfs$stops),
-                               coords = c("stop_lon", "stop_lat"),
-                               crs = 4326)[, c("stop_id", "stop_name")]
-  all_stops_sf_sp <- methods::as(all_stops_sf, "Spatial")
-  all_stops <- sf::st_drop_geometry(all_stops_sf)
-
-  # Get in advance all the stops in the buffer of each DA. Return a list
-  # of the centroid and all the stops around.
-  DA_ids <- DA_table$ID
-  progressr::with_progress({
-
-  pb <- progressr::progressor(steps = length(DA_ids))
-  DA_stops <- future.apply::future_sapply(DA_ids, \(ID) {
-    requireNamespace("sp", quietly = TRUE)
-    requireNamespace("sf", quietly = TRUE)
-    this_DA <- DA_table_sp[DA_table_sp@data$ID == ID, ]
-    stops <- all_stops_sf[
-      as.vector(rgeos::gIntersects(this_DA, all_stops_sf_sp, byid = TRUE)), ]
-    pb()
-    if (nrow(stops) == 0) return(NULL)
-
-    list(DA = DA_table_centroid[DA_table_centroid$ID == ID, ],
-         stops = stops)
-  }, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
-  })
-  DA_stops <- DA_stops[!sapply(DA_stops, is.null)]
-
-  # Filter out DAs that don't have origins in this particular `traveltimes`
-  progressr::with_progress({
-    pb <- progressr::progressor(steps = length(DA_stops))
-    DA_stops <-
-      DA_stops[sapply(DA_stops, \(origin) {
-        pb()
-        travels_from_origin <- traveltimes[
-          names(traveltimes) %in% origin$stops$stop_id]
-        if (length(travels_from_origin) == 0) return(FALSE)
-        return(TRUE)
-      })]
-  })
-
-  # Calculate once the walking time to each stops inside a DA
-  progressr::with_progress({
-  pb <- progressr::progressor(steps = length(DA_stops))
-  DA_stops_walk <- future.apply::future_lapply(DA_stops, \(df) {
-    # Get the centroid of the DA coordinates
-    DA_centroid_coords <- tibble::as_tibble(sf::st_coordinates(df$DA))
-    # Iterate on all the stops
-    transit_stops <- df$stops
-    stop_coords <- sf::st_coordinates(transit_stops$geometry)
-    stop_coords <- tibble::as_tibble(stop_coords)
-    transit_stops$coords <- paste0(stop_coords$X, ",", stop_coords$Y)
-    transit_stops <- sf::st_drop_geometry(transit_stops)
-    transit_stops$walking_time <-
-      sapply(transit_stops$coords, \(x) {
-        coords <- paste0(x, ";", DA_centroid_coords$X, ",", DA_centroid_coords$Y)
-        content <-
-          httr::GET(paste0(routing_server, "route/v1/foot/", coords)) |>
-          httr::content()
-        content$routes[[1]]$duration
-      }, USE.NAMES = FALSE)
-    transit_stops <- transit_stops[c("stop_id", "walking_time")]
-    pb()
-    # Return the walking times
-    return(transit_stops)
-  }, future.seed = NULL)
-  })
-
-  # Randomize the placement of every DA. Heavy DAs (in CMAs) are all next to
-  # eachother in `DA_stops`, e.g. Toronto DAs are next to each others. It leads
-  # to some workers having a smaller overall load, finishing much earlier.
-  DA_stops <- sample(DA_stops)
-
-  # Return
-  return(list(DA_table_centroid_sp = DA_table_centroid_sp,
-         DA_stops = DA_stops,
-         DA_stops_walk = DA_stops_walk,
-         traveltimes = traveltimes))
-
+# On reste en sf, pas de sp/rgeos
+# Assure un CRS métrique pour les buffers/intersections
+DA_table <- DA_table["ID"]
+if (sf::st_is_longlat(DA_table)) {
+DA_table <- sf::st_transform(DA_table, 3347) # NAD83 / StatCan Lambert (mètres)
 }
+
+DA_centroids_m <- sf::st_centroid(DA_table)                 # mètres
+DA_buffer_m    <- sf::st_buffer(DA_centroids_m, maximum_walk_dist)
+
+# Copie lon/lat pour les appels OSRM (coords attendus en WGS84)
+DA_centroids_ll <- sf::st_transform(DA_centroids_m, 4326)
+
+# Stops en sf
+all_stops_sf_ll <- sf::st_as_sf(
+tibble::as_tibble(gtfs$stops),
+coords = c("stop_lon", "stop_lat"), crs = 4326
+)[, c("stop_id", "stop_name")]
+
+# Pour l’intersection, travailler en métrique
+all_stops_sf_m <- sf::st_transform(all_stops_sf_ll, sf::st_crs(DA_buffer_m))
+
+DA_ids <- DA_table$ID
+
+progressr::with_progress({
+pb <- progressr::progressor(steps = length(DA_ids))
+
+DA_stops <- future.apply::future_sapply(DA_ids, function(ID) {
+this_buf <- DA_buffer_m[DA_buffer_m$ID == ID, ]
+idx <- sf::st_intersects(this_buf, all_stops_sf_m, sparse = TRUE)[[1]]
+pb()
+if (length(idx) == 0L) return(NULL)
+
+list(
+DA    = DA_centroids_ll[DA_centroids_ll$ID == ID, ],  # lon/lat pour OSRM
+stops = all_stops_sf_ll[idx, c("stop_id")]            # garde stop_id + geom lon/lat
+)
+}, simplify = FALSE, USE.NAMES = TRUE, future.seed = NULL)
+
+DA_stops <- DA_stops[!vapply(DA_stops, is.null, logical(1))]
+
+# Garder seulement les DAs où au moins un stop d’origine existe dans 'traveltimes'
+DA_stops <- DA_stops[vapply(DA_stops, function(origin) {
+any(names(traveltimes) %in% origin$stops$stop_id)
+}, logical(1))]
+
+# Temps de marche DA -> stops (OSRM "lon,lat;lon,lat")
+DA_stops_walk <- future.apply::future_lapply(DA_stops, function(df) {
+da_xy   <- tibble::as_tibble(sf::st_coordinates(df$DA))
+stop_xy <- tibble::as_tibble(sf::st_coordinates(df$stops))
+df$stops$coords <- paste0(stop_xy$X, ",", stop_xy$Y)
+dest <- paste0(da_xy$X, ",", da_xy$Y)
+
+walk <- vapply(df$stops$coords, function(x) {
+coords <- paste0(x, ";", dest)
+res <- httr::GET(paste0(routing_server, "route/v1/foot/", coords))
+cont <- httr::content(res)
+cont$routes[[1]]$duration
+}, numeric(1))
+
+tibble::tibble(stop_id = df$stops$stop_id, walking_time = walk)
+}, future.seed = NULL)
+
+# Répartir la charge
+DA_stops <- sample(DA_stops)
+
+# Sortie (toujours un objet de listes)
+list(
+DA_table_centroid = DA_centroids_ll,  # sf
+DA_stops          = DA_stops,
+DA_stops_walk     = DA_stops_walk,
+traveltimes       = traveltimes
+)
+})
+}
+
 
 #' Get traveltime transit matrix
 #'
@@ -379,117 +355,88 @@ gtfs_traveltime_matrix_prep <- function(gtfs, traveltimes,
 #' @export
 gtfs_traveltime_matrix_final <- function(prep_output) {
 
-  if (!requireNamespace("rgeos", quietly = TRUE)) {
-    stop(
-      "Package \"rgeos\" must be installed to use this function.",
-      call. = FALSE
-    )
+  if (!requireNamespace("lubridate", quietly = TRUE)) {
+    stop('Package "lubridate" must be installed to use this function.', call. = FALSE)
   }
 
-  # Minimal function over which to iterate to get minimal travel time
-  # for a pair of points
+  # Calcul du temps minimal pour un couple (origine, destination)
   min_travel_time <- function(origin_ID, dest_ID, travels_from_origin, dest) {
-
-    # Get possible travels, or returns NULL if there is nothing
-    possibilities <- lapply(travels_from_origin, \(x) {
+    possibilities <- lapply(travels_from_origin, function(x) {
       out <- x[x$stop_id %in% dest, c("stop_id", "duration")]
-      # Return NULL if empty
       if (nrow(out) == 0) return(NULL)
       out
     })
-    travels <- possibilities[!sapply(possibilities, is.null)]
-    if (is.null(travels) || length(travels) == 0) return(NULL)
+    travels <- possibilities[!vapply(possibilities, is.null, logical(1))]
+    if (length(travels) == 0) return(NULL)
 
-    # Origin relevant stops
-    origin_walk_time <- prep_output$DA_stops_walk[
-      names(prep_output$DA_stops_walk) == origin_ID][[1]]
-    origin_walk_time <- origin_walk_time[
-      origin_walk_time$stop_id %in% names(travels), ]
+    origin_walk_time <- prep_output$DA_stops_walk[[origin_ID]]
+    origin_walk_time <- origin_walk_time[origin_walk_time$stop_id %in% names(travels), ]
 
-    # Destination relevant stops
-    dest_walk_time <- prep_output$DA_stops_walk[
-      names(prep_output$DA_stops_walk) == dest_ID][[1]]
-    relevant_stops <- unlist(sapply(travels, `[[`, "stop_id")) |> unique()
-    dest_walk_time <- dest_walk_time[
-      dest_walk_time$stop_id %in% relevant_stops, ]
+    dest_walk_time <- prep_output$DA_stops_walk[[dest_ID]]
+    relevant_stops <- unique(unlist(lapply(travels, `[[`, "stop_id")))
+    dest_walk_time <- dest_walk_time[dest_walk_time$stop_id %in% relevant_stops, ]
 
-    # Iterate over all the origin/destinations times
-    travels_min_time <- sapply(seq_along(travels), \(t) {
-      # Get walk time from origin
+    travels_min_time <- vapply(seq_along(travels), function(t) {
       origin_stop <- names(travels)[[t]]
-      walk_time_from_origin <-
-        origin_walk_time$walking_time[origin_walk_time$stop_id == origin_stop]
-
-      all_dest_stops <- travels[[t]]
-      all_dest_stops <- merge(all_dest_stops, dest_walk_time, by = "stop_id")
+      walk_from_origin <- origin_walk_time$walking_time[
+        origin_walk_time$stop_id == origin_stop
+      ]
+      all_dest_stops <- merge(travels[[t]], dest_walk_time, by = "stop_id")
       names(all_dest_stops)[3] <- "walk_time_to_dest"
-
       all_dest_stops$transit_plus_dest <-
-        as.numeric(lubridate::hms(all_dest_stops$duration)) + all_dest_stops$walk_time_to_dest
+        as.numeric(lubridate::hms(all_dest_stops$duration)) +
+        all_dest_stops$walk_time_to_dest
 
-      # Return minimal travel time form this origin stop
-      return(as.numeric(min(all_dest_stops$transit_plus_dest)) +
-               walk_time_from_origin)
-    })
+      as.numeric(min(all_dest_stops$transit_plus_dest)) + walk_from_origin
+    }, numeric(1))
 
-    # Return the shortest travel
-    return(min(travels_min_time))
-
+    min(travels_min_time)
   }
 
-  # Grab all DAs with stops
   DA_with_stops <- names(prep_output$DA_stops)
 
-  # Calculate the matrix
+  # Centroides en métrique pour le filtre 100km
+  cent_m <- sf::st_transform(prep_output$DA_table_centroid, 3347)
+
   progressr::with_progress({
     pb <- progressr::progressor(steps = length(prep_output$DA_stops))
-    out <- future.apply::future_lapply(prep_output$DA_stops, \(origin) {
+
+    out <- future.apply::future_lapply(prep_output$DA_stops, function(origin) {
       pb()
 
       origin_ID <- origin$DA$ID
       origin_stop_ids <- origin$stops$stop_id
       travels_from_origin <- prep_output$traveltimes[
-        names(prep_output$traveltimes) %in% origin_stop_ids]
-
+        names(prep_output$traveltimes) %in% origin_stop_ids
+      ]
       if (length(travels_from_origin) == 0) return(NULL)
 
-      # Only iterate over plausible destinations (100km straight-line distance)
-      this_DA <- methods::as(sf::st_buffer(origin$DA, 100000), "Spatial")
-      all_dests <- prep_output$DA_table_centroid_sp$ID[
-        as.vector(rgeos::gIntersects(
-          prep_output$DA_table_centroid_sp, this_DA, byid = TRUE))]
+      # Heuristique: destinations dans un rayon de 100 km (buffer en mètres)
+      origin_buf_m <- sf::st_buffer(sf::st_transform(origin$DA, 3347), 100000)
+      idx <- sf::st_intersects(cent_m, origin_buf_m, sparse = TRUE)[[1]]
+      all_dests <- prep_output$DA_table_centroid$ID[idx]
       all_dests <- all_dests[all_dests %in% DA_with_stops]
 
-      min_to_dests <- sapply(all_dests, \(dest_ID) {
-        # Return NULL right away if there is no stops in the destination's buffer
+      min_to_dests <- lapply(all_dests, function(dest_ID) {
         dest_index <- names(prep_output$DA_stops) == dest_ID
-        if (sum(dest_index) == 0) return(NULL)
-        # Stops around walking distance of destination
+        if (!any(dest_index)) return(NULL)
+
         dest <- prep_output$DA_stops[dest_index][[1]]$stops$stop_id
-        # If none, return NULL
         if (length(dest) == 0) return(NULL)
 
-        min_travel_time(origin_ID = origin_ID,
-                        dest_ID = dest_ID,
-                        travels_from_origin = travels_from_origin,
-                        dest = dest)
-      }, simplify = FALSE, USE.NAMES = TRUE)
-
-      min_to_dests <- min_to_dests[!sapply(min_to_dests, is.null)]
-
+        min_travel_time(origin_ID, dest_ID, travels_from_origin, dest)
+      })
+      names(min_to_dests) <- all_dests
+      min_to_dests <- min_to_dests[!vapply(min_to_dests, is.null, logical(1))]
       if (length(min_to_dests) == 0) return(NULL)
 
-      out <- tibble::tibble(DA_ID = names(min_to_dests))
-      out[[origin_ID]] <- unlist(min_to_dests)
-      return(out)
+      tibble::tibble(DA_ID = names(min_to_dests)) |>
+        dplyr::mutate(!!origin_ID := unlist(min_to_dests, use.names = FALSE))
     }, future.seed = NULL)
+
+    # Retire les NULL
+    out[!vapply(out, is.null, logical(1))]
   })
-
-  # Filter out empty outputs
-  out <- out[!sapply(out, is.null)]
-
-  # Return
-  return(out)
-
 }
+
 

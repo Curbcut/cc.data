@@ -9,16 +9,16 @@
 
 A data.frame of census variables code
 \describe{
-\item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-\item{type}{See \code{\link[cc.buildr]{add_variable}}}
-\item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+\item{var_code}{See \code{cc.buildr::add_variable()}}
+\item{type}{See \code{cc.buildr::add_variable()}}
+\item{theme}{See \code{cc.buildr::add_variable()}}
 \item{vec_...}{The \code{cancensus} code for the vector at a particular year}
 \item{parent_vectors}{The \code{cancensus} code for parent vectors}
-\item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-\item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-\item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-\item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-\item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+\item{var_title}{See \code{cc.buildr::add_variable()}}
+\item{var_short}{See \code{cc.buildr::add_variable()}}
+\item{explanation}{See \code{cc.buildr::add_variable()}}
+\item{exp_q5}{See \code{cc.buildr::add_variable()}}
+\item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 \item{parent_vec}{The string corresponding to the other \code{variable} that is its parent}
 \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 }

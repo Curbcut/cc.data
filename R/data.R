@@ -39,16 +39,16 @@
 #' @format ## `census_vectors_income`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -61,16 +61,16 @@
 #' @format ## `census_vectors_identity`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -83,16 +83,16 @@
 #' @format ## `census_vectors_transport`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -105,16 +105,16 @@
 #' @format ## `census_vectors_family`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -127,16 +127,16 @@
 #' @format ## `census_vectors_language`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -149,16 +149,16 @@
 #' @format ## `census_vectors_age`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -171,16 +171,16 @@
 #' @format ## `census_vectors_education`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -193,16 +193,16 @@
 #' @format ## `census_vectors_table`
 #' A data.frame of census variables code
 #' \describe{
-#'   \item{var_code}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{type}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{theme}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_code}{See \code{cc.buildr::add_variable()}}
+#'   \item{type}{See \code{cc.buildr::add_variable()}}
+#'   \item{theme}{See \code{cc.buildr::add_variable()}}
 #'   \item{vec_...}{The `cancensus` code for the vector at a particular year}
 #'   \item{parent_vectors}{The `cancensus` code for parent vectors}
-#'   \item{var_title}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{var_short}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{explanation}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{exp_q5}{See \code{\link[cc.buildr]{add_variable}}}
-#'   \item{rankings_chr}{See \code{\link[cc.buildr]{add_variable}}}
+#'   \item{var_title}{See \code{cc.buildr::add_variable()}}
+#'   \item{var_short}{See \code{cc.buildr::add_variable()}}
+#'   \item{explanation}{See \code{cc.buildr::add_variable()}}
+#'   \item{exp_q5}{See \code{cc.buildr::add_variable()}}
+#'   \item{rankings_chr}{See \code{cc.buildr::add_variable()}}
 #'   \item{parent_vec}{The string corresponding to the other `variable` that is its parent}
 #'   \item{parent}{Wheter the variable is a parent variable. FALSE means it's for use.}
 #' }
@@ -218,7 +218,7 @@
 #'
 #' @format ## `census_vectors_details`
 #' A data.frame the same number of rows as there are Curbcut
-#' \code{\link[cc.data]{census_vectors}}
+#' \code{census_vectors}
 #' \describe{
 #'   \item{var_code}{The code used to refer to the variables}
 #'   \item{vec}{The `cancensus` code for the vector}
@@ -265,7 +265,7 @@
 
 #' Dictionary for pre-processed accessibility variables
 #'
-#' Computed using the \code{\link[cc.data]{accessibility_DA_location}} function.
+#' Computed using the \code{accessibility_DA_location()} function.
 #' Industry name and explanation comes from the SIC code attached to every
 #' point.
 #'
@@ -313,8 +313,6 @@
 #' @source Computed using `cancensus` and spatial intersections between CT shapefiles.
 "census_ct_correspondences_list"
 
-
-
 #' Correspondence Tables for CTs Across Census Years
 #'
 #' A list of correspondence tables matching Census Tracts (CTs) between the reference year (CA21)
@@ -334,7 +332,6 @@
 #'
 #' @source Computed using `cancensus` and spatial intersections between CT shapefiles.
 "census_csd_correspondences_list"
-
 
 #' Bilingual NAICS Classification Dictionary (2- to 5-digit)
 #'
@@ -360,3 +357,118 @@
 #' ([English site](https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1181553),  
 #'  [French site](https://www23.statcan.gc.ca/imdb/p3VD_f.pl?Function=getVD&TVD=1181553))
 "naics_dictionary"
+
+#' Bedroom-size census vectors
+#'
+#' Variable codes for each census year (bedroom size theme).
+#'
+#' @format ## `census_vectors_bedroomsize`
+#' A data.frame with one row per variable and columns:
+#' \describe{
+#'   \item{var_code}{Internal variable code used by the package.}
+#'   \item{type}{Variable type (e.g., share, count, index).}
+#'   \item{theme}{High-level theme label (e.g., housing, bedroomsize).}
+#'   \item{vec_...}{Cancensus vector code(s) by year, stored in columns named like `vec_2021`, `vec_2016`, etc.}
+#'   \item{parent_vectors}{Cancensus codes for parent vectors, if any.}
+#'   \item{var_title}{Long title of the variable.}
+#'   \item{var_short}{Short label of the variable.}
+#'   \item{explanation}{Human-readable explanation of the variable.}
+#'   \item{exp_q5}{Optional additional explanation text.}
+#'   \item{rankings_chr}{Ranking labels or hints used for sorting/tiers.}
+#'   \item{parent_vec}{Code of the parent variable, if any.}
+#'   \item{parent}{Logical flag indicating whether the row is a parent variable (`FALSE` means directly usable).}
+#' }
+#' @keywords datasets
+"census_vectors_bedroomsize"
+
+#' Building-age census vectors
+#'
+#' Variable codes for each census year (building age theme).
+#'
+#' @format ## `census_vectors_buildingage`
+#' A data.frame with one row per variable and columns:
+#' \describe{
+#'   \item{var_code}{Internal variable code used by the package.}
+#'   \item{type}{Variable type (e.g., share, count, index).}
+#'   \item{theme}{High-level theme label (e.g., housing, buildingage).}
+#'   \item{vec_...}{Cancensus vector code(s) by year, stored in columns named like `vec_2021`, `vec_2016`, etc.}
+#'   \item{parent_vectors}{Cancensus codes for parent vectors, if any.}
+#'   \item{var_title}{Long title of the variable.}
+#'   \item{var_short}{Short label of the variable.}
+#'   \item{explanation}{Human-readable explanation of the variable.}
+#'   \item{exp_q5}{Optional additional explanation text.}
+#'   \item{rankings_chr}{Ranking labels or hints used for sorting/tiers.}
+#'   \item{parent_vec}{Code of the parent variable, if any.}
+#'   \item{parent}{Logical flag indicating whether the row is a parent variable (`FALSE` means directly usable).}
+#' }
+#' @keywords datasets
+"census_vectors_buildingage"
+
+#' Employment census vectors
+#'
+#' Variable codes for each census year (employment theme).
+#'
+#' @format ## `census_vectors_employment`
+#' A data.frame with one row per variable and columns:
+#' \describe{
+#'   \item{var_code}{Internal variable code used by the package.}
+#'   \item{type}{Variable type (e.g., share, count, index).}
+#'   \item{theme}{High-level theme label (e.g., employment).}
+#'   \item{vec_...}{Cancensus vector code(s) by year, stored in columns named like `vec_2021`, `vec_2016`, etc.}
+#'   \item{parent_vectors}{Cancensus codes for parent vectors, if any.}
+#'   \item{var_title}{Long title of the variable.}
+#'   \item{var_short}{Short label of the variable.}
+#'   \item{explanation}{Human-readable explanation of the variable.}
+#'   \item{exp_q5}{Optional additional explanation text.}
+#'   \item{rankings_chr}{Ranking labels or hints used for sorting/tiers.}
+#'   \item{parent_vec}{Code of the parent variable, if any.}
+#'   \item{parent}{Logical flag indicating whether the row is a parent variable (`FALSE` means directly usable).}
+#' }
+#' @keywords datasets
+"census_vectors_employment"
+
+#' Household-size census vectors
+#'
+#' Variable codes for each census year (household size theme).
+#'
+#' @format ## `census_vectors_householdsize`
+#' A data.frame with one row per variable and columns:
+#' \describe{
+#'   \item{var_code}{Internal variable code used by the package.}
+#'   \item{type}{Variable type (e.g., share, count, index).}
+#'   \item{theme}{High-level theme label (e.g., householdsize).}
+#'   \item{vec_...}{Cancensus vector code(s) by year, stored in columns named like `vec_2021`, `vec_2016`, etc.}
+#'   \item{parent_vectors}{Cancensus codes for parent vectors, if any.}
+#'   \item{var_title}{Long title of the variable.}
+#'   \item{var_short}{Short label of the variable.}
+#'   \item{explanation}{Human-readable explanation of the variable.}
+#'   \item{exp_q5}{Optional additional explanation text.}
+#'   \item{rankings_chr}{Ranking labels or hints used for sorting/tiers.}
+#'   \item{parent_vec}{Code of the parent variable, if any.}
+#'   \item{parent}{Logical flag indicating whether the row is a parent variable (`FALSE` means directly usable).}
+#' }
+#' @keywords datasets
+"census_vectors_householdsize"
+
+#' Typology census vectors
+#'
+#' Variable codes for each census year (typology theme).
+#'
+#' @format ## `census_vectors_typology`
+#' A data.frame with one row per variable and columns:
+#' \describe{
+#'   \item{var_code}{Internal variable code used by the package.}
+#'   \item{type}{Variable type (e.g., share, count, index).}
+#'   \item{theme}{High-level theme label (e.g., typology).}
+#'   \item{vec_...}{Cancensus vector code(s) by year, stored in columns named like `vec_2021`, `vec_2016`, etc.}
+#'   \item{parent_vectors}{Cancensus codes for parent vectors, if any.}
+#'   \item{var_title}{Long title of the variable.}
+#'   \item{var_short}{Short label of the variable.}
+#'   \item{explanation}{Human-readable explanation of the variable.}
+#'   \item{exp_q5}{Optional additional explanation text.}
+#'   \item{rankings_chr}{Ranking labels or hints used for sorting/tiers.}
+#'   \item{parent_vec}{Code of the parent variable, if any.}
+#'   \item{parent}{Logical flag indicating whether the row is a parent variable (`FALSE` means directly usable).}
+#' }
+#' @keywords datasets
+"census_vectors_typology"

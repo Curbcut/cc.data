@@ -8,7 +8,7 @@
 \subsection{\code{census_vectors_details}}{
 
 A data.frame the same number of rows as there are Curbcut
-\code{\link[cc.data]{census_vectors}}
+\code{census_vectors}
 \describe{
 \item{var_code}{The code used to refer to the variables}
 \item{vec}{The \code{cancensus} code for the vector}

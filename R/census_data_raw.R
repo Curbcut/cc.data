@@ -2,8 +2,6 @@
 #'
 #' @param empty_geometries <`list of sf data.frame`> The output of
 #' \code{\link[cc.data]{census_empty_geometries}}.
-#' @param census_vectors_table <`data.frame`> Should be equal to
-#' \code{\link[cc.data]{census_vectors_table}}
 #' @param census_scales <`character vector`> Should be equal to
 #' \code{\link[cc.data]{census_scales}}
 #' @param census_years <`numeric vector`> Should be equal to
