@@ -1046,5 +1046,96 @@ calculer_volatilite_annuelle_WIDE <- function(df, prefixe_colonne) {
   return(resultat_wide)
 }
 
+#' @title Process and Merge Elasticity Data with CMA Identifiers
+#' 
+#' @description This function loads Census Metropolitan Area (CMA) data from Statistics Canada's 2021 census,
+#' reads elasticity estimates from a local Excel file, standardizes CMA names for consistency, and merges
+#' both datasets. The output is a clean table containing CMA identifiers and elasticity estimates only.
+#' 
+#' @param file_path A string specifying the full path to the local Excel file containing elasticity data.
+#' 
+#' @return A tibble with two columns: \code{id} (GeoUID of the CMA) and \code{elasticity_estimates}.
+#' @export
+boc_elasticities <- function(file_path) {
+  
+  # Step 1: Retrieve list of CMA regions
+  cma_list <- cancensus::list_census_regions("CA21") |>
+    dplyr::filter(level == "CMA") |>
+    dplyr::select(region, name)
+  
+  # Step 2: Download spatial geometries for all CMAs
+  cma_all <- cancensus::get_census(
+    dataset = "CA21",
+    regions = list(CMA = cma_list$region),
+    geo_format = "sf",
+    level = "CMA"
+  ) |>
+    dplyr::select(name, geometry, GeoUID) |>
+    dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", name))  # Remove text in parentheses
+  
+  # Step 3: Read elasticity data from Excel
+  elasticities <- readxl::read_excel(file_path) |>
+    dplyr::filter(cma == 1) |>  # Keep rows flagged as CMA
+    dplyr::select(city, elasticity) |>  # Only keep needed columns
+    dplyr::rename(name = city)
+  
+  # Step 4: Standardize CMA names for consistency with census data
+  name_mapping <- c(
+    "Greater Sudbury/Grand Sudbury" = "Greater Sudbury / Grand Sudbury",
+    "Kitchener-Cambridge-Waterloo" = "Kitchener - Cambridge - Waterloo",
+    "Ottawa-Gatineau" = "Ottawa - Gatineau",
+    "St. Catharines-Niagara" = "St. Catharines - Niagara",
+    "Trois-Rivieres" = "Trois-Rivières",
+    "Quebec" = "Québec",
+    "Montreal" = "Montréal",
+    "St. John's" = "St. John's",
+    "Abbotsford-Mission" = "Abbotsford - Mission"
+  )
+  
+  elasticities <- elasticities |>
+    dplyr::mutate(name = dplyr::recode(name, !!!name_mapping))
+  
+  # Step 5: Merge and clean final dataset
+  final_data <- dplyr::inner_join(cma_all, elasticities, by = "name") |>
+    dplyr::rename(
+      id = GeoUID,
+      elasticity_estimates = elasticity) |>
+      dplyr::select(id, elasticity_estimates) |>
+    sf::st_drop_geometry()  # Drop spatial information
+  
+  return(final_data)
+}
 
+#' @title Process Bank of Canada Interest Rate Data
+#'
+#' @description This function downloads and processes Bank of Canada interest rate data 
+#' from the official Valet API. It extracts, reformats, and reshapes the data into a wide format, 
+#' keeping only observations from 1991 onwards.
+#'
+#' @return A formatted data frame with interest rates from 1991 onwards, structured in a wide format.
+#' 
+#' @export
+boc_interest_rates <- function() {
+  
+  # Define the API URL with full date range
+  api_url <- "https://www.bankofcanada.ca/valet/observations/V122530/json?start_date=1900-01-01"
+  
+  # Load JSON data from the temporary file
+  json_data <- jsonlite::fromJSON(api_url)
+  
+  # Extract and reformat interest rate data
+  interest_rates <- json_data$observations |> 
+    dplyr::mutate(
+      bank_rate = as.numeric(V122530$v),  # Convert interest rate column to numeric
+      bank_rate_yearmois = gsub("-", "", substr(d, 1, 7))  # Transform date format to YYYYMM
+    ) |> 
+    dplyr::filter(as.numeric(substr(d, 1, 4)) >= 1991) |>  # Keep only data from 1991 onwards
+    dplyr::select(bank_rate_yearmois, bank_rate) |>  # Select relevant columns
+    tidyr::pivot_wider(names_from = bank_rate_yearmois, values_from = bank_rate, 
+                       names_prefix = "interest_rate_") |>  # Convert to wide format
+    dplyr::mutate(name = "Canada", geouid = "01") |>  # Add static columns
+    dplyr::select(id=geouid, dplyr::everything())  # Reorder columns
+  
+  return(interest_rates)
+}
 
