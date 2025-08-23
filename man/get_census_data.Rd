@@ -2,37 +2,35 @@
 % Please edit documentation in R/census_data_raw.R
 \name{get_census_data}
 \alias{get_census_data}
-\title{Get Census Data}
+\title{Get Census Data (robust cache check + retries; result-compatible)}
 \usage{
 get_census_data(
   census_dataset,
   var_codes,
   region,
   scale,
-  cache = cancensus::list_cancensus_cache()
+  cache = cancensus::list_cancensus_cache(),
+  warn_empty = TRUE
 )
 }
 \arguments{
-\item{census_dataset}{<\code{character}> A string representing the dataset identifier.}
+\item{census_dataset}{\if{html}{\out{<character>}} e.g., "CA2021"}
 
-\item{var_codes}{<\verb{character vector}> Containing variable codes to be retrieved,
-named.}
+\item{var_codes}{\if{html}{\out{<named character>}} names are output column names}
 
-\item{region}{<\verb{named list}> Specifying the region code (e.g., \code{list(C = "01")}).}
+\item{region}{\if{html}{\out{<named list>}} e.g., list(C = "01")}
 
-\item{scale}{<\code{character}> A string or numeric value representing the scale or
-level of the data.}
+\item{scale}{\if{html}{\out{<character>}} level, e.g., "CMA"}
 
-\item{cache}{<\code{data.frame}> A data frame containing cached information, structured
-appropriately. The output of \code{cancensus::list_cancensus_cache()}}
+\item{cache}{<data.frame> cancensus::list_cancensus_cache()}
+
+\item{warn_empty}{\if{html}{\out{<logical>}} warn if a vector returns 0 rows}
 }
 \value{
-A data frame containing the requested census data. If the data is found
-in the cache, it is returned directly from there. If not, the data is
-retrieved vector by vector and merged by "GeoUID".
+data.frame with columns GeoUID + names(var_codes)
 }
 \description{
-Retrieves census data for the given region and scale, utilizing caching if
-available. If unavailable, iterate over every variable to make sure we
-will be utilizing their cache next time.
+Retrieves census data for the given region/scale. If the full vector set
+is cached, fetch once; otherwise fetch per-vector and full-join on GeoUID.
+Uses set-equality for cache detection (order-insensitive) and simple retries.
 }

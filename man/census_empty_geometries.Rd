@@ -2,7 +2,7 @@
 % Please edit documentation in R/census_empty_geometries.R
 \name{census_empty_geometries}
 \alias{census_empty_geometries}
-\title{Get empty geometries}
+\title{Get empty census geometries}
 \usage{
 census_empty_geometries(
   census_scales = cc.data::census_scales,
@@ -10,16 +10,15 @@ census_empty_geometries(
 )
 }
 \arguments{
-\item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_scales}}}
+\item{census_scales}{\if{html}{\out{<character>}} Census levels (e.g., "C","PR","CMA","CSD","CT","DA").}
 
-\item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[cc.data]{census_years}}}
+\item{census_years}{\if{html}{\out{<numeric>}}   Census years (e.g., 1996, 2001, …, 2021).}
 }
 \value{
-A named list of \verb{sf data.frame} the same length as census_scales,
-with census geometries, containing only ID, population and households.
+Named list \code{out[[scale]][[year]]} with \code{sf(ID, geometry)} in EPSG:3347.
 }
 \description{
-Get empty geometries
+Downloads census geometries for requested scales/years with a
+Canada-level request first, falling back to per-province when needed.
+Returns simple \code{sf} layers with \code{ID} and \code{geometry} only, projected to EPSG:3347.
 }

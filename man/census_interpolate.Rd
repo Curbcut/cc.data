@@ -9,29 +9,22 @@ census_interpolate(
   census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
-  agg_type = census_agg_type(census_vectors = census_vectors, census_scales =
-    census_scales, census_years = census_years)
+  agg_type = NULL
 )
 }
 \arguments{
-\item{data_raw}{<\verb{list of sf data.frame}> The output of
-\code{\link[cc.data]{census_data_raw}}.}
+\item{data_raw}{\if{html}{\out{<list of sf data.frame>}} The output of cc.data::census_data_raw.}
 
-\item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_vectors}}}
+\item{census_vectors}{\if{html}{\out{<character vector>}} Should be equal to cc.data::census_vectors}
 
-\item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_scales}}}
+\item{census_scales}{\if{html}{\out{<character vector>}} Should be equal to cc.data::census_scales}
 
-\item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[cc.data]{census_years}}}
+\item{census_years}{\if{html}{\out{<numeric vector>}}   Should be equal to cc.data::census_years}
 
-\item{agg_type}{<\verb{named list}> The output of
-\code{\link[cc.data]{census_agg_type}}.}
+\item{agg_type}{<named list|NULL> If NULL, built from variables actually present in data_raw.}
 }
 \value{
-A list of scales and years of census data with geometries interpolated
-to the current year.
+list [\link{scale}][\link{year}] sf with geometries of max year and values interpolated.
 }
 \description{
 Interpolate all census years to the current year's geography

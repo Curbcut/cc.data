@@ -2,28 +2,27 @@
 % Please edit documentation in R/census_data_raw.R
 \name{census_data_raw}
 \alias{census_data_raw}
-\title{Get census vectors values}
+\title{Download census vectors and join to geometries for specific variables.}
 \usage{
 census_data_raw(
   empty_geometries,
   census_scales = cc.data::census_scales,
-  census_years = cc.data::census_years
+  census_years = cc.data::census_years,
+  var_codes = NULL
 )
 }
 \arguments{
-\item{empty_geometries}{<\verb{list of sf data.frame}> The output of
-\code{\link[cc.data]{census_empty_geometries}}.}
+\item{empty_geometries}{list [\link{scale}][\link{year}] sf(ID, geometry) in target CRS}
 
-\item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_scales}}}
+\item{census_scales}{character, e.g., c("C","PR","CMA","CSD","CT","DA")}
 
-\item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[cc.data]{census_years}}}
+\item{census_years}{numeric, e.g., c(1996, 2001, ..., 2021)}
+
+\item{var_codes}{character|NULL subset of var_code; NULL = all (+parents)}
 }
 \value{
-A list of scales and years of census data accompanied with the
-parent values.
+list[\link{scale}][\link{year}] sf(ID, geometry, \if{html}{\out{<vars>}})
 }
 \description{
-Get census vectors values
+Download census vectors and join to geometries for specific variables.
 }

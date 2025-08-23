@@ -2,37 +2,30 @@
 % Please edit documentation in R/census_normalize.R
 \name{census_normalize}
 \alias{census_normalize}
-\title{Normalize percentage variables}
+\title{Normalize census variables to proportions in \link{0,1}}
 \usage{
 census_normalize(
   interpolated,
   census_vectors = cc.data::census_vectors,
   census_scales = cc.data::census_scales,
   census_years = cc.data::census_years,
-  unit_type = census_unit_type(census_vectors = census_vectors, census_scales =
-    census_scales, census_years = census_years)
+  unit_type = NULL
 )
 }
 \arguments{
-\item{interpolated}{<\verb{list of sf data.frame}> The output of
-\code{\link[cc.data]{census_interpolate}}.}
+\item{interpolated}{list [\link{scale}][\link{year}] sf — output of census_interpolate()}
 
-\item{census_vectors}{<\code{data.frame}> Should be equal to
-\code{\link[cc.data]{census_vectors}}}
+\item{census_vectors}{\if{html}{\out{<character>}} cc.data::census_vectors (used only if unit_type = NULL)}
 
-\item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_scales}}}
+\item{census_scales}{\if{html}{\out{<character>}} cc.data::census_scales}
 
-\item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[cc.data]{census_years}}}
+\item{census_years}{\if{html}{\out{<numeric>}}   cc.data::census_years}
 
-\item{unit_type}{<\code{data.frame}> The output of
-\code{\link[cc.data]{census_unit_type}}.}
+\item{unit_type}{<data.frame|NULL> if NULL, built from variables actually present}
 }
 \value{
-A list of scales and years of census data with variables desired as
-percentage normalized.
+list [\link{scale}][\link{year}] sf with normalized variables
 }
 \description{
-Normalize percentage variables
+Normalize census variables to proportions in \link{0,1}
 }
