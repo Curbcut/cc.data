@@ -333,30 +333,41 @@
 #' @source Computed using `cancensus` and spatial intersections between CT shapefiles.
 "census_csd_correspondences_list"
 
-#' Bilingual NAICS Classification Dictionary (2- to 5-digit)
+#' Bilingual NAICS Classification Dictionary (2- to 6-digit)
 #'
-#' A list containing the full NAICS classification hierarchy (2-digit to 5-digit levels),
-#' scraped from the official Statistics Canada website in both English and French.
+#' A list containing the full NAICS 2022 classification hierarchy (2-digit to 6-digit levels),
+#' downloaded from the official Statistics Canada website in both English and French.
 #'
 #' This dictionary allows users to match NAICS codes with their official titles in both languages,
-#' and is useful for harmonizing business datasets or statistical analysis across industries.
+#' which is useful for harmonizing business datasets or performing statistical analyses across industries.
 #'
-#' @format ## `naics_dictionary`
-#' A named list of two elements:
+#' @format A named list of two elements:
 #' \describe{
-#'   \item{en}{A named list (`digt2`, `digt3`, `digt4`, `digt5`) of data frames in English. Each data frame contains:}
+#'   \item{en}{A tibble containing English NAICS codes and descriptions, with columns:}
 #'     \describe{
-#'       \item{code}{The NAICS code (2 to 5 digits)}
-#'       \item{description}{The official English title of the NAICS category}
-#'       \item{level}{The hierarchical level (e.g., 2, 3, 4, 5)}
+#'       \item{level}{Hierarchical level of the NAICS code (2, 3, 4, 5, or 6)}
+#'       \item{hierarchical_structure}{Full hierarchical string of the NAICS code}
+#'       \item{code}{The NAICS code as character (2 to 6 digits)}
+#'       \item{parent}{Parent NAICS code}
+#'       \item{class_title}{Official English title of the NAICS category}
+#'       \item{class_definition}{Official English definition of the NAICS category}
 #'     }
-#'   \item{fr}{Same structure as `en`, but with official French titles.}
+#'   \item{fr}{A tibble containing French NAICS codes and descriptions, same structure as \code{en}:}
+#'     \describe{
+#'       \item{level}{Hierarchical level of the NAICS code (2, 3, 4, 5, or 6)}
+#'       \item{hierarchical_structure}{Full hierarchical string of the NAICS code}
+#'       \item{code}{The NAICS code as character (2 to 6 digits)}
+#'       \item{parent}{Parent NAICS code}
+#'       \item{class_title}{Official French title of the NAICS category}
+#'       \item{class_definition}{Official French definition of the NAICS category}
+#'     }
 #' }
 #'
 #' @source Statistics Canada – NAICS 2022 Version 1.0  
-#' ([English site](https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1181553),  
-#'  [French site](https://www23.statcan.gc.ca/imdb/p3VD_f.pl?Function=getVD&TVD=1181553))
+#' ([English](https://www23.statcan.gc.ca/imdb/p3VD.pl?Function=getVD&TVD=1181553),  
+#'  [French](https://www23.statcan.gc.ca/imdb/p3VD_f.pl?Function=getVD&TVD=1181553))
 "naics_dictionary"
+
 
 #' Bedroom-size census vectors
 #'
