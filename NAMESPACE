@@ -3,7 +3,6 @@
 export(BC_UCB)
 export(DB_get)
 export(accessibility_DA_location)
-export(accessibility_mv_points)
 export(arcgis_rest_services_ret)
 export(boc_elasticities)
 export(boc_get_access_credit_expectations)

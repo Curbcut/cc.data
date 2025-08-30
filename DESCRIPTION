@@ -40,7 +40,6 @@ Suggests:
     gtfsrouter,
     gtfstools,
     matchr,
-    cc.buildr,
     cc.pipe,
     future,
     janitor,
