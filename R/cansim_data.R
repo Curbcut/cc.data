@@ -168,7 +168,7 @@ cansim_wages <- function() {
 #' @export
 cansim_construction_price <- function() {
   
-  constr_price <- cansim::get_cansim_connection("18-10-0276-01") |> 
+  constr_price <- cansim::get_cansim_connection("18-10-0289-01") |> 
     cansim::collect_and_normalize()
   
   census_regions <- cancensus::list_census_regions("CA21")
