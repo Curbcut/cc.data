@@ -166,84 +166,107 @@ cansim_wages <- function() {
 #'   \item{construction_price_residential}{Construction price data for residential buildings}
 #'   \item{construction_price_nonres}{Construction price data for non-residential buildings}
 #' @export
-cansim_construction_price <- function() {
-  
-  constr_price <- cansim::get_cansim_connection("18-10-0289-01") |> 
-    cansim::collect_and_normalize()
+cansim_construction_price <- function () {
+  # 1) Charger CANSIM et CMA 2021
+  constr_price <- cansim::get_cansim_connection("18-10-0289-01") |>
+      cansim::collect_and_normalize()
   
   census_regions <- cancensus::list_census_regions("CA21")
-  cma_list <- dplyr::filter(census_regions, level == "CMA") |> 
-    dplyr::select(region, name)
+  cma_list <- dplyr::filter(census_regions, level == "CMA") |>
+      dplyr::select(region, name)
   
-  # Get CMA data without geometry
   cma_all <- cancensus::get_census(
-    dataset = "CA21", 
-    regions = list(CMA = cma_list$region), 
-    geo_format = "sf", 
-    level = "CMA"
-  ) |> 
-    sf::st_drop_geometry() |>  # Drop geometry here
-    dplyr::select(name, GeoUID)
+      dataset = "CA21",
+      regions = list(CMA = cma_list$region),
+      geo_format = "sf",
+      level = "CMA"
+  ) |>
+      sf::st_drop_geometry() |>
+      dplyr::select(name, GeoUID)
   
+  # 2) Normaliser les tirets (–, —) -> "-" pour matcher le mapping manuel
+  normalize_name <- function(x) {
+      x |>
+          stringr::str_replace_all("–|—", "-") |>
+          stringr::str_squish()
+  }
+  constr_price <- dplyr::mutate(constr_price, GEO = normalize_name(GEO))
+  
+  # 3) Mapping MANUEL exact
   geo_mapping <- c(
-    "St. John's, Newfoundland and Labrador" = "St. John's (B)",
-    "Halifax, Nova Scotia" = "Halifax (B)",
-    "Moncton, New Brunswick" = "Moncton (B)",
-    "Montréal, Quebec" = "Montréal (B)",
-    "Ottawa-Gatineau, Ontario part, Ontario/Quebec" = "Ottawa - Gatineau (B)",
-    "Toronto, Ontario" = "Toronto (B)",
-    "Winnipeg, Manitoba" = "Winnipeg (B)",
-    "Saskatoon, Saskatchewan" = "Saskatoon (B)",
-    "Calgary, Alberta" = "Calgary (B)",
-    "Edmonton, Alberta" = "Edmonton (B)",
-    "Vancouver, British Columbia" = "Vancouver (B)"
+      "St. John's, Newfoundland and Labrador" = "St. John's (B)",
+      "Halifax, Nova Scotia"                  = "Halifax (B)",
+      "Moncton, New Brunswick"                = "Moncton (B)",
+      "Montréal, Quebec"                      = "Montréal (B)",
+      "Ottawa-Gatineau, Ontario part, Ontario/Quebec" = "Ottawa - Gatineau (B)",
+      "Toronto, Ontario"                      = "Toronto (B)",
+      "Winnipeg, Manitoba"                    = "Winnipeg (B)",
+      "Saskatoon, Saskatchewan"               = "Saskatoon (B)",
+      "Calgary, Alberta"                      = "Calgary (B)",
+      "Edmonton, Alberta"                     = "Edmonton (B)",
+      "Vancouver, British Columbia"           = "Vancouver (B)"
   )
   
+  # 4) Helper: pivot + recode manuel + join par NOM
   process_building_type <- function(building_type, prefix) {
-    constr_price |>
-      dplyr::filter(
-        `Type of building` == building_type,
-        Division == "Division composite",
-        GEO != "Eleven census metropolitan area composite"
-      ) |>
-      dplyr::select(ref_date = REF_DATE, name = GEO, value = val_norm) |>
-      tidyr::pivot_wider(
-        names_from = ref_date,
-        values_from = value,
-        names_prefix = prefix
-      ) |>
-      dplyr::mutate(name = dplyr::recode(name, !!!geo_mapping)) |>
-      dplyr::inner_join(cma_all, by = "name") |>
-      dplyr::rename(id = GeoUID)
+      wide <- constr_price |>
+          dplyr::filter(
+              .data$`Type of building` == building_type,
+              .data$Division == "Division composite",
+              !.data$GEO %in% c("Eleven census metropolitan area composite",
+                                "Fifteen census metropolitan area composite")
+          ) |>
+          dplyr::transmute(
+              ref_date = .data$REF_DATE,
+              name_raw = .data$GEO,
+              value    = .data$val_norm
+          ) |>
+          dplyr::mutate(
+              # recode STRICT : tout ce qui n'est pas mappé -> NA (donc exclu)
+              name = dplyr::recode(.data$name_raw, !!!geo_mapping, .default = NA_character_)
+          ) |>
+          dplyr::filter(!is.na(.data$name)) |>
+          dplyr::select(-.data$name_raw) |>
+          tidyr::pivot_wider(
+              names_from  = .data$ref_date,
+              values_from = .data$value,
+              names_prefix = prefix
+          )
+      
+      wide |>
+          dplyr::inner_join(cma_all, by = "name") |>
+          dplyr::rename(id = .data$GeoUID)
   }
   
+  # 5) Renommer AAAAmm -> AAAAqX
   rename_quarterly <- function(df) {
-    names(df) <- names(df) |>
-      stringr::str_replace_all("-", "") |>
-      stringr::str_replace("(\\d{4})01$", "\\1q1") |>
-      stringr::str_replace("(\\d{4})04$", "\\1q2") |>
-      stringr::str_replace("(\\d{4})07$", "\\1q3") |>
-      stringr::str_replace("(\\d{4})10$", "\\1q4")
-    df
+      nms <- names(df)
+      nms <- stringr::str_replace_all(nms, "-", "")
+      nms <- stringr::str_replace(nms, "(\\d{4})01$", "\\1q1")
+      nms <- stringr::str_replace(nms, "(\\d{4})04$", "\\1q2")
+      nms <- stringr::str_replace(nms, "(\\d{4})07$", "\\1q3")
+      nms <- stringr::str_replace(nms, "(\\d{4})10$", "\\1q4")
+      names(df) <- nms
+      df
   }
   
   construction_price_apartment <- process_building_type("Apartment buildings", "construction_price_apartment_") |>
-    rename_quarterly() |>
-    dplyr::select(id, dplyr::everything(), -name)
+      rename_quarterly() |>
+      dplyr::select(.data$id, dplyr::everything(), - .data$name)
   
   construction_price_residential <- process_building_type("Residential buildings", "construction_price_residential_") |>
-    rename_quarterly() |>
-    dplyr::select(id, dplyr::everything(), -name)
+      rename_quarterly() |>
+      dplyr::select(.data$id, dplyr::everything(), - .data$name)
   
   construction_price_nonres <- process_building_type("Non-residential buildings", "construction_price_nonres_") |>
-    rename_quarterly() |>
-    dplyr::select(id, dplyr::everything(), -name)
+      rename_quarterly() |>
+      dplyr::select(.data$id, dplyr::everything(), - .data$name)
   
-  return(list(
-    construction_price_apartment   = construction_price_apartment,
-    construction_price_residential = construction_price_residential,
-    construction_price_nonres      = construction_price_nonres
-  ))
+  list(
+      construction_price_apartment   = construction_price_apartment,
+      construction_price_residential = construction_price_residential,
+      construction_price_nonres      = construction_price_nonres
+  )
 }
 
 #' Helper: Reformat "YYYY-MM" to "YYYYMM"
