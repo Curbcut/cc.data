@@ -207,7 +207,6 @@ cmhc_reshape_results <- function(df, dimension, series_prefix = TRUE) {
   return(results_list)
 }
 
-
 #' Retrieve Annual CMHC Data for All CMAs
 #'
 #' Loops over all CMAs and request configurations to fetch, clean, reshape,
@@ -1189,6 +1188,282 @@ cmhc_get_monthly_csd <- function(requests, csd_correspondence_list, csd_uids) {
   
   cmhc_vectors$CSD <- lapply(cmhc_vectors$CSD, function(df) {
     cmhc_finalize_results(list(df))[[1]]
+  })
+  
+  return(cmhc_vectors)
+}
+
+#' Fetch CMHC Data for a Specific Survey Zone (Monthly or Annual)
+#'
+#' Downloads raw CMHC data for a given Survey Zone (CMA GeoUID) and time period.
+#'
+#' @param survey Character. The CMHC survey code (e.g., `"Scss"`).
+#' @param series Character. The CMHC data series to retrieve (e.g., `"Starts"`).
+#' @param dimension Character. The breakdown dimension (e.g., `"Dwelling Type"`).
+#' @param geo_uid Character. The CMA GeoUID (e.g., `"24462"` for Montréal).
+#' @param year Character or numeric. The year of the data (format `"YYYY"`).
+#' @param month Character or numeric, optional. The month of the data (format `"MM"`). Use `NULL` for annual data.
+#'
+#' @return A `data.frame` (tibble) of raw CMHC results, or `NULL` in case of error.
+cmhc_fetch_survey_zone_data <- function(survey, series, dimension, geo_uid, year, month = NULL) {
+  tryCatch({
+    cmhc::get_cmhc(
+      survey = survey,
+      series = series,
+      dimension = dimension,
+      breakdown = "Survey Zones",
+      geo_uid = geo_uid,
+      year = year,
+      month = month
+    )
+  }, error = function(e) {
+    warning(sprintf("Survey Zones %s (%s-%s): Error -> %s", geo_uid, year, month, e$message))
+    return(NULL)
+  })
+}
+
+#' Attach GeoUID to raw CMHC Survey Zone data
+#'
+#' Matches `Survey Zones` from raw CMHC data with official survey zone references using fuzzy string matching,
+#' and attaches the corresponding `GeoUID` (`METZONE_UID`) for further processing.
+#'
+#' @param df A raw CMHC data.frame that must contain a column named `"Survey Zones"`.
+#' @param survey_zones_ref A reference table (data.frame) with columns `"ZONE_NAME_EN"` and `"METZONE_UID"`.
+#' @param max_dist Integer. Maximum Levenshtein distance allowed for fuzzy matching (default is 3).
+#'
+#' @return A `data.frame` with an added column `GeoUID`. Returns `NULL` if input is empty or unmatched.
+cmhc_attach_zone_geouid <- function(df, survey_zones_ref, max_dist = 3) {
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  stopifnot("Survey Zones" %in% names(df), all(c("ZONE_NAME_EN", "METZONE_UID") %in% colnames(survey_zones_ref)))
+  
+  df <- dplyr::filter(df, !is.na(`Survey Zones`))
+  if (nrow(df) == 0) return(NULL)
+  
+  zone_names <- unique(df$`Survey Zones`)
+  
+  clean_zone_name <- function(name) {
+    name |>
+      stringr::str_to_lower() |>
+      stringr::str_replace_all("[éèêë]", "e") |>
+      stringr::str_replace_all("[àâä]", "a") |>
+      stringr::str_replace_all("[ç]", "c") |>
+      stringr::str_replace_all("[^a-z0-9]", "") |>
+      stringr::str_trim()
+  }
+  
+  input_df <- tibble::tibble(zone_raw = zone_names, zone_clean = clean_zone_name(zone_names))
+  ref_df <- dplyr::mutate(survey_zones_ref, zone_clean = clean_zone_name(ZONE_NAME_EN))
+  
+  matched <- fuzzyjoin::stringdist_inner_join(
+    input_df, ref_df,
+    by = "zone_clean",
+    method = "lv",
+    max_dist = max_dist,
+    distance_col = "dist"
+  ) |>
+    dplyr::group_by(zone_raw) |>
+    dplyr::slice_min(order_by = dist, n = 1, with_ties = FALSE) |>
+    dplyr::ungroup() |>
+    dplyr::select(zone_raw, METZONE_UID)
+  
+  dplyr::left_join(df, matched, by = c("Survey Zones" = "zone_raw")) |>
+    dplyr::rename(GeoUID = METZONE_UID)
+}
+
+#' Retrieve Annual CMHC Data for Survey Zones
+#'
+#' Downloads, cleans, reshapes, and merges annual CMHC data for survey zones associated with selected parent CMAs.
+#' This function runs in parallel over all requested parent CMA GeoUIDs and returns data harmonized by zone and year.
+#'
+#' @param requests A list of request objects. Each must include the following elements:
+#'   - `survey`: Character. The CMHC survey code (e.g., `"Scss"`).
+#'   - `series`: Character. The data series (e.g., `"Starts"`).
+#'   - `dimension`: Character. The breakdown dimension (e.g., `"Dwelling Type"`).
+#'   - `years`: Integer vector. List of years to request (e.g., `2010:2024`).
+#' @param survey_zones_ref A reference `data.frame` with columns `ZONE_NAME_EN` and `METZONE_UID`, used to attach unique `GeoUID` to each zone.
+#'
+#' @return A named list with element `survey_zone`, containing one cleaned `data.frame` per variable requested.
+#'         Each data.frame has one row per survey zone (`id`), and one column per year (e.g., `starts_dwelling_type_all_2010`, ...).
+#' @export
+cmhc_get_annual_survey_zone <- function(requests, survey_zones_ref) {
+  cmhc_vectors <- list(survey_zone = list())
+  
+  # Get parent CMA GeoUIDs that define the scope of survey zones
+  cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
+  future::plan(future::multisession)
+  
+  zone_parallel_results <- future.apply::future_lapply(
+    unique(cma_all$id),
+    function(geo_uid) {
+      local_results <- list()
+      
+      for (req in requests) {
+        survey <- req$survey
+        series <- req$series
+        dimension <- req$dimension
+        years <- req$years
+        
+        for (year in years) {
+          message(sprintf("Processing Survey Zone (Parent CMA %s) — year %s — %s / %s", geo_uid, year, survey, series))
+          
+          raw <- cmhc_fetch_survey_zone_data(survey, series, dimension, geo_uid, year)
+          if (is.null(raw) || nrow(raw) == 0) next
+          
+          raw <- cmhc_attach_zone_geouid(raw, survey_zones_ref)
+          if (is.null(raw) || !"GeoUID" %in% names(raw)) {
+            warning(sprintf("Survey Zone (Parent CMA %s), year %s: matching failed. Skipping.", geo_uid, year))
+            next
+          }
+          
+          cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
+          if (is.null(cleaned)) next
+          
+          reshaped <- cmhc_reshape_results(cleaned, dimension)
+          
+          for (key in names(reshaped)) {
+            zone_key <- paste0("parent_", geo_uid)
+            if (!key %in% names(local_results)) local_results[[key]] <- list()
+            if (!zone_key %in% names(local_results[[key]])) {
+              local_results[[key]][[zone_key]] <- reshaped[[key]]
+            } else {
+              local_results[[key]][[zone_key]] <- dplyr::full_join(
+                local_results[[key]][[zone_key]],
+                reshaped[[key]],
+                by = "geouid"
+              )
+            }
+          }
+        }
+      }
+      
+      return(local_results)
+    },
+    future.seed = TRUE
+  )
+  
+  # Merge across parent zones and years
+  all_years_results <- list()
+  for (zone_result in zone_parallel_results) {
+    for (key in names(zone_result)) {
+      for (zone_key in names(zone_result[[key]])) {
+        if (!key %in% names(all_years_results)) all_years_results[[key]] <- list()
+        if (!zone_key %in% names(all_years_results[[key]])) {
+          all_years_results[[key]][[zone_key]] <- zone_result[[key]][[zone_key]]
+        } else {
+          all_years_results[[key]][[zone_key]] <- dplyr::full_join(
+            all_years_results[[key]][[zone_key]],
+            zone_result[[key]][[zone_key]],
+            by = "geouid"
+          )
+        }
+      }
+    }
+  }
+  
+  cmhc_vectors$survey_zone <- cmhc_finalize_results(
+    lapply(all_years_results, function(results_by_zone) dplyr::bind_rows(results_by_zone))
+  )
+  
+  return(cmhc_vectors)
+}
+
+#' Retrieve Monthly CMHC Data for Survey Zones
+#'
+#' Downloads, cleans, reshapes, and merges monthly CMHC data for survey zones associated with selected parent CMAs.
+#' Runs in parallel over all parent CMA GeoUIDs and time combinations.
+#'
+#' @param requests A list of request objects. Each must include the following elements:
+#'   - `survey`: Character. The CMHC survey code (e.g., `"Scss"`).
+#'   - `series`: Character. The data series (e.g., `"Starts"`).
+#'   - `dimension`: Character. The breakdown dimension (e.g., `"Dwelling Type"`).
+#'   - `years`: Integer vector. Years to request (e.g., `2015:2024`).
+#'   - `months`: Character or integer vector of two-digit months (e.g., `sprintf("%02d", 1:12)`).
+#' @param survey_zones_ref A reference `data.frame` with columns `ZONE_NAME_EN` and `METZONE_UID`, used to match and attach GeoUIDs.
+#'
+#' @return A named list with element `survey_zone`, containing one cleaned `data.frame` per variable requested.
+#'         Each data.frame has one row per survey zone (`id`), and one column per month (e.g., `starts_dwelling_type_all_201501`).
+#' @export
+cmhc_get_monthly_survey_zone <- function(requests, survey_zones_ref) {
+  cmhc_vectors <- list(survey_zone = list())
+  
+  # Use parent CMA IDs to scope survey zones
+  cma_all <- cc.pipe::get_census_digital_scales(scales = "cma")$cmasplit
+  future::plan(future::multisession)
+  
+  zone_parallel_results <- future.apply::future_lapply(
+    unique(cma_all$id),
+    function(geo_uid) {
+      local_results <- list()
+      
+      for (req in requests) {
+        survey <- req$survey
+        series <- req$series
+        dimension <- req$dimension
+        years <- req$years
+        months <- req$months
+        
+        for (year in years) {
+          for (month in months) {
+            message(sprintf("Processing Survey Zone (Parent CMA %s) — %s-%s — %s / %s",
+                            geo_uid, year, month, survey, series))
+            
+            raw <- cmhc_fetch_survey_zone_data(survey, series, dimension, geo_uid, year, month)
+            if (is.null(raw) || nrow(raw) == 0) next
+            
+            raw <- cmhc_attach_zone_geouid(raw, survey_zones_ref)
+            if (is.null(raw) || !"GeoUID" %in% names(raw)) {
+              warning(sprintf("Survey Zone (Parent CMA %s), %s-%s: matching failed. Skipping.", geo_uid, year, month))
+              next
+            }
+            
+            cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
+            if (is.null(cleaned)) next
+            
+            reshaped <- cmhc_reshape_results(cleaned, dimension)
+            
+            for (key in names(reshaped)) {
+              zone_key <- paste0("parent_", geo_uid)
+              if (!key %in% names(local_results)) local_results[[key]] <- list()
+              if (!zone_key %in% names(local_results[[key]])) {
+                local_results[[key]][[zone_key]] <- reshaped[[key]]
+              } else {
+                local_results[[key]][[zone_key]] <- dplyr::full_join(
+                  local_results[[key]][[zone_key]],
+                  reshaped[[key]],
+                  by = "geouid"
+                )
+              }
+            }
+          }
+        }
+      }
+      
+      return(local_results)
+    },
+    future.seed = TRUE
+  )
+  
+  all_months_results <- list()
+  for (zone_result in zone_parallel_results) {
+    for (key in names(zone_result)) {
+      for (zone_key in names(zone_result[[key]])) {
+        if (!key %in% names(all_months_results)) all_months_results[[key]] <- list()
+        if (!zone_key %in% names(all_months_results[[key]])) {
+          all_months_results[[key]][[zone_key]] <- zone_result[[key]][[zone_key]]
+        } else {
+          all_months_results[[key]][[zone_key]] <- dplyr::full_join(
+            all_months_results[[key]][[zone_key]],
+            zone_result[[key]][[zone_key]],
+            by = "geouid"
+          )
+        }
+      }
+    }
+  }
+  
+  cmhc_vectors$survey_zone <- lapply(all_months_results, function(results_by_zone) {
+    final_df <- dplyr::bind_rows(results_by_zone)
+    cmhc_finalize_results(list(final_df))[[1]]
   })
   
   return(cmhc_vectors)

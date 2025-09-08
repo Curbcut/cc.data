@@ -70,10 +70,12 @@ build_alp <- function(
     require(data.table)
     data.table::setDT(db_year)
 
+    # Ensure     data.table::setDT(db_year)
+
     # Ensure 'DBUID' in 'db_year' and 'from' in 'ttm_foot' are of the same type (character)
-    db_year[, DBUID := as.character(DBUID)]
-    ttm_foot[, from := as.character(from)]
-    ttm_foot[, to := as.character(to)]
+    db_year$DBUID <- as.character(db_year$DBUID)
+    ttm_foot$from <- as.character(ttm_foot$from)
+    ttm_foot$to <- as.character(ttm_foot$to)
 
     # Create a key for joining
     data.table::setkey(ttm_foot, from)
@@ -82,14 +84,16 @@ build_alp <- function(
     # This creates a table with every 'from' matched to its 'to' and includes the 'three_ways' for each 'to'
     joined <- ttm_foot[
       db_year,
-      .(from, to, three_ways = i.three_ways),
-      on = .(to = DBUID),
-      nomatch = 0
+      list(from, to, three_ways = i.three_ways),
+      on = c("to" = "DBUID"),
+      nomatch = 0L
     ]
 
     # Aggregate the 'three_ways' by 'from', effectively summing for each original DBUID based on its 'to' DBUIDs
-    result <- joined[, .(three_ways = sum(three_ways, na.rm = TRUE)), by = from]
-
+    result <- joined[,
+      list(three_ways = sum(three_ways, na.rm = TRUE)),
+      by = "from"
+    ]
     return(result)
   }
 
@@ -152,7 +156,9 @@ build_alp <- function(
     years,
     \(x) {
       file <- sprintf("DB_shp_%s.zip", x)
-      if (x == 2021) file <- "DB_shp_carto.zip"
+      if (x == 2021) {
+        file <- "DB_shp_carto.zip"
+      }
       cc.data::bucket_read_object_zip_shp(file, "curbcut.rawdata")
     },
     USE.NAMES = TRUE,
@@ -206,36 +212,38 @@ build_alp <- function(
 
   # Function to process each db_year
   process_db_year <- function(db_year) {
-    # Load required package
-    require(data.table)
-
-    ttm_foot_dt <- data.table(ttm_foot)
-    db_year_dt <- data.table(db_year)
+    ttm_foot_dt <- data.table::data.table(ttm_foot)
+    db_year_dt <- data.table::data.table(db_year)
 
     # Convert 'DBUID' in 'db_year' and 'from', 'to' in 'ttm_foot' to character to ensure matching types
-    db_year_dt[, DBUID := as.character(DBUID)]
-    ttm_foot_dt[, from := as.character(from)]
-    ttm_foot_dt[, to := as.character(to)]
+    db_year_dt[["DBUID"]] <- as.character(db_year_dt[["DBUID"]])
+    ttm_foot_dt[["from"]] <- as.character(ttm_foot_dt[["from"]])
+    ttm_foot_dt[["to"]] <- as.character(ttm_foot_dt[["to"]])
 
     # Ensure 'db_year' is a data.table and set keys for joining
-    setkey(db_year_dt, DBUID)
-    setkey(ttm_foot_dt, from, to)
+    data.table::setkey(db_year_dt, DBUID)
+    data.table::setkey(ttm_foot_dt, from, to)
 
     # Join 'ttm_foot' to 'db_year' on 'to' matching 'DBUID' to bring 'density' and 'new_area' over to 'ttm_foot'
     # Note: Using 'new_area' as weights requires it to be available in the final joined table
     joined <- ttm_foot_dt[
-      db_year_dt,
-      .(from, to, density = i.density, new_area = i.new_area),
-      on = .(to = DBUID),
-      nomatch = 0
+      db_year_dt[, c("DBUID", "density", "new_area"), with = FALSE],
+      list(from, to, density = density, new_area = new_area),
+      on = list(to = DBUID),
+      nomatch = 0L
     ]
 
     # Compute weighted mean of 'density' by 'from', using 'new_area' as weights
     result <- joined[,
-      .(density_weighted_mean = weighted.mean(density, new_area, na.rm = TRUE)),
-      by = from
+      list(
+        density_weighted_mean = stats::weighted.mean(
+          density,
+          w = new_area,
+          na.rm = TRUE
+        )
+      ),
+      by = "from"
     ]
-
     return(result)
   }
 
@@ -320,10 +328,14 @@ build_alp <- function(
       intersects <- sf::st_intersects(df, poi)
       df$poi <- lengths(intersects)
 
+      # Calculate the POI number for each DA
+      df <- DB_table
+      intersects <- sf::st_intersects(df, poi)
+      df$poi <- lengths(intersects)
+
       # For each DA, calculate the number of POI in the other DAs accessible in
       # a 15 minutes walk
       df <- sf::st_drop_geometry(df)
-      require(data.table)
       df <- data.table::data.table(df)
       ttm_foot_dt <- data.table::data.table(ttm_foot)
       df[, DBUID := as.character(DBUID)]
@@ -344,16 +356,6 @@ build_alp <- function(
     simplify = FALSE,
     USE.NAMES = TRUE
   )
-
-  pois_yr <- lapply(seq_along(pois), \(i) {
-    df <- pois[[i]]
-    df$year <- years[[i]]
-    df
-  })
-
-  pois_yr <- Reduce(rbind, pois_yr)
-  pois_yr_fin <- pois_yr
-  pois_yr_fin$poi <- stats::ecdf(pois_yr_fin$poi)(pois_yr_fin$poi)
 
   pois_yr_fin <- lapply(seq_along(years), \(i) {
     out <- pois_yr_fin[pois_yr_fin$year == years[[i]], ]
@@ -480,11 +482,12 @@ get_all_three_plus_ways <- function(year, crs) {
     pb <- progressr::progressor(length(grid_intersects))
     three_ways <- future.apply::future_lapply(seq_along(grid_intersects), \(x) {
       out <- sf::st_intersection(grid[x, ], streets[grid_intersects[[x]], ])
-      if (nrow(out) == 0)
+      if (nrow(out) == 0) {
         return({
           pb()
           NULL
         })
+      }
       out <- sf::st_intersection(out)
       out <- out[sf::st_is(out, type = "POINT"), ]
       pb()

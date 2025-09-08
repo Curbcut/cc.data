@@ -1009,7 +1009,7 @@ usethis::use_data(census_vectors_householdsize, overwrite = TRUE)
 census_vectors_income <-
   tibble::tibble(
     var_code = "inc_median_income",
-    type = list(c("dollar","median")),
+    type = list(c("dollar","med")),
     theme = "Income",
     vec_2021 = list("v_CA21_906"),
     vec_2016 = list("v_CA16_2397"),
@@ -1027,7 +1027,7 @@ census_vectors_income <-
   ) |>
     tibble::add_row(
       var_code = "inc_average_income",
-      type = list(c("dollar","average")),
+      type = list(c("dollar","avg")),
       theme = "Income",
       vec_2021 = list("v_CA21_915"),
       vec_2016 = list("v_CA16_4985"),

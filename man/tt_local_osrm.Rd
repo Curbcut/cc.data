@@ -2,7 +2,7 @@
 % Please edit documentation in R/travel_time_matrix.R
 \name{tt_local_osrm}
 \alias{tt_local_osrm}
-\title{Create a docker local OSRM instance for faster travel time matrix}
+\title{Create a local OSRM instance with Docker}
 \usage{
 tt_local_osrm(
   mode = "car",
@@ -12,21 +12,24 @@ tt_local_osrm(
 )
 }
 \arguments{
-\item{mode}{<\code{character}> Options are \code{bicycle}, \code{car} and \code{foot}. Here
-are the profiles:
-\href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}}
+\item{mode}{\if{html}{\out{<character>}} One of \code{"car"}, \code{"bicycle"}, or \code{"foot"}. Default \code{"car"}.}
 
-\item{osm_pbf}{<\code{character}> Link to the wanted version of OSM. Defaults to
-Canada.}
+\item{port}{\if{html}{\out{<integer>}} Port for the OSRM HTTP server. Default \code{5001L}.}
 
-\item{dest_folder}{<\code{character}> Folder where OSM information should be
-downloaded. Defaults to temporary directory.}
+\item{osm_pbf}{\if{html}{\out{<character>}} Path or relative name of the OSM \code{.pbf} to use.
+Default \code{"north-america/canada-latest.osm.pbf"}.}
+
+\item{dest_folder}{\if{html}{\out{<character>}} Directory where data will be downloaded and
+processed. Default \code{tempdir()}.}
 }
 \value{
-Opens a terminal from which the docker image is created.
+\if{html}{\out{<character>}} (invisibly) the \code{dest_folder}. Function is called for its side effects.
 }
 \description{
-For further information, read the
+Downloads OSM data (if needed), builds the OSRM graph for the chosen \code{mode},
+and launches a local OSRM HTTP server in a Docker container.
+For details, see
 \href{https://github.com/Project-OSRM/osrm-backend}{Project-OSRM/osrm-backend}
-documentation
+and
+\href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}.
 }

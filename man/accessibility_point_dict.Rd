@@ -24,7 +24,7 @@ retrieved using SIC codes come from
 accessibility_point_dict
 }
 \description{
-Computed using the \code{\link[cc.data]{accessibility_DA_location}} function.
+Computed using the \code{accessibility_DA_location()} function.
 Industry name and explanation comes from the SIC code attached to every
 point.
 }

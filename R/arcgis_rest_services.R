@@ -1,19 +1,18 @@
 #' Retrieve GeoJSON Data from ArcGIS REST Services
 #'
-#' This function makes a GET request to an ArcGIS REST service and retrieves
-#' data in GeoJSON format. It is designed to fetch all features and fields from
-#' the specified service endpoint. The retrieved data is returned as a spatial
-#' dataframe using the `sf` package.
+#' Makes paginated GET requests to an ArcGIS REST service and retrieves data
+#' as GeoJSON (or JSON fallback). Optionally returns spatial features using \pkg{sf}.
 #'
-#' @param url <`character`> The base URL of the ArcGIS REST service endpoint.
-#' The function ensures that the URL ends with "/query". If the URL does
-#' not end with "/query", the function modifies it accordingly.
-#' @param limit <`integer`> The maximum number of records to retrieve per request.
-#' Default is 1000. This controls how many records are retrieved in each API call.
-#' If you want to retrieve fewer or more records per request, you can adjust this.
+#' @param url character. Base URL of the ArcGIS REST service endpoint.
+#'   If it does not end with "/query", the function appends it.
+#' @param limit integer. Maximum number of records per request (default: 1000).
+#'   Controls page size for the API.
+#' @param sf logical. If \code{TRUE} (default), returns an \code{sf} object
+#'   with geometry; if \code{FALSE}, returns a tibble without geometry.
 #'
-#' @return An object of class `sf` representing the spatial dataframe containing
-#'         the fetched data.
+#' @return If \code{sf = TRUE}, an \code{sf} object (rows bound across pages).
+#'   If \code{sf = FALSE}, a \code{tibble} (rows bound across pages).
+#'
 #' @export
 arcgis_rest_services_ret <- function(url, limit = 1000, sf = TRUE) {
   # Ensure URL ends with "query"

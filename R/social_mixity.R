@@ -80,26 +80,24 @@ build_social_mixity <- function(DB_table = bucket_read_object_zip_shp("DB_shp_ca
 
 
   # Sum up, for every DA, the values of all the DAs accessible by foot ------
-
-  require(data.table)
   # Convert data frames to data.tables for faster operations
-  all_pr_vecs_dt <- as.data.table(all_pr_vecs)
-  ttm_foot_DA_dt <- as.data.table(ttm_foot_DA)
+  all_pr_vecs_dt <- data.table::as.data.table(all_pr_vecs)
+  ttm_foot_DA_dt <- data.table::as.data.table(ttm_foot_DA)
 
   # Set the GeoUID as the key for faster join
-  setkey(all_pr_vecs_dt, GeoUID)
-  setkey(ttm_foot_DA_dt, from)
+  data.table::setkey(all_pr_vecs_dt, GeoUID)
+  data.table::setkey(ttm_foot_DA_dt, from)
 
   # Perform join to create a mapping of from-to relationships
-  ttm_foot_DA_joined <- ttm_foot_DA_dt[all_pr_vecs_dt, on = .(from = GeoUID), nomatch = 0]
+  ttm_foot_DA_joined <- ttm_foot_DA_dt[all_pr_vecs_dt, on = "from==GeoUID", nomatch = 0L]
 
   # Group by 'from' and compute the column sums across matching GeoUIDs
-  aggregated_result <- ttm_foot_DA_joined[, lapply(.SD, sum), by = .(from),
-                                          .SDcols = setdiff(names(all_pr_vecs_dt), "GeoUID")]
+  aggregated_result <- ttm_foot_DA_joined[ , lapply(.SD, sum), by = "from", 
+  .SDcols = setdiff(names(all_pr_vecs_dt), "GeoUID") ]
 
   # Update 'all_pr_vecs' with the aggregated result, joining by the GeoUID
-  all_pr_vecs_dt[aggregated_result, on = .(GeoUID = from),
-                 (names(aggregated_result)[-1]) := mget(paste0("i.", names(aggregated_result)[-1]))]
+  all_pr_vecs_dt[aggregated_result, on = "GeoUID==from", 
+  (setdiff(names(aggregated_result), "from")) := mget(paste0("i.", setdiff(names(aggregated_result), "from"))) ]
 
   # Convert back to data.frame if necessary
   all_pr_vecs <- as.data.frame(all_pr_vecs_dt)

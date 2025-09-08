@@ -12,17 +12,13 @@ census_reduce_years(
 )
 }
 \arguments{
-\item{parent_dropped}{<\verb{list of sf data.frame}> The output of
-\code{\link[cc.data]{census_drop_parents}}.}
+\item{parent_dropped}{\if{html}{\out{<list of sf data.frame>}} The output of \code{\link[=census_drop_parents]{census_drop_parents()}}.}
 
-\item{census_vectors}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_vectors}}}
+\item{census_vectors}{\if{html}{\out{<character vector>}} Should be equal to \link{census_vectors}.}
 
-\item{census_scales}{<\verb{character vector}> Should be equal to
-\code{\link[cc.data]{census_scales}}}
+\item{census_scales}{\if{html}{\out{<character vector>}} Should be equal to \link{census_scales}.}
 
-\item{census_years}{<\verb{numeric vector}> Should be equal to
-\code{\link[cc.data]{census_years}}}
+\item{census_years}{\if{html}{\out{<numeric vector>}}   Should be equal to \link{census_years}.}
 }
 \value{
 A list of scales with years reduced, and the years appended to all
@@ -30,4 +26,7 @@ variables column name
 }
 \description{
 Reduce all census years to one dataframe
+}
+\seealso{
+\code{\link[=census_drop_parents]{census_drop_parents()}}
 }

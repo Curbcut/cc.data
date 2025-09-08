@@ -1,17 +1,15 @@
 #' Reduce all census years to one dataframe
 #'
-#' @param parent_dropped <`list of sf data.frame`> The output of
-#' \code{\link[cc.data]{census_drop_parents}}.
-#' @param census_vectors <`character vector`> Should be equal to
-#' \code{\link[cc.data]{census_vectors}}
-#' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[cc.data]{census_scales}}
-#' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[cc.data]{census_years}}
+#' @param parent_dropped <list of sf data.frame> The output of [census_drop_parents()].
+#' @param census_vectors <character vector> Should be equal to [census_vectors].
+#' @param census_scales  <character vector> Should be equal to [census_scales].
+#' @param census_years   <numeric vector>   Should be equal to [census_years].
 #'
 #' @return A list of scales with years reduced, and the years appended to all
 #' variables column name
+#' @seealso [census_drop_parents()]
 #' @export
+
 census_reduce_years <- function(parent_dropped,
                                 census_vectors = cc.data::census_vectors,
                                 census_scales = cc.data::census_scales,

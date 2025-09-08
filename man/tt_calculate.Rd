@@ -11,19 +11,17 @@ tt_calculate(
 )
 }
 \arguments{
-\item{max_dist}{<\code{numeric}> The maximum distance used to calculate or not
-the destination time from a point to another. For a 60 minutes maximum, we
-can set the \code{car} default to 120,000 (for 120km/h max), the \code{bicycle} default
-to 30,000 (for 30km/h max) and the \code{foot} default to 10,000 (for 10km/h max).
-As calculation is very fast, no reason not to let a certain buffer.}
+\item{centroids}{<\verb{sf data.frame}> Points (DA ou DB) servant d'origines
+et de destinations.}
 
-\item{routing_server}{<\code{character}> The base URL of the routing server. If
-a server has been initiated using \code{\link[cc.data]{tt_local_osrm}},
-the default URL will be \verb{http://localhost:5001/}. Other services can be used
-like \verb{http://router.project-osrm.org/}.}
+\item{max_dist}{<\code{numeric}> Distance max utilisée pour couper les destinations.
+Exemples: \code{car} ~ 120000 (120 km/h), \code{bicycle} ~ 30000 (30 km/h),
+\code{foot} ~ 10000 (10 km/h).}
 
-\item{DA_table_centroids}{<\verb{sf data.frame}> A \code{DA} or \code{DB} point
-sf data.frame}
+\item{routing_server}{<\code{character}> Base URL du serveur de routage.
+Si \code{\link{tt_local_osrm}} a été lancé localement, la valeur par défaut
+est \verb{http://localhost:5001/}. D'autres services peuvent être utilisés,
+p.ex. \verb{http://router.project-osrm.org/}.}
 }
 \value{
 The travel time matrix

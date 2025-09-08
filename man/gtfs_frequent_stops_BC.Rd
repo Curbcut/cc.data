@@ -8,6 +8,9 @@ gtfs_frequent_stops_BC(DA_table)
 
 gtfs_frequent_stops_BC(DA_table)
 }
+\arguments{
+\item{DA_table}{\if{html}{\out{<sf data.frame>}} Polygones/centroïdes utilisés pour agréger les arrêts}
+}
 \value{
 An sf object of stops in British Columbia that are serviced
 every 15 minutes on average during the specified time windows on

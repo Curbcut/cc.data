@@ -59,6 +59,8 @@ gtfs_download_BC <- function(dest_folder = tempdir()) {
 #' to assess the frequency. Finally, stops meeting the high-frequency criteria
 #' across all specified time ranges are returned as an `sf` object with
 #' coordinates in the CRS format (EPSG:4326).
+#' @param DA_table <sf data.frame> Polygones/centroïdes utilisés pour agréger les arrêts
+
 #'
 #' @return An sf object of stops in British Columbia that are serviced
 #' every 15 minutes on average during the specified time windows on
