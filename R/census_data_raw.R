@@ -1,199 +1,356 @@
-#' Get census vectors values
+#' Download census vectors and join to geometries for specific variables.
 #'
-#' @param empty_geometries <`list of sf data.frame`> The output of
-#' \code{\link[cc.data]{census_empty_geometries}}.
-#' @param census_scales <`character vector`> Should be equal to
-#' \code{\link[cc.data]{census_scales}}
-#' @param census_years <`numeric vector`> Should be equal to
-#' \code{\link[cc.data]{census_years}}
-#'
-#' @return A list of scales and years of census data accompanied with the
-#' parent values.
+#' @param empty_geometries list [[scale]][[year]] sf(ID, geometry) in target CRS
+#' @param census_scales    character, e.g., c("C","PR","CMA","CSD","CT","DA")
+#' @param census_years     numeric, e.g., c(1996, 2001, ..., 2021)
+#' @param var_codes        character|NULL subset of var_code; NULL = all (+parents)
+#' @return list[[scale]][[year]] sf(ID, geometry, <vars>)
 #' @export
-census_data_raw <- function(empty_geometries,
-                            census_scales = cc.data::census_scales,
-                            census_years = cc.data::census_years) {
-  # Cancencus cache.
-  cache <- cancensus::list_cancensus_cache()
-  cache <- cache[!is.na(cache$vectors), ]
+census_data_raw <- function(
+  empty_geometries,
+  census_scales = cc.data::census_scales,
+  census_years  = cc.data::census_years,
+  var_codes     = NULL
+) {
+stopifnot(length(census_scales) > 0L, length(census_years) > 0L)
 
-  pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
+# --- datasets and vectors reference ---
+census_dataset <- paste0("CA", sub("^20", "", as.character(census_years)))
+ref <- cc.data::census_vectors_table
 
-  data_raw <-
-    sapply(census_scales, \(scale) {
-      sapply(as.character(census_years), \(year) {
-        # Relevant named vectors
-        vecs <-
-          cc.data::census_vectors_table[, c("var_code", paste0("vec_", year))]
-        vecs <- vecs[!is.na(vecs[[paste0("vec_", year)]]), ]
-        var_codes <- vecs[[paste0("vec_", year)]]
-        names(var_codes) <- vecs$var_code
-        var_codes <- var_codes[!is.na(var_codes)]
-        # With names, add a number in cases a variable needs to be a sum
-        var_codes <-
-          mapply(\(vec, name) {
-            vec <- unname(vec)
-            names(vec) <- paste0(name, "___", seq_along(vec))
-            vec
-          }, var_codes, names(var_codes), USE.NAMES = FALSE) |> unlist()
-
-        # Current census dataset
-        census_dataset <- paste0("CA", sub("20", "", year))
-
-        # Some vectors are retrieved and are duplicates. Split duplicates in
-        # multiple list elements to retrieve them before binding them
-        # Find duplicated codes with different names and their corresponding names
-        dup_codes <- duplicated(var_codes) | duplicated(var_codes, fromLast = TRUE)
-        dup_names <- duplicated(names(var_codes)) | duplicated(names(var_codes), fromLast = TRUE)
-        dup_diff <- dup_codes & !dup_names
-        split_names <- split(names(var_codes), cumsum(dup_diff))
-
-        # Split the vector into a list of 2 based on the duplicated codes with different names
-        split_var_codes <- split(var_codes, cumsum(dup_diff))
-
-        # Combine the split names and vectors into a named list
-        named_vecs <- Map(stats::setNames, split_var_codes, split_names)
-
-        # Get the variable values
-        dat <-
-          lapply(named_vecs, \(var_codes) {
-            dat <- if (scale == "DA") {
-              # Troubles with getting DA nation-wide. Get provinces and bind.
-              pr_codes <- cancensus::list_census_regions(census_dataset, quiet = TRUE)
-              pr_codes <- pr_codes$region[pr_codes$level == "PR"]
-              pr_codes <- lapply(pr_codes, \(x) list(PR = x))
-              all_pr_vecs <- lapply(pr_codes, \(reg) {
-                get_census_data(census_dataset = census_dataset,
-                                var_codes = unlist(var_codes),
-                                region = reg,
-                                scale = scale,
-                                cache = cache)
-              })
-              Reduce(rbind, all_pr_vecs)
-            } else {
-              get_census_data(census_dataset = census_dataset,
-                              var_codes = unlist(var_codes),
-                              region = list(C = "01"),
-                              scale = scale,
-                              cache = cache)
-            }
-
-            dat <- dat[, c("GeoUID", names(var_codes))]
-            names(dat)[1] <- "ID"
-
-            return(dat)
-          })
-
-        dat <- Reduce(\(x, y) merge(x, y, all = TRUE, by = "ID"), dat)
-
-        # Addition additive variables
-        tb <- table(gsub("___[0-9]$", "", names(dat)))
-        to_add <- names(tb[tb > 1])
-
-        to_add_done <- sapply(to_add, \(x) {
-          dat[grepl(x, names(dat))] |> rowSums()
-        }, USE.NAMES = TRUE, simplify = FALSE)
-
-        dat <- dat[, !grepl(paste0(to_add, collapse = "|"), names(dat))]
-        dat <- tibble::as_tibble(cbind(dat, to_add_done))
-
-        names(dat) <- gsub("___[0-9]$", "", names(dat))
-
-        # Return
-        pb()
-        return(dat)
-      }, simplify = FALSE, USE.NAMES = TRUE)
-    }, simplify = FALSE, USE.NAMES = TRUE)
-
-  # Bind the results to empty geometries
-  future.apply::future_mapply(
-    \(data_r, empty_g) {
-      future.apply::future_mapply(\(d, e) {
-        sf::st_as_sf(tibble::as_tibble(merge(d, e, by = "ID")))
-      }, data_r, empty_g, SIMPLIFY = FALSE, USE.NAMES = TRUE, future.seed = NULL)
-    }, data_raw, empty_geometries,
-    SIMPLIFY = FALSE, USE.NAMES = TRUE,
-    future.seed = NULL
-  )
+# build target var_code set (include parents for consistency)
+if (is.null(var_codes)) {
+  selected_varcodes <- unique(ref$var_code)
+} else {
+  var_codes <- unique(as.character(var_codes))
+  parents <- ref$parent_vec[match(var_codes, ref$var_code)]
+  parents <- parents[!is.na(parents)]
+  parents <- intersect(parents, ref$var_code)
+  selected_varcodes <- unique(c(var_codes, parents))
 }
 
-#' Get Census Data
-#'
-#' Retrieves census data for the given region and scale, utilizing caching if
-#' available. If unavailable, iterate over every variable to make sure we
-#' will be utilizing their cache next time.
-#'
-#' @param census_dataset <`character`> A string representing the dataset identifier.
-#' @param var_codes <`character vector`> Containing variable codes to be retrieved,
-#' named.
-#' @param region <`named list`> Specifying the region code (e.g., `list(C = "01")`).
-#' @param scale <`character`> A string or numeric value representing the scale or
-#' level of the data.
-#' @param cache <`data.frame`> A data frame containing cached information, structured
-#' appropriately. The output of `cancensus::list_cancensus_cache()`
-#'
-#' @return A data frame containing the requested census data. If the data is found
-#'         in the cache, it is returned directly from there. If not, the data is
-#'         retrieved vector by vector and merged by "GeoUID".
-get_census_data <- function(census_dataset, var_codes, region, scale,
-                            cache = cancensus::list_cancensus_cache()) {
-  # Is it in the cache?
-  vc_unnamed <- unname(var_codes)
-  fromjson <- \(x) if (is.na(x)) NA else jsonlite::fromJSON(x)
-  in_cache <- cache[sapply(
-    lapply(cache$vectors, fromjson),
-    identical, vc_unnamed
-  ), ]
-  if (nrow(in_cache) > 0)
-    in_cache <- in_cache[in_cache$dataset == census_dataset, ]
-  if (nrow(in_cache) > 0)
-    in_cache <- in_cache[in_cache$level == scale, ]
-  if (nrow(in_cache) > 0)
-    in_cache <- in_cache[
-      sapply(
-        lapply(in_cache$regions, jsonlite::fromJSON),
-        identical, region
-      ),
-    ]
-  # If it's in the cache, get it from the cache.
-  if (nrow(in_cache) > 0) {
-    cancensus::get_census(
-      dataset = census_dataset,
-      regions = region,
-      level = scale,
-      vectors = var_codes,
-      geo_format = NA,
-      quiet = TRUE,
-      use_cache = TRUE
-    )[c("GeoUID", names(var_codes))]
-  } else {
-    # If not, get it vector by vector so that next time, it's cached (vector
-    # by vector)!
-    vectors_output <- lapply(seq_along(var_codes), function(l) {
-      out <- cancensus::get_census(
-        dataset = census_dataset,
-        regions = region,
-        level = scale,
-        vectors = var_codes[l],
-        geo_format = NA,
-        quiet = TRUE,
-        use_cache = TRUE
-      )[c("GeoUID", names(var_codes[l]))]
+# cache table (vectors rows only)
+cache_tbl <- cancensus::list_cancensus_cache()
+cache_tbl <- cache_tbl[!is.na(cache_tbl$vectors), , drop = FALSE]
 
-      if (nrow(out) == 0) {
-        out <- cancensus::get_census(
-          dataset = census_dataset,
-          regions = region,
-          level = scale,
-          vectors = var_codes[l],
-          geo_format = NA,
-          quiet = TRUE,
-          use_cache = FALSE
-        )[c("GeoUID", names(var_codes[l]))]
+# memoized PR list per dataset
+pr_cache <- new.env(parent = emptyenv())
+get_pr_codes <- function(ds) {
+  key <- paste0("pr_", ds)
+  if (!exists(key, envir = pr_cache, inherits = FALSE)) {
+    regs <- cancensus::list_census_regions(ds, quiet = TRUE)
+    prs  <- regs$region[regs$level == "PR"]
+    assign(key, prs, envir = pr_cache)
+  }
+  get(key, envir = pr_cache, inherits = FALSE)
+}
+
+# retry helper (handles transient errors)
+with_retries <- function(expr, times = 3L, sleep = c(1,2,4), what = "request") {
+  last_err <- NULL
+  for (i in seq_len(times)) {
+    res <- try(force(expr), silent = TRUE)
+    if (!inherits(res, "try-error")) return(res)
+    last_err <- attr(res, "condition")
+    if (i < times) Sys.sleep(sleep[i])
+  }
+  stop(sprintf("Failed %s after %d retries: %s",
+               what, times, conditionMessage(last_err)), call. = FALSE)
+}
+
+# cache-aware fetch: full block if cached; else per-vector, full-join on GeoUID
+get_census_data <- function(census_dataset, var_codes, region, scale, cache, warn_empty = FALSE) {
+  stopifnot(length(var_codes) > 0)
+
+  cache_has_request <- function(cache_df, dataset, level, regions, var_codes) {
+    if (is.null(cache_df) || !nrow(cache_df)) return(FALSE)
+    vc <- unname(var_codes)
+    same_vecset <- function(js) if (is.na(js)) FALSE else setequal(jsonlite::fromJSON(js), vc)
+    cand <- cache_df[vapply(cache_df$vectors, same_vecset, logical(1L)), , drop = FALSE]
+    if (!nrow(cand)) return(FALSE)
+    cand <- cand[cand$dataset == dataset & cand$level == level, , drop = FALSE]
+    if (!nrow(cand)) return(FALSE)
+    same_reg <- function(js) identical(jsonlite::fromJSON(js), regions)
+    any(vapply(cand$regions, same_reg, logical(1L)))
+  }
+
+  normalize_piece <- function(df, out_name) {
+    df <- df[, c("GeoUID", out_name), drop = FALSE]
+    df$GeoUID <- as.character(df$GeoUID)
+    df
+  }
+
+  if (cache_has_request(cache, census_dataset, scale, region, unname(var_codes))) {
+    out <- with_retries(
+      cancensus::get_census(
+        dataset    = census_dataset,
+        regions    = region,
+        level      = scale,
+        vectors    = var_codes,
+        geo_format = NA,
+        quiet      = TRUE,
+        use_cache  = TRUE
+      ),
+      what = "get_census cached (block)"
+    )
+    out <- out[, c("GeoUID", names(var_codes)), drop = FALSE]
+    out$GeoUID <- as.character(out$GeoUID)
+    return(out)
+  }
+
+  pieces <- lapply(seq_along(var_codes), function(j) {
+    nm <- names(var_codes)[j]
+    df <- with_retries(
+      cancensus::get_census(
+        dataset    = census_dataset,
+        regions    = region,
+        level      = scale,
+        vectors    = var_codes[j],
+        geo_format = NA,
+        quiet      = TRUE,
+        use_cache  = TRUE
+      ),
+      what = sprintf("get_census vec (%s)", nm)
+    )
+    if (nrow(df) == 0L) {
+      if (warn_empty) warning(sprintf("Vector %s returned 0 rows (dataset=%s, scale=%s).", nm, census_dataset, scale))
+      df <- data.frame(GeoUID = character(0), setNames(list(numeric(0)), nm), check.names = FALSE)
+    } else {
+      df <- normalize_piece(df, nm)
+    }
+    df
+  })
+
+  Reduce(function(x, y) merge(x, y, all = TRUE, by = "GeoUID"), pieces)
+}
+# coalesce helper in case of duplicated GeoUID after PR stacking (DA)
+coalesce_by_id <- function(df, id_col = "GeoUID") {
+  sp <- split(df, df[[id_col]])
+  rows <- lapply(names(sp), function(k) {
+    d <- sp[[k]]
+    out <- d[1, , drop = FALSE]
+    for (nm in setdiff(names(d), id_col)) {
+      v <- d[[nm]]
+      idx <- which(!is.na(v))[1]
+      out[[nm]] <- if (length(idx)) v[idx] else NA
+    }
+    out[[id_col]] <- k
+    out
+  })
+  do.call(rbind, rows)
+}
+#  Download attributes
+progressr::with_progress({
+  pb <- progressr::progressor(steps = length(census_scales) * length(census_years))
+
+  data_raw <- future.apply::future_lapply(census_scales, function(scale) {
+    by_year <- future.apply::future_lapply(seq_along(census_years), function(i_year) {
+      year_chr <- as.character(census_years[i_year])
+      ds       <- census_dataset[i_year]
+
+      colname  <- paste0("vec_", year_chr)
+      vecs_tbl <- ref[!is.na(ref[[colname]]), c("var_code", colname), drop = FALSE]
+      if (!is.null(var_codes)) {
+        vecs_tbl <- vecs_tbl[vecs_tbl$var_code %in% selected_varcodes, , drop = FALSE]
       }
 
-      out
+      raw_codes <- vecs_tbl[[colname]]
+      names(raw_codes) <- vecs_tbl$var_code
+      raw_codes <- raw_codes[!is.na(raw_codes)]
+
+      # name as var___i for multi-code variables
+      expanded <- mapply(function(vec, nm) {
+        v <- unname(vec); names(v) <- paste0(nm, "___", seq_along(v)); v
+      }, raw_codes, names(raw_codes), USE.NAMES = FALSE)
+      expanded <- unlist(expanded, use.names = TRUE)
+
+      # split into lots when same code maps to different names
+      dup_codes <- duplicated(expanded) | duplicated(expanded, fromLast = TRUE)
+      dup_names <- duplicated(names(expanded)) | duplicated(names(expanded), fromLast = TRUE)
+      split_idx <- cumsum(dup_codes & !dup_names)
+      named_vecs <- Map(stats::setNames,
+                        split(expanded, split_idx),
+                        split(names(expanded), split_idx))
+
+      # download per lot (Canada or per-PR at DA)
+      lot_list <- lapply(named_vecs, function(vcodes_named) {
+        if (scale == "DA") {
+          prs <- get_pr_codes(ds)
+          parts <- lapply(prs, function(pr) {
+            get_census_data(
+              census_dataset = ds,
+              var_codes      = vcodes_named,
+              region         = list(PR = pr),
+              scale          = scale,
+              cache          = cache_tbl
+            )
+          })
+          dat_pr <- do.call(rbind, parts)
+          if (any(duplicated(dat_pr$GeoUID))) dat_pr <- coalesce_by_id(dat_pr, "GeoUID")
+          dat_pr
+        } else {
+          get_census_data(
+            census_dataset = ds,
+            var_codes      = vcodes_named,
+            region         = list(C = "01"),
+            scale          = scale,
+            cache          = cache_tbl
+          )
+        }
+      })
+
+      # merge lots (full join on GeoUID), then collapse ___i sums
+      if (length(lot_list) == 0L) {
+        dat <- data.frame(ID = character(), check.names = FALSE)
+      } else {
+        dat <- Reduce(function(x, y) merge(x, y, all = TRUE, by = "GeoUID"), lot_list)
+        names(dat)[1] <- "ID"
+        names(dat) <- sub("\\.(x|y)(\\.\\d+)?$", "", names(dat))   # safeguard
+
+        tb <- table(gsub("___[0-9]+$", "", names(dat)))
+        to_add <- names(tb[tb > 1])
+        if (length(to_add)) {
+          sums <- setNames(lapply(to_add, function(root) {
+            idx <- grepl(paste0("^", root, "___[0-9]+$"), names(dat))
+            if (!any(idx)) return(rep(NA_real_, nrow(dat)))
+            rowSums(dat[, idx, drop = FALSE], na.rm = TRUE)
+          }), to_add)
+          dat <- dat[, !grepl("___[0-9]+$", names(dat)), drop = FALSE]
+          dat <- cbind(dat, as.data.frame(sums, check.names = FALSE))
+        }
+        names(dat) <- gsub("___[0-9]+$", "", names(dat))
+      }
+
+      pb()
+      dat
     })
-    Reduce(function(x, y) merge(x, y, all = TRUE, by = "GeoUID"), vectors_output)
-  }
+    names(by_year) <- as.character(census_years)
+    by_year
+  })
+  names(data_raw) <- census_scales
+  #  Join to geometries
+  # keep sf/CRS and align by ID
+  out_sf <- mapply(function(d_by_year, e_by_year) {
+    mapply(function(d, e) {
+      if (!identical(typeof(d$ID), typeof(e$ID))) {
+        d$ID <- as.character(d$ID); e$ID <- as.character(e$ID)
+      }
+      idx   <- match(e$ID, d$ID)
+      attrs <- setdiff(names(d), "ID")
+      res   <- e
+      if (length(attrs)) res <- cbind(res, d[idx, attrs, drop = FALSE])
+      res
+    }, d_by_year, e_by_year, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+  }, data_raw, empty_geometries, SIMPLIFY = FALSE, USE.NAMES = TRUE)
+
+  out_sf
+})
+}
+
+
+#' Get Census Data (robust cache check + retries; result-compatible)
+#'
+#' Retrieves census data for the given region/scale. If the full vector set
+#' is cached, fetch once; otherwise fetch per-vector and full-join on GeoUID.
+#' Uses set-equality for cache detection (order-insensitive) and simple retries.
+#'
+#' @param census_dataset <character> e.g., "CA2021"
+#' @param var_codes      <named character> names are output column names
+#' @param region         <named list> e.g., list(C = "01")
+#' @param scale          <character> level, e.g., "CMA"
+#' @param cache          <data.frame> cancensus::list_cancensus_cache()
+#' @param warn_empty     <logical> warn if a vector returns 0 rows
+#' @return data.frame with columns GeoUID + names(var_codes)
+get_census_data <- function(census_dataset, var_codes, region, scale,
+  cache = cancensus::list_cancensus_cache(),
+  warn_empty = TRUE) {
+stopifnot(length(var_codes) > 0)
+
+# retry helper (light backoff)
+with_retries <- function(expr, times = 3L, sleep = c(1, 2, 4), what = "request") {
+last_err <- NULL
+for (i in seq_len(times)) {
+res <- try(force(expr), silent = TRUE)
+if (!inherits(res, "try-error")) return(res)
+last_err <- attr(res, "condition")
+if (i < times) Sys.sleep(sleep[i])
+}
+stop(sprintf("Failed %s after %d retries: %s",
+what, times, conditionMessage(last_err)), call. = FALSE)
+}
+
+# cache check using set-equality of vector sets (order-insensitive)
+cache_has_request <- function(cache_df, dataset, level, regions, var_codes) {
+if (is.null(cache_df) || !nrow(cache_df)) return(FALSE)
+vc <- unname(var_codes)
+same_vecset <- function(js) if (is.na(js)) FALSE else setequal(jsonlite::fromJSON(js), vc)
+cand <- cache_df[vapply(cache_df$vectors, same_vecset, logical(1L)), , drop = FALSE]
+if (!nrow(cand)) return(FALSE)
+cand <- cand[cand$dataset == dataset & cand$level == level, , drop = FALSE]
+if (!nrow(cand)) return(FALSE)
+same_reg <- function(js) identical(jsonlite::fromJSON(js), regions)
+any(vapply(cand$regions, same_reg, logical(1L)))
+}
+
+# normalize a piece: keep GeoUID + expected column, fix names
+normalize_piece <- function(df, out_name) {
+# keep only GeoUID + target, drop if absent (let it error early)
+df <- df[, c("GeoUID", out_name), drop = FALSE]
+# enforce types compatible with merge; keep GeoUID as character like cancensus default
+df$GeoUID <- as.character(df$GeoUID)
+df
+}
+
+# path 1: full set is cached -> single call
+if (cache_has_request(cache, census_dataset, scale, region, unname(var_codes))) {
+out <- with_retries(
+cancensus::get_census(
+dataset    = census_dataset,
+regions    = region,
+level      = scale,
+vectors    = var_codes,
+geo_format = NA,
+quiet      = TRUE,
+use_cache  = TRUE
+),
+what = "get_census cached (block)"
+)
+# keep column order stable
+out <- out[, c("GeoUID", names(var_codes)), drop = FALSE]
+out$GeoUID <- as.character(out$GeoUID)
+return(out)
+}
+
+# path 2: fetch per vector, then full outer join by GeoUID (merge all=TRUE)
+pieces <- lapply(seq_along(var_codes), function(j) {
+nm <- names(var_codes)[j]
+df <- with_retries(
+cancensus::get_census(
+dataset    = census_dataset,
+regions    = region,
+level      = scale,
+vectors    = var_codes[j],
+geo_format = NA,
+quiet      = TRUE,
+use_cache  = TRUE
+),
+what = sprintf("get_census vec (%s)", nm)
+)
+
+if (nrow(df) == 0L) {
+if (warn_empty) warning(sprintf("Vector %s returned 0 rows (dataset=%s, scale=%s).", nm, census_dataset, scale))
+# keep structure (avoid changing result shape): return empty with cols present
+df <- data.frame(GeoUID = character(0), setNames(list(numeric(0)), nm), check.names = FALSE)
+} else {
+df <- normalize_piece(df, nm)
+}
+df
+})
+
+# exact same join semantics as before (full outer by GeoUID)
+out <- Reduce(function(x, y) merge(x, y, all = TRUE, by = "GeoUID"), pieces)
+
+# keep stable column order
+out <- out[, c("GeoUID", names(var_codes)), drop = FALSE]
+out
 }
