@@ -467,85 +467,83 @@ boc_get_well_being_expectations <- function() {
 #' @return A data.frame with `id` (GeoUID) and one column per quarter (e.g., "access_credit_2014q4", ...).
 #' @export
 boc_get_access_credit_expectations <- function() {
-  
-  # Step 1: Load Bank of Canada data
+
   url <- "https://www.bankofcanada.ca/valet/observations/group/CES_C16_DEMOGRAPHICS/csv"
   df <- readr::read_csv(url, skip = 68, col_names = TRUE)
-  
-  # Step 2: Keep only relevant columns
+
   df_filtered <- df |>
-    dplyr::select(date, dplyr::starts_with("CES_C16E_FUTURE_"))
-  
-  # Step 3: Reshape to long format and clean IDs
+    dplyr::select("date", dplyr::starts_with("CES_C16E_FUTURE_"))
+
   df_long <- df_filtered |>
-    tidyr::pivot_longer(cols = -date, names_to = "id_raw", values_to = "value") |>
+    tidyr::pivot_longer(cols = -"date", names_to = "id_raw", values_to = "value") |>
     dplyr::mutate(
-      id = gsub("CES_C16E_FUTURE_", "", id_raw),
-      quarter = tolower(gsub("-", "q", date)),
-      var = paste0("access_credit_ce_", quarter)
+      id      = gsub("^CES_C16E_FUTURE_", "", .data$id_raw),
+      quarter = tolower(gsub("-", "q", .data$date)),
+      var     = paste0("access_credit_ce_", .data$quarter)
     )
-  
-  # Step 4: Expand Atlantic region to all 4 provinces
+
   atl_values <- df_long |>
-    dplyr::filter(id == "AT") |>
-    dplyr::select(-id) |>
-    dplyr::mutate(province = list(c("Nova Scotia", "New Brunswick", "Prince Edward Island", "Newfoundland and Labrador"))) |>
-    tidyr::unnest(province)
-  
-  # Step 5: Add province names
+    dplyr::filter(.data$id == "AT") |>
+    dplyr::select(dplyr::all_of(setdiff(names(df_long), "id"))) |>
+    dplyr::mutate(province = list(c(
+      "Nova Scotia", "New Brunswick",
+      "Prince Edward Island", "Newfoundland and Labrador"
+    ))) |>
+    tidyr::unnest(cols = "province")   # <= ICI la correction
+
   df_long <- df_long |>
-    dplyr::filter(id != "AT") |>
+    dplyr::filter(.data$id != "AT") |>
     dplyr::mutate(province = dplyr::case_when(
-      id == "AB" ~ "Alberta",
-      id == "BC" ~ "British Columbia",
-      id == "MB" ~ "Manitoba",
-      id == "ON" ~ "Ontario",
-      id == "QC" ~ "Québec",
-      id == "SK" ~ "Saskatchewan",
-      TRUE ~ id
+      .data$id == "AB" ~ "Alberta",
+      .data$id == "BC" ~ "British Columbia",
+      .data$id == "MB" ~ "Manitoba",
+      .data$id == "ON" ~ "Ontario",
+      .data$id == "QC" ~ "Québec",
+      .data$id == "SK" ~ "Saskatchewan",
+      TRUE ~ .data$id
     )) |>
     dplyr::bind_rows(atl_values)
-  
-  # Step 6: Reshape to wide format
+
   df_wide <- df_long |>
-    dplyr::select(province, var, value) |>
-    tidyr::pivot_wider(names_from = var, values_from = value) |>
-    dplyr::arrange(province)
-  
-  # Step 7: Join with GeoUIDs
+    dplyr::select(dplyr::all_of(c("province", "var", "value"))) |>
+    tidyr::pivot_wider(names_from = "var", values_from = "value") |>
+    dplyr::arrange(.data$province)
+
   provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
+    dataset   = "CA21",
+    regions   = list(C = "01"),
+    level     = "PR",
     geo_format = NA,
-    labels = "short",
+    labels    = "short",
     use_cache = TRUE
   ) |>
-    dplyr::select(GeoUID, `Region Name`) |>
+    dplyr::select(dplyr::all_of(c("GeoUID", "Region Name"))) |>
     dplyr::mutate(province = dplyr::case_when(
-      `Region Name` == "Alberta (Alta.)" ~ "Alberta",
-      `Region Name` == "British Columbia (B.C.)" ~ "British Columbia",
-      `Region Name` == "Manitoba (Man.)" ~ "Manitoba",
-      `Region Name` == "Ontario (Ont.)" ~ "Ontario",
-      `Region Name` == "Quebec (Que.)" ~ "Québec",
-      `Region Name` == "Saskatchewan (Sask.)" ~ "Saskatchewan",
-      `Region Name` == "Nova Scotia (N.S.)" ~ "Nova Scotia",
-      `Region Name` == "New Brunswick (N.B.)" ~ "New Brunswick",
-      `Region Name` == "Prince Edward Island (P.E.I.)" ~ "Prince Edward Island",
-      `Region Name` == "Newfoundland and Labrador (N.L.)" ~ "Newfoundland and Labrador",
+      .data$`Region Name` == "Alberta (Alta.)" ~ "Alberta",
+      .data$`Region Name` == "British Columbia (B.C.)" ~ "British Columbia",
+      .data$`Region Name` == "Manitoba (Man.)" ~ "Manitoba",
+      .data$`Region Name` == "Ontario (Ont.)" ~ "Ontario",
+      .data$`Region Name` == "Quebec (Que.)" ~ "Québec",
+      .data$`Region Name` == "Saskatchewan (Sask.)" ~ "Saskatchewan",
+      .data$`Region Name` == "Nova Scotia (N.S.)" ~ "Nova Scotia",
+      .data$`Region Name` == "New Brunswick (N.B.)" ~ "New Brunswick",
+      .data$`Region Name` == "Prince Edward Island (P.E.I.)" ~ "Prince Edward Island",
+      .data$`Region Name` == "Newfoundland and Labrador (N.L.)" ~ "Newfoundland and Labrador",
       TRUE ~ NA_character_
     )) |>
-    dplyr::filter(!is.na(province))
-  
-  # Step 8: Final output
-  df_final <- df_wide |>
-    dplyr::left_join(provinces, by = "province") |>
-    dplyr::relocate(GeoUID, .before = province) |>
-    dplyr::select(id = GeoUID, tidyselect::everything(), -province, -`Region Name`) |>
-    dplyr::arrange(as.integer(id))
-  
-  return(df_final)
+    dplyr::filter(!is.na(.data$province))
+
+  out_join <- dplyr::left_join(df_wide, provinces, by = "province")
+
+  keep_cols <- setdiff(names(df_wide), "province")
+
+  dplyr::bind_cols(
+    tibble::tibble(id = out_join$GeoUID),
+    out_join[, keep_cols, drop = FALSE]
+  ) |>
+    dplyr::arrange(as.integer(.data$id))
 }
+
 
 #' Download and reshape short-term well-being expectations by province
 #'
@@ -1057,53 +1055,51 @@ calculer_volatilite_annuelle_WIDE <- function(df, prefixe_colonne) {
 #' @return A tibble with two columns: \code{id} (GeoUID of the CMA) and \code{elasticity_estimates}.
 #' @export
 boc_elasticities <- function(file_path) {
-  
-  # Step 1: Retrieve list of CMA regions
+  # 1) Liste des CMA
   cma_list <- cancensus::list_census_regions("CA21") |>
-    dplyr::filter(level == "CMA") |>
-    dplyr::select(region, name)
+    dplyr::filter(.data$level == "CMA") |>
+    dplyr::select(dplyr::all_of(c("region", "name")))
   
-  # Step 2: Download spatial geometries for all CMAs
+  # 2) Données census CMA (sans géométrie)
   cma_all <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(CMA = cma_list$region),
+    dataset   = "CA21",
+    regions   = list(CMA = cma_list$region),
     geo_format = "sf",
-    level = "CMA"
+    level     = "CMA"
   ) |>
-    dplyr::select(name, geometry, GeoUID) |>
-    dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", name))  # Remove text in parentheses
+    sf::st_drop_geometry() |>
+    dplyr::select(dplyr::all_of(c("name", "GeoUID"))) |>
+    dplyr::mutate(name = gsub("\\s*\\(.*?\\)", "", .data$name))
   
-  # Step 3: Read elasticity data from Excel
+  # 3) Excel des élasticités
   elasticities <- readxl::read_excel(file_path) |>
-    dplyr::filter(cma == 1) |>  # Keep rows flagged as CMA
-    dplyr::select(city, elasticity) |>  # Only keep needed columns
-    dplyr::rename(name = city)
+    dplyr::filter(.data$cma == 1) |>
+    dplyr::select(dplyr::all_of(c("city", "elasticity"))) |>
+    dplyr::rename(name = .data$city)
   
-  # Step 4: Standardize CMA names for consistency with census data
+  # 4) Normalisation des noms
   name_mapping <- c(
     "Greater Sudbury/Grand Sudbury" = "Greater Sudbury / Grand Sudbury",
-    "Kitchener-Cambridge-Waterloo" = "Kitchener - Cambridge - Waterloo",
-    "Ottawa-Gatineau" = "Ottawa - Gatineau",
-    "St. Catharines-Niagara" = "St. Catharines - Niagara",
-    "Trois-Rivieres" = "Trois-Rivières",
-    "Quebec" = "Québec",
-    "Montreal" = "Montréal",
-    "St. John's" = "St. John's",
-    "Abbotsford-Mission" = "Abbotsford - Mission"
+    "Kitchener-Cambridge-Waterloo"  = "Kitchener - Cambridge - Waterloo",
+    "Ottawa-Gatineau"               = "Ottawa - Gatineau",
+    "St. Catharines-Niagara"        = "St. Catharines - Niagara",
+    "Trois-Rivieres"                = "Trois-Rivières",
+    "Quebec"                        = "Québec",
+    "Montreal"                      = "Montréal",
+    "St. John's"                    = "St. John's",
+    "Abbotsford-Mission"            = "Abbotsford - Mission"
   )
-  
   elasticities <- elasticities |>
-    dplyr::mutate(name = dplyr::recode(name, !!!name_mapping))
+    dplyr::mutate(name = dplyr::recode(.data$name, !!!name_mapping))
   
-  # Step 5: Merge and clean final dataset
-  final_data <- dplyr::inner_join(cma_all, elasticities, by = "name") |>
+  # 5) Jointure + sortie propre
+  dplyr::inner_join(cma_all, elasticities, by = "name") |>
     dplyr::rename(
-      id = GeoUID,
-      elasticity_estimates = elasticity) |>
-      dplyr::select(id, elasticity_estimates) |>
-    sf::st_drop_geometry()  # Drop spatial information
-  
-  return(final_data)
+      id = .data$GeoUID,
+      elasticity_estimates = .data$elasticity
+    ) |>
+    dplyr::select(dplyr::all_of(c("id", "elasticity_estimates"))) |>
+    tibble::as_tibble()
 }
 
 #' @title Process Bank of Canada Interest Rate Data

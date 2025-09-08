@@ -174,8 +174,8 @@ tt_calculate <- function(centroids, max_dist = 120000,
     pb <- progressr::progressor(steps = length(all_ids))
     out <- future.apply::future_sapply(all_ids, \(id) {
 
-        id_geo <- sf:::`[.sf`(centroids, centroids$ID == id, )
-        first_coords <- id_geo |>
+      id_geo <- centroids[centroids$ID == id, , drop = FALSE]
+      first_coords <- id_geo |>
           sf::st_coordinates() |>
           tibble::as_tibble()
 
