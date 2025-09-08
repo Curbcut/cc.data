@@ -62,7 +62,8 @@ census_agg_type <- function(census_vectors = cc.data::census_vectors,
   agg <-
     agg[!{agg$var_code == "housing_stress_renter" & agg$agg == "Additive"} &
           !{agg$var_code == "housing_stress_owner" & agg$agg == "Additive"} &
-            !{agg$var_code == "housing_shelcost" & agg$agg == "Additive"}, ]
+            !{agg$var_code == "housing_shelcost" & agg$agg == "Additive"} &
+              !{agg$var_code == "average_household_size" & agg$agg == "Additive"}, ]
 
   # Check for error
   multiple <- table(agg$var_code)[table(agg$var_code) > 1]

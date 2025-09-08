@@ -64,7 +64,8 @@ census_unit_type <- function(census_vectors = cc.data::census_vectors,
   units <-
     units[!{units$var_code == "housing_value" & units$units == "Number"} &
             !{units$var_code == "housing_rent" & units$units == "Number"} &
-            !{units$var_code == "housing_shelcost" & units$units == "Number"}, ]
+              !{units$var_code == "housing_shelcost" & units$units == "Number"} &
+                !{units$var_code == "average_household_size" & units$units == "Number"}, ]
 
   # Check for error
   multiple <- table(units$var_code)[table(units$var_code) > 1]

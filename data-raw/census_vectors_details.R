@@ -29,7 +29,7 @@ census_vectors_details <-
       parent <- census_vectors_table$parent[
         census_vectors_table$var_code == vecs
       ]
-      if (parent) return(NA)
+      if (all(parent)) return(NA)
       parent_string <- census_vectors_table$parent_vec[
         census_vectors_table$var_code == vecs
       ]

@@ -14,13 +14,18 @@
 #' @return A data.frame object representing the CanALE index for the given year
 #' and DAs.
 #' @export
-build_alp <- function(years = census_years[2:length(cc.data::census_years)],
-                      DB_table = bucket_read_object_zip_shp("DB_shp_carto.zip", "curbcut.rawdata")) {
-
+build_alp <- function(
+  years = census_years[2:length(cc.data::census_years)],
+  DB_table = bucket_read_object_zip_shp("DB_shp_carto.zip", "curbcut.rawdata")
+) {
   # Intersection density measure --------------------------------------------
 
-  three_ways <- sapply(years, get_all_three_plus_ways,
-                       simplify = FALSE, USE.NAMES = TRUE)
+  three_ways <- sapply(
+    years,
+    get_all_three_plus_ways,
+    simplify = FALSE,
+    USE.NAMES = TRUE
+  )
   names(three_ways) <- years
   # qs::qsave(three_ways, "calculated_ignore/alp/three_ways.qs")
   # three_ways <- qs::qread("calculated_ignore/alp/three_ways.qs")
@@ -33,9 +38,14 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
     DBI::dbGetQuery(conn, query)
   }
   # In the ttm_foot, add self
-  ttm_foot <- rbind(ttm_foot, tibble::tibble(from = DB_table$DBUID,
-                                             to = DB_table$DBUID,
-                                             travel_seconds = 0))
+  ttm_foot <- rbind(
+    ttm_foot,
+    tibble::tibble(
+      from = DB_table$DBUID,
+      to = DB_table$DBUID,
+      travel_seconds = 0
+    )
+  )
   # qs::qsave(ttm_foot, "calculated_ignore/alp/ttm_foot.qs")
   # ttm_foot <- qs::qread("calculated_ignore/alp/ttm_foot.qs")
 
@@ -49,7 +59,6 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
     df
   })
   DB_table_tw <- lapply(DB_table_tw, sf::st_drop_geometry)
-
 
   # How many intersections in the DAs accessible in a 15 minute walks
 
@@ -71,7 +80,12 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
 
     # Join 'ttm_foot' to 'db_year', carrying over the 'three_ways' value
     # This creates a table with every 'from' matched to its 'to' and includes the 'three_ways' for each 'to'
-    joined <- ttm_foot[db_year, .(from, to, three_ways = i.three_ways), on = .(to = DBUID), nomatch = 0]
+    joined <- ttm_foot[
+      db_year,
+      .(from, to, three_ways = i.three_ways),
+      on = .(to = DBUID),
+      nomatch = 0
+    ]
 
     # Aggregate the 'three_ways' by 'from', effectively summing for each original DBUID based on its 'to' DBUIDs
     result <- joined[, .(three_ways = sum(three_ways, na.rm = TRUE)), by = from]
@@ -91,7 +105,9 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
 
   DB_table_tw_yr <- Reduce(rbind, DB_table_tw_yr)
   DB_table_tw_yr_fin <- DB_table_tw_yr
-  DB_table_tw_yr_fin$int_d <- stats::ecdf(DB_table_tw_yr$three_ways)(DB_table_tw_yr$three_ways)
+  DB_table_tw_yr_fin$int_d <- stats::ecdf(DB_table_tw_yr$three_ways)(
+    DB_table_tw_yr$three_ways
+  )
 
   DB_table_tw_yr_fin <- lapply(seq_along(years), \(i) {
     out <- DB_table_tw_yr_fin[DB_table_tw_yr_fin$year == years[[i]], ]
@@ -102,7 +118,6 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
 
   int_d <- Reduce(merge, DB_table_tw_yr_fin) |>
     tibble::as_tibble()
-
 
   # Dwelling density measure ------------------------------------------------
 
@@ -133,19 +148,34 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
   names(dwellings) <- years
 
   # Get the spatial features of DBs
-  DB_sf <- sapply(years, \(x) {
-    file <- sprintf("DB_shp_%s.zip", x)
-    if (x == 2021)  file <- "DB_shp_carto.zip"
-    cc.data::bucket_read_object_zip_shp(file, "curbcut.rawdata")
-  }, USE.NAMES = TRUE, simplify = FALSE)
+  DB_sf <- sapply(
+    years,
+    \(x) {
+      file <- sprintf("DB_shp_%s.zip", x)
+      if (x == 2021) file <- "DB_shp_carto.zip"
+      cc.data::bucket_read_object_zip_shp(file, "curbcut.rawdata")
+    },
+    USE.NAMES = TRUE,
+    simplify = FALSE
+  )
 
-  dwellings_sf <- mapply(\(dw, sf) {
-    other_name_col <- "BLOCKUID" %in% names(sf)
-    col_name <- if (other_name_col) "BLOCKUID" else "DBUID"
-    merge(dw, sf[c(col_name, "geometry")], by.x = "GeoUID", by.y = col_name) |>
-      tibble::as_tibble() |>
-      sf::st_as_sf()
-  }, dwellings, DB_sf, SIMPLIFY = FALSE)
+  dwellings_sf <- mapply(
+    \(dw, sf) {
+      other_name_col <- "BLOCKUID" %in% names(sf)
+      col_name <- if (other_name_col) "BLOCKUID" else "DBUID"
+      merge(
+        dw,
+        sf[c(col_name, "geometry")],
+        by.x = "GeoUID",
+        by.y = col_name
+      ) |>
+        tibble::as_tibble() |>
+        sf::st_as_sf()
+    },
+    dwellings,
+    DB_sf,
+    SIMPLIFY = FALSE
+  )
   qs::qsave(dwellings_sf, file = "calculated_ignore/alp/dwellings_sf.qs")
 
   # Calculate dwelling density using the most recent DA table
@@ -158,17 +188,21 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
     dwellings_cut$new_area <- get_area(dwellings_cut)
     dwellings_cut <- sf::st_drop_geometry(dwellings_cut)
 
-    dwellings_cut$area_pct <- dwellings_cut$new_area / dwellings_cut$previous_area
-    dwellings_cut$n_dwellings <- dwellings_cut$Dwellings * dwellings_cut$area_pct
+    dwellings_cut$area_pct <- dwellings_cut$new_area /
+      dwellings_cut$previous_area
+    dwellings_cut$n_dwellings <- dwellings_cut$Dwellings *
+      dwellings_cut$area_pct
 
     # For each ID, get the density
-    dwelling_density <- stats::aggregate(cbind(n_dwellings, new_area) ~ DBUID,
-                                  data = dwellings_cut,
-                                  FUN = \(...) sum(..., na.rm = TRUE))
-    dwelling_density$density <- dwelling_density$n_dwellings / dwelling_density$new_area
+    dwelling_density <- stats::aggregate(
+      cbind(n_dwellings, new_area) ~ DBUID,
+      data = dwellings_cut,
+      FUN = \(...) sum(..., na.rm = TRUE)
+    )
+    dwelling_density$density <- dwelling_density$n_dwellings /
+      dwelling_density$new_area
     dwelling_density
   })
-
 
   # Function to process each db_year
   process_db_year <- function(db_year) {
@@ -189,11 +223,18 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
 
     # Join 'ttm_foot' to 'db_year' on 'to' matching 'DBUID' to bring 'density' and 'new_area' over to 'ttm_foot'
     # Note: Using 'new_area' as weights requires it to be available in the final joined table
-    joined <- ttm_foot_dt[db_year_dt, .(from, to, density = i.density, new_area = i.new_area),
-                          on = .(to = DBUID), nomatch = 0]
+    joined <- ttm_foot_dt[
+      db_year_dt,
+      .(from, to, density = i.density, new_area = i.new_area),
+      on = .(to = DBUID),
+      nomatch = 0
+    ]
 
     # Compute weighted mean of 'density' by 'from', using 'new_area' as weights
-    result <- joined[, .(density_weighted_mean = weighted.mean(density, new_area, na.rm = TRUE)), by = from]
+    result <- joined[,
+      .(density_weighted_mean = weighted.mean(density, new_area, na.rm = TRUE)),
+      by = from
+    ]
 
     return(result)
   }
@@ -210,7 +251,9 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
 
   dwellings_yr <- Reduce(rbind, dwellings_yr)
   dwellings_yr_fin <- dwellings_yr
-  dwellings_yr_fin$dwl_d <- stats::ecdf(dwellings_yr$density)(dwellings_yr$density)
+  dwellings_yr_fin$dwl_d <- stats::ecdf(dwellings_yr$density)(
+    dwellings_yr$density
+  )
 
   dwellings_yr_fin <- lapply(seq_along(years), \(i) {
     out <- dwellings_yr_fin[dwellings_yr_fin$year == years[[i]], ]
@@ -222,76 +265,85 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
   dwl_d <- Reduce(merge, dwellings_yr_fin) |>
     tibble::as_tibble()
 
-
   # Points of interest measure ----------------------------------------------
 
-  pois <- sapply(years, \(year) {
+  pois <- sapply(
+    years,
+    \(year) {
+      poi_year <- if (year == 2001) 2002 else year
 
-    poi_year <- if (year == 2001) 2002 else year
+      # Prepare to grab poi data from the bucket
+      files <- bucket_list_content("curbcut.amenities")$Key
+      txt_shp <- files[grepl("poi/.*(txt$|zip$)", files)]
+      year_shps <- txt_shp[grepl(poi_year, txt_shp)]
 
-    # Prepare to grab poi data from the bucket
-    files <- bucket_list_content("curbcut.amenities")$Key
-    txt_shp <- files[grepl("poi/.*(txt$|zip$)", files)]
-    year_shps <- txt_shp[grepl(poi_year, txt_shp)]
+      poi <- lapply(year_shps, \(f) {
+        # If it is a txt file, read it from the bucket with the read.csv method
+        if (grepl("\\.txt$", f)) {
+          out <- bucket_read_object(
+            object = f,
+            objectext = ".txt",
+            method = utils::read.csv,
+            bucket = "curbcut.amenities"
+          )
+          return(out)
+        }
 
-    poi <- lapply(year_shps, \(f) {
-      # If it is a txt file, read it from the bucket with the read.csv method
-      if (grepl("\\.txt$", f)) {
-        out <- bucket_read_object(object = f,
-                                  objectext = ".txt",
-                                  method = utils::read.csv,
-                                  bucket = "curbcut.amenities")
-        return(out)
-      }
+        # If it's not a txt file, it's a shapefile. Read it using the following
+        # function.
+        bucket_read_object_zip_shp(object = f, bucket = "curbcut.amenities")
+      })
+      poi <- Reduce(rbind, poi)
 
-      # If it's not a txt file, it's a shapefile. Read it using the following
-      # function.
-      bucket_read_object_zip_shp(object = f, bucket = "curbcut.amenities")
-    })
-    poi <- Reduce(rbind, poi)
+      # Get the right column indicating the SIC codes
+      sic_col <- if (year %in% c(2001)) "SIC.1" else "SIC_1"
 
-    # Get the right column indicating the SIC codes
-    sic_col <- if (year %in% c(2001)) "SIC.1" else "SIC_1"
+      # Grab the major groups (from the SIC code)
+      poi$sic_major_group <- stringr::str_extract(poi[[sic_col]], "^\\d{2}")
 
-    # Grab the major groups (from the SIC code)
-    poi$sic_major_group <- stringr::str_extract(poi[[sic_col]], "^\\d{2}")
+      # # Filter in only the amenities we are interested in
+      # amenities <- c("Division G: Retail Trade",
+      #                "Division H: Finance, Insurance, And Real Estate",
+      #                "Division I: Services")
+      # major_groups <- divisions$major_groups[divisions$division %in% amenities]
+      major_groups <- c(41, 52:89)
+      # Manually add missing major groups
+      major_groups <- c(major_groups, 41)
+      poi <- poi[poi$sic_major_group %in% major_groups, ]
 
-    # # Filter in only the amenities we are interested in
-    # amenities <- c("Division G: Retail Trade",
-    #                "Division H: Finance, Insurance, And Real Estate",
-    #                "Division I: Services")
-    # major_groups <- divisions$major_groups[divisions$division %in% amenities]
-    major_groups <- c(41, 52:89)
-    # Manually add missing major groups
-    major_groups <- c(major_groups, 41)
-    poi <- poi[poi$sic_major_group %in% major_groups, ]
+      # Make it as SF
+      poi <- sf::st_as_sf(poi, coords = c("X", "Y"), crs = 4326)
+      poi <- sf::st_transform(poi, crs = 3347)
 
-    # Make it as SF
-    poi <- sf::st_as_sf(poi, coords = c("X", "Y"), crs = 4326)
-    poi <- sf::st_transform(poi, crs = 3347)
+      # Calculate the POI number for each DA
+      df <- DB_table
+      intersects <- sf::st_intersects(df, poi)
+      df$poi <- lengths(intersects)
 
-    # Calculate the POI number for each DA
-    df <- DB_table
-    intersects <- sf::st_intersects(df, poi)
-    df$poi <- lengths(intersects)
+      # For each DA, calculate the number of POI in the other DAs accessible in
+      # a 15 minutes walk
+      df <- sf::st_drop_geometry(df)
+      require(data.table)
+      df <- data.table::data.table(df)
+      ttm_foot_dt <- data.table::data.table(ttm_foot)
+      df[, DBUID := as.character(DBUID)]
+      ttm_foot_dt[, from := as.character(from)]
+      ttm_foot_dt[, to := as.character(to)]
+      data.table::setkey(ttm_foot, from)
+      joined <- ttm_foot_dt[
+        df,
+        .(from, to, poi = i.poi),
+        on = .(to = DBUID),
+        nomatch = 0
+      ]
+      result <- joined[, .(poi = sum(poi, na.rm = TRUE)), by = from]
 
-    # For each DA, calculate the number of POI in the other DAs accessible in
-    # a 15 minutes walk
-    df <- sf::st_drop_geometry(df)
-    require(data.table)
-    df <- data.table::data.table(df)
-    ttm_foot_dt <- data.table::data.table(ttm_foot)
-    df[, DBUID := as.character(DBUID)]
-    ttm_foot_dt[, from := as.character(from)]
-    ttm_foot_dt[, to := as.character(to)]
-    data.table::setkey(ttm_foot, from)
-    joined <- ttm_foot_dt[df, .(from, to, poi = i.poi), on = .(to = DBUID), nomatch = 0]
-    result <- joined[, .(poi = sum(poi, na.rm = TRUE)), by = from]
-
-    # Return the poi score for the year
-    return(result)
-  }, simplify = FALSE, USE.NAMES = TRUE)
-
+      # Return the poi score for the year
+      return(result)
+    },
+    simplify = FALSE,
+    USE.NAMES = TRUE
+  )
 
   pois_yr <- lapply(seq_along(pois), \(i) {
     df <- pois[[i]]
@@ -313,20 +365,23 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
   poi <- Reduce(merge, pois_yr_fin) |>
     tibble::as_tibble()
 
-
   # Sum the three z index for the final score -------------------------------
 
   DB_table <- sf::st_drop_geometry(DB_table)
 
   alp <- lapply(years, \(year) {
     df <-
-      Reduce(\(x, y) merge(x, y, by = "from"),
-             list(int_d[c(1, which(grepl(paste0("int_d_", year), names(int_d))))],
-                  dwl_d[c(1, which(grepl(paste0("dwl_d_", year), names(dwl_d))))],
-                  poi[c(1, which(grepl(paste0("poi_", year), names(poi))))]))
+      Reduce(
+        \(x, y) merge(x, y, by = "from"),
+        list(
+          int_d[c(1, which(grepl(paste0("int_d_", year), names(int_d))))],
+          dwl_d[c(1, which(grepl(paste0("dwl_d_", year), names(dwl_d))))],
+          poi[c(1, which(grepl(paste0("poi_", year), names(poi))))]
+        )
+      )
 
     df[[paste0("alp_", year)]] <- rowSums(df[2:4])
-    df <- df[c(1,5)]
+    df <- df[c(1, 5)]
     df[is.na(df)] <- NA
 
     return(df)
@@ -335,20 +390,19 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
   alp_final <- tibble::as_tibble(Reduce(merge, alp))
   names(alp_final)[1] <- "ID"
 
-
-#   # Create a statistical model ----------------------------------------------
-#
-#   formod <- Reduce(merge, list(DB_table_tw_yr, dwellings_yr, pois_yr))
-#   alp_formod <- mapply(\(df, year) {
-#     names(df)[2] <- "alp"
-#     df$year <- year
-#     df
-#   }, alp, years, SIMPLIFY = FALSE)
-#   alp_formod <- Reduce(rbind, alp_formod)
-#   formod <- merge(formod, alp_formod)
-#   formod <- formod[!is.na(formod$alp), ]
-#
-#   lm(alp ~ three_ways + density + poi_15min, data = formod) |> summary()
+  #   # Create a statistical model ----------------------------------------------
+  #
+  #   formod <- Reduce(merge, list(DB_table_tw_yr, dwellings_yr, pois_yr))
+  #   alp_formod <- mapply(\(df, year) {
+  #     names(df)[2] <- "alp"
+  #     df$year <- year
+  #     df
+  #   }, alp, years, SIMPLIFY = FALSE)
+  #   alp_formod <- Reduce(rbind, alp_formod)
+  #   formod <- merge(formod, alp_formod)
+  #   formod <- formod[!is.na(formod$alp), ]
+  #
+  #   lm(alp ~ three_ways + density + poi_15min, data = formod) |> summary()
 
   # Return ------------------------------------------------------------------
 
@@ -367,7 +421,8 @@ build_alp <- function(years = census_years[2:length(cc.data::census_years)],
 #' @return An \code{sf} object representing the three+ way intersections in the
 #' streets network.
 #' @export
-get_all_three_plus_ways <- function(year, crs) {#, OSM_cache = TRUE) {
+get_all_three_plus_ways <- function(year, crs) {
+  #, OSM_cache = TRUE) {
   # # Grab 2021 streets from OSM
   # osm_pbf <- "http://download.geofabrik.de/north-america/canada-210101.osm.pbf"
   # streets <- osmextract::oe_read(osm_pbf, layer = "lines",
@@ -405,7 +460,7 @@ get_all_three_plus_ways <- function(year, crs) {#, OSM_cache = TRUE) {
   # Filter out highways
   if (year == 2001) {
     streets <- streets[streets$RANK1 == 0 & streets$RANK2 == 0, ]
-  } else if (year == 2006) {
+  } else if (year <= 2006) {
     streets <- streets[!streets$RANK %in% c("1", "2"), ]
   } else {
     streets <- streets[!streets$RANK %in% c("1", "2", "3"), ]
@@ -425,9 +480,11 @@ get_all_three_plus_ways <- function(year, crs) {#, OSM_cache = TRUE) {
     pb <- progressr::progressor(length(grid_intersects))
     three_ways <- future.apply::future_lapply(seq_along(grid_intersects), \(x) {
       out <- sf::st_intersection(grid[x, ], streets[grid_intersects[[x]], ])
-      if (nrow(out) == 0) return({
-        pb()
-        NULL})
+      if (nrow(out) == 0)
+        return({
+          pb()
+          NULL
+        })
       out <- sf::st_intersection(out)
       out <- out[sf::st_is(out, type = "POINT"), ]
       pb()
