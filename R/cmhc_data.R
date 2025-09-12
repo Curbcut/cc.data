@@ -254,24 +254,37 @@ cmhc_get_annual_cma <- function(requests) {
     future.seed = TRUE  # Ensures safe and reproducible parallel processing
   )
 
-  # Combine results from all CMAs
-  results_list <- list()
-  any_valid_annual <- FALSE
-
-  for (res in cma_results) {
-    if (is.null(res)) next
-    any_valid_annual <- TRUE
-    for (key in names(res)) {
-      results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
-    }
-  }
-
-  if (!any_valid_annual) {
-    stop("ERROR: No valid annual data found. Try using cmhc_get_monthly_cma().")
-  }
-
-  cmhc_vectors$CMA <- cmhc_finalize_results(results_list)
-  return(cmhc_vectors)
+   # Combine results from all CMAs
+   results_list <- list()
+   any_valid_annual <- FALSE
+ 
+   for (res in cma_results) {
+     if (is.null(res)) next
+     any_valid_annual <- TRUE
+     for (key in names(res)) {
+       results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
+     }
+   }
+ 
+   if (!any_valid_annual) {
+     stop("ERROR: No valid annual data found. Try using cmhc_get_monthly_cma().")
+   }
+ 
+   # ---- Forcer l’univers CMA (156 ids), NA = pas de données ----
+   cma_universe <- tibble::tibble(id = as.character(unique(cma_all$id)))  # 156 attendus
+ 
+   cmhc_vectors$CMA <- lapply(
+     cmhc_finalize_results(results_list),          # renomme GeoUID -> id
+     function(df) {
+       df <- df %>% dplyr::mutate(id = as.character(id))
+       df <- dplyr::full_join(cma_universe, df, by = "id") %>%
+             dplyr::arrange(id)
+       df
+     }
+   )
+ 
+   return(cmhc_vectors)
+ 
 }
 
 
@@ -385,23 +398,36 @@ cmhc_get_monthly_cma <- function(requests) {
   )
 
   # Combine results from all CMAs
-  results_list <- list()
-  any_valid_monthly <- FALSE
-
-  for (res in cma_results) {
-    if (is.null(res)) next
-    any_valid_monthly <- TRUE
-    for (key in names(res)) {
-      results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
+    # Combine results from all CMAs
+    results_list <- list()
+    any_valid_monthly <- FALSE
+  
+    for (res in cma_results) {
+      if (is.null(res)) next
+      any_valid_monthly <- TRUE
+      for (key in names(res)) {
+        results_list[[key]] <- dplyr::bind_rows(results_list[[key]], res[[key]])
+      }
     }
-  }
-
-  if (!any_valid_monthly) {
-    stop("ERROR: No valid monthly-format data found. Try using cmhc_get_annual_cma() instead.")
-  }
-
-  cmhc_vectors$CMA <- cmhc_finalize_results(results_list)
-  return(cmhc_vectors)
+  
+    if (!any_valid_monthly) {
+      stop("ERROR: No valid monthly-format data found. Try using cmhc_get_annual_cma() instead.")
+    }
+  
+    # ---- Forcer l’univers CMA (156 ids), NA = pas de données ----
+    cma_universe <- tibble::tibble(id = as.character(unique(cma_all$id)))
+  
+    cmhc_vectors$CMA <- lapply(
+      cmhc_finalize_results(results_list),
+      function(df) {
+        df <- df %>% dplyr::mutate(id = as.character(id))
+        df <- dplyr::full_join(cma_universe, df, by = "id") %>%
+              dplyr::arrange(id)
+        df
+      }
+    )
+  
+    return(cmhc_vectors)  
 }
 
 
@@ -600,30 +626,48 @@ cmhc_get_annual_ct <- function(requests, ct_correspondence_list, cma_uids = NULL
   )
 
   # Merge all results across CMAs
-  all_years_results <- list()
-  for (cma_result in cma_parallel_results) {
-    for (key in names(cma_result)) {
-      for (cma_name in names(cma_result[[key]])) {
-        if (!key %in% names(all_years_results)) all_years_results[[key]] <- list()
-        if (!cma_name %in% names(all_years_results[[key]])) {
-          all_years_results[[key]][[cma_name]] <- cma_result[[key]][[cma_name]]
-        } else {
-          all_years_results[[key]][[cma_name]] <- dplyr::full_join(
-            all_years_results[[key]][[cma_name]],
-            cma_result[[key]][[cma_name]],
-            by = "GeoUID"
-          )
-        }
+  all_months_results <- list()
+for (cma_result in cma_parallel_results) {
+  for (key in names(cma_result)) {
+    for (cma_name in names(cma_result[[key]])) {
+      if (!key %in% names(all_months_results)) all_months_results[[key]] <- list()
+      if (!cma_name %in% names(all_months_results[[key]])) {
+        all_months_results[[key]][[cma_name]] <- cma_result[[key]][[cma_name]]
+      } else {
+        all_months_results[[key]][[cma_name]] <- dplyr::full_join(
+          all_months_results[[key]][[cma_name]],
+          cma_result[[key]][[cma_name]],
+          by = "GeoUID"
+        )
       }
     }
   }
+}
 
-  cmhc_vectors$CT <- lapply(all_years_results, function(ct_results_by_cma) {
-    final_df <- dplyr::bind_rows(ct_results_by_cma)
-    cmhc_finalize_results(list(final_df))[[1]]
-  })
+# ---- Univers CT 2021 depuis cc.pipe (6247), sans géométrie ----
+ct_universe <- cc.pipe::get_census_digital_scales(scales = "ct")$ct |>
+  sf::st_drop_geometry() |>
+  dplyr::transmute(id = as.character(id)) |>
+  dplyr::distinct()
 
-  return(cmhc_vectors)
+# ---- Finalisation + LEFT JOIN à l’univers (NA = pas de données) ----
+cmhc_vectors$CT <- lapply(all_months_results, function(ct_results_by_cma) {
+  final_df <- dplyr::bind_rows(ct_results_by_cma)
+
+  # Standardise & sécurise l’unicité des IDs avant le join
+  df <- cmhc_finalize_results(list(final_df))[[1]]   # GeoUID -> id
+  df <- df %>% dplyr::mutate(id = as.character(id)) %>%
+    dplyr::distinct(id, .keep_all = TRUE)
+
+  # Univers à gauche pour garantir 6247 lignes exactement
+  df <- ct_universe %>%
+    dplyr::left_join(df, by = "id") %>%
+    dplyr::arrange(id)
+
+  df
+})
+
+return(cmhc_vectors) 
 }
 
 
@@ -733,12 +777,31 @@ cmhc_get_monthly_ct <- function(requests, ct_correspondence_list, cma_uids = NUL
     }
   }
 
-  cmhc_vectors$CT <- lapply(all_months_results, function(ct_results_by_cma) {
-    final_df <- dplyr::bind_rows(ct_results_by_cma)
-    cmhc_finalize_results(list(final_df))[[1]]
-  })
-
-  return(cmhc_vectors)
+    # ---- Univers CT 2021 (6247), sans géométrie ----
+    ct_universe <- cc.pipe::get_census_digital_scales(scales = "ct")$ct |>
+      sf::st_drop_geometry() |>
+      dplyr::transmute(id = as.character(id)) |>
+      dplyr::distinct()
+  
+    # ---- Finalisation : standardise ID, dédup, et LEFT JOIN sur l’univers ----
+    cmhc_vectors$CT <- lapply(all_months_results, function(ct_results_by_cma) {
+      final_df <- dplyr::bind_rows(ct_results_by_cma)
+  
+      # GeoUID -> id, tri des colonnes temporelles
+      df <- cmhc_finalize_results(list(final_df))[[1]]
+      df <- df %>%
+        dplyr::mutate(id = as.character(id)) %>%
+        dplyr::distinct(id, .keep_all = TRUE)
+  
+      # Univers à gauche pour garantir exactement 6247 CT (NA = pas de données)
+      df <- ct_universe %>%
+        dplyr::left_join(df, by = "id") %>%
+        dplyr::arrange(id)
+  
+      df
+    })
+  
+    return(cmhc_vectors)
 }
 
 #' Fetch CMHC Data for a Specific CSD
@@ -1089,8 +1152,22 @@ cmhc_get_annual_csd <- function(requests, csd_correspondence_list, csd_uids) {
     }
   }
   
+  # ---- Univers CSD 2021 (5161), sans géométrie ----
+  csd_universe <- cc.pipe::get_census_digital_scales(scales = "csd")$csd |>
+    sf::st_drop_geometry() |>
+    dplyr::transmute(id = as.character(id)) |>
+    dplyr::distinct()
+  
+  # Finalisation + LEFT JOIN sur l’univers (5161 CSD; NA = pas de données)
   cmhc_vectors$CSD <- lapply(cmhc_vectors$CSD, function(df) {
-    cmhc_finalize_results(list(df))[[1]]
+    df_fin <- cmhc_finalize_results(list(df))[[1]]   # GeoUID -> id + tri colonnes temps
+    df_fin <- df_fin %>%
+      dplyr::mutate(id = as.character(id)) %>%
+      dplyr::distinct(id, .keep_all = TRUE)
+    
+    csd_universe %>%
+      dplyr::left_join(df_fin, by = "id") %>%
+      dplyr::arrange(id)
   })
   
   return(cmhc_vectors)
@@ -1186,11 +1263,25 @@ cmhc_get_monthly_csd <- function(requests, csd_correspondence_list, csd_uids) {
     }
   }
   
-  cmhc_vectors$CSD <- lapply(cmhc_vectors$CSD, function(df) {
-    cmhc_finalize_results(list(df))[[1]]
-  })
+ # ---- Univers CSD 2021 (5161), sans géométrie ----
+ csd_universe <- cc.pipe::get_census_digital_scales(scales = "csd")$csd |>
+  sf::st_drop_geometry() |>
+  dplyr::transmute(id = as.character(id)) |>
+  dplyr::distinct()
+
+# ---- Finalisation + LEFT JOIN sur l’univers (NA = pas de données) ----
+cmhc_vectors$CSD <- lapply(cmhc_vectors$CSD, function(df) {
+  df_fin <- cmhc_finalize_results(list(df))[[1]]   # GeoUID -> id + tri temporel
+  df_fin <- df_fin %>%
+    dplyr::mutate(id = as.character(id)) %>%
+    dplyr::distinct(id, .keep_all = TRUE)
   
-  return(cmhc_vectors)
+  csd_universe %>%
+    dplyr::left_join(df_fin, by = "id") %>%
+    dplyr::arrange(id)
+})
+
+return(cmhc_vectors)
 }
 
 #' Fetch CMHC Data for a Specific Survey Zone (Monthly or Annual)
