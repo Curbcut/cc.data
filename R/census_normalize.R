@@ -1,4 +1,4 @@
-#' Normalize census variables to proportions in [0,1]
+#' Normalize census variables to proportions in `[0,1]`
 #'
 #' @param interpolated list [[scale]][[year]] sf — output of census_interpolate()
 #' @param census_vectors <character> cc.data::census_vectors (used only if unit_type = NULL)
@@ -46,7 +46,7 @@ data <- interpolated[[scale]][[year]]
 if (!inherits(data, "sf")) data <- sf::st_as_sf(data, sf_column_name = "geometry")
 data_no_geo <- unique(sf::st_drop_geometry(data))
 
-# Percentage → proportion in [0,1]
+# Percentage → proportion in `[0,1]`
 pct_vars <- intersect(names(data), units$var_code[units$units == "Percentage"])
 if (length(pct_vars) > 0) {
 pcts_list <- lapply(pct_vars, function(x) {
@@ -59,7 +59,7 @@ pcts <- Reduce(function(a, b) merge(a, b, by = "ID"), pcts_list)
 pcts <- NULL
 }
 
-# Number (with parent) → proportion in [0,1]
+# Number (with parent) → proportion in `[0,1]`
 numb_vars <- intersect(names(data), units$var_code[units$units == "Number"])
 if (length(numb_vars) > 0) {
 numb_list <- lapply(numb_vars, function(x) {

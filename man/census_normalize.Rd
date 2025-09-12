@@ -2,7 +2,7 @@
 % Please edit documentation in R/census_normalize.R
 \name{census_normalize}
 \alias{census_normalize}
-\title{Normalize census variables to proportions in \link{0,1}}
+\title{Normalize census variables to proportions in \verb{[0,1]}}
 \usage{
 census_normalize(
   interpolated,
@@ -27,5 +27,5 @@ census_normalize(
 list [\link{scale}][\link{year}] sf with normalized variables
 }
 \description{
-Normalize census variables to proportions in \link{0,1}
+Normalize census variables to proportions in \verb{[0,1]}
 }
