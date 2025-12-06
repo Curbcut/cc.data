@@ -90,7 +90,7 @@ census_vectors_housing <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "housing_rent",
+    var_code = "housing_shelcost_tenant",
     type = list(list(
       unit = "dollar",                      
       aggregation_field = "avg",
@@ -116,7 +116,7 @@ census_vectors_housing <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "housing_shelcost",
+    var_code = "housing_shelcost_tenant",
     type = list(list(
       unit = "dollar",                      
       aggregation_field = "avg",
@@ -132,8 +132,8 @@ census_vectors_housing <-
       en = "Average shelter cost",
       fr = "Frais de logements moyens")),
     var_short = list(list(
-      en = "Avg. shelter cost",
-      fr = "Frais de logements moyens")),
+      en = "Shelter cost",
+      fr = "Frais logement")),
     description = list(list(
       en = "The average monthly shelter expenses paid by owner households, including, where applicable, mortgage payments, property taxes, condominium fees, and costs of electricity, heat and water",
       fr = "Les frais mensuels moyens de logement payés par les ménages propriétaires, incluant, s’il y a lieu, les versements hypothécaires, les taxes foncières, les frais de copropriété ainsi que les coûts d’électricité, de chauffage et d’eau"
@@ -157,7 +157,9 @@ census_vectors_housing <-
     var_title = list(list(
       en ="Housing requiring major repairs",
       fr = "Logements nécessitant des réparations importantes")),
-    var_short = list("Repairs"),
+    var_short = list(list(
+      en = "Repairs",
+      fr = "Réparations")),    
     description = list(list(
       en = "The number of occupied private dwellings that require major repairs, including dwellings with defective plumbing or electrical wiring, or structural repairs to walls, floors or ceilings",
       fr = "Le nombre de logements privés occupés nécessitant des réparations majeures, y compris les logements où la plomberie ou l'installation électrique est défectueuse, ou qui ont besoin de réparations à la charpente des murs, des planchers ou des plafonds")),
@@ -3102,5 +3104,179 @@ census_vectors_table <- rbind(
   census_vectors_buildingage,
   census_vectors_typology
 )
+
+check_census_vectors <- function(x) {
+  # internal max length for short names
+  max_short <- 15
+  
+  # required base columns
+  needed_basic  <- c("var_title", "var_short")
+  missing_basic <- setdiff(needed_basic, names(x))
+  
+  if (length(missing_basic) > 0) {
+    message(
+      "Missing required columns for check: ",
+      paste(missing_basic, collapse = ", "),
+      ". Nothing checked."
+    )
+    return(invisible(NULL))
+  }
+  
+  # description column: description or explanation
+  desc_col <- NULL
+  if ("description" %in% names(x)) {
+    desc_col <- "description"
+  } else if ("explanation" %in% names(x)) {
+    desc_col <- "explanation"
+  } else {
+    message("No 'description' or 'explanation' column found, description checks skipped.")
+  }
+  
+  # helper to extract language from list-cols
+  extract_lang <- function(col, lang) {
+    vapply(
+      col,
+      FUN.VALUE = character(1),
+      FUN = function(z) {
+        if (is.null(z)) return(NA_character_)
+        
+        if (length(z) == 1L && is.atomic(z) && is.na(z)) {
+          return(NA_character_)
+        }
+        
+        # list(en = "...", fr = "...")
+        if (is.list(z) && !is.null(z[[lang]])) {
+          val <- z[[lang]]
+          if (is.null(val) || length(val) == 0L || all(is.na(val))) {
+            return(NA_character_)
+          }
+          return(as.character(val[1]))
+        }
+        
+        # plain string → treat as EN only
+        if (is.atomic(z) && length(z) == 1L && is.character(z)) {
+          if (lang == "en") {
+            return(as.character(z))
+          } else {
+            return(NA_character_)
+          }
+        }
+        
+        NA_character_
+      }
+    )
+  }
+  
+  n <- nrow(x)
+  
+  # var_code if available
+  var_code_col <- if ("var_code" %in% names(x)) x$var_code else rep(NA_character_, n)
+  
+  # extract EN/FR for title / short / desc
+  title_en <- extract_lang(x$var_title, "en")
+  title_fr <- extract_lang(x$var_title, "fr")
+  
+  short_en <- extract_lang(x$var_short, "en")
+  short_fr <- extract_lang(x$var_short, "fr")
+  
+  if (!is.null(desc_col)) {
+    desc_en <- extract_lang(x[[desc_col]], "en")
+    desc_fr <- extract_lang(x[[desc_col]], "fr")
+  } else {
+    desc_en <- rep(NA_character_, n)
+    desc_fr <- rep(NA_character_, n)
+  }
+  
+  is_blank <- function(z) is.na(z) | trimws(z) == ""
+  
+  missing_title_en <- is_blank(title_en)
+  missing_title_fr <- is_blank(title_fr)
+  missing_short_en <- is_blank(short_en)
+  missing_short_fr <- is_blank(short_fr)
+  missing_desc_en  <- is_blank(desc_en)
+  missing_desc_fr  <- is_blank(desc_fr)
+  
+  short_en_too_long <- !is.na(short_en) & nchar(short_en) > max_short
+  short_fr_too_long <- !is.na(short_fr) & nchar(short_fr) > max_short
+  
+  any_issue <- missing_title_en | missing_title_fr |
+    missing_short_en | missing_short_fr |
+    (!is.null(desc_col) & (missing_desc_en | missing_desc_fr)) |
+    short_en_too_long | short_fr_too_long
+  
+  idx <- which(any_issue)
+  
+  # no issues
+  if (length(idx) == 0L) {
+    message(
+      "All census vector documentation checks passed ",
+      "(titles, short names and descriptions in EN/FR, short names <= ",
+      max_short, " characters)."
+    )
+    return(invisible(NULL))
+  }
+  
+  # messages per variable
+  for (i in idx) {
+    vc <- var_code_col[i]
+    if (is.na(vc) || vc == "") vc <- "<NA>"
+    
+    issues <- character(0)
+    
+    if (missing_title_en[i]) issues <- c(issues, "missing English title (var_title en)")
+    if (missing_title_fr[i]) issues <- c(issues, "missing French title (var_title fr)")
+    
+    if (missing_short_en[i]) {
+      issues <- c(issues, "missing English short name (var_short en)")
+    } else if (short_en_too_long[i]) {
+      issues <- c(
+        issues,
+        paste0(
+          "English short name longer than ", max_short,
+          " characters (len = ", nchar(short_en[i]), ")"
+        )
+      )
+    }
+    
+    if (missing_short_fr[i]) {
+      issues <- c(issues, "missing French short name (var_short fr)")
+    } else if (short_fr_too_long[i]) {
+      issues <- c(
+        issues,
+        paste0(
+          "French short name longer than ", max_short,
+          " characters (len = ", nchar(short_fr[i]), ")"
+        )
+      )
+    }
+    
+    if (!is.null(desc_col)) {
+      if (missing_desc_en[i]) issues <- c(issues, "missing English description")
+      if (missing_desc_fr[i]) issues <- c(issues, "missing French description")
+    }
+    
+    message(
+      "var_code '", vc, "' (row ", i, "): ",
+      paste(issues, collapse = "; ")
+    )
+  }
+  
+  invisible(
+    tibble::tibble(
+      row_id            = idx,
+      var_code          = var_code_col[idx],
+      missing_title_en  = missing_title_en[idx],
+      missing_title_fr  = missing_title_fr[idx],
+      missing_short_en  = missing_short_en[idx],
+      missing_short_fr  = missing_short_fr[idx],
+      missing_desc_en   = missing_desc_en[idx],
+      missing_desc_fr   = missing_desc_fr[idx],
+      short_en_too_long = short_en_too_long[idx],
+      short_fr_too_long = short_fr_too_long[idx]
+    )
+  )
+}
+
+check_census_vectors(census_vectors_table)
 
 usethis::use_data(census_vectors_table, overwrite = TRUE)
