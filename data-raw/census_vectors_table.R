@@ -103,11 +103,11 @@ census_vectors_housing <-
     vec_2001 = list("v_CA01_1667"),
     vec_1996 = list("v_CA1996_1701"),
     var_title = list(list(
-      en = "Average rent",
-      fr = "Loyer moyen")),
+      en = "Average shelter cost for tenant households",
+      fr = "Frais de logement moyens des ménages locataires")),
     var_short = list(list(
-      en = "Avg. rent",
-      fr = "Loyer moyen")),
+      en = "Shelter tenant",
+      fr = "Frais log. loc")),
     description = list(list(
       en = "The average monthly shelter expenses paid by tenant households, including, where applicable, rent plus costs of electricity, heat, water and municipal services",
       fr = "Les frais mensuels moyens de logement payés par les ménages locataires, incluant, s’il y a lieu, le loyer ainsi que les coûts d’électricité, de chauffage, d’eau et des services municipaux"
@@ -116,7 +116,7 @@ census_vectors_housing <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "housing_shelcost_tenant",
+    var_code = "housing_shelcost_owner",
     type = list(list(
       unit = "dollar",                      
       aggregation_field = "avg",
@@ -129,11 +129,13 @@ census_vectors_housing <-
     vec_2001 = list("v_CA01_1671"),
     vec_1996 = list("v_CA1996_1704"),
     var_title = list(list(
-      en = "Average shelter cost",
-      fr = "Frais de logements moyens")),
+      en = "Average shelter cost for owner households",
+      fr = "Frais de logement moyens des ménages propriétaires"
+    )),
     var_short = list(list(
-      en = "Shelter cost",
-      fr = "Frais logement")),
+      en = "Shelter owner",
+      fr = "Frais log. prop"
+    )),
     description = list(list(
       en = "The average monthly shelter expenses paid by owner households, including, where applicable, mortgage payments, property taxes, condominium fees, and costs of electricity, heat and water",
       fr = "Les frais mensuels moyens de logement payés par les ménages propriétaires, incluant, s’il y a lieu, les versements hypothécaires, les taxes foncières, les frais de copropriété ainsi que les coûts d’électricité, de chauffage et d’eau"
@@ -3107,12 +3109,11 @@ census_vectors_table <- rbind(
 
 check_census_vectors <- function(x) {
   # internal max length for short names
-  max_short <- 15
+  max_short <- 15L
   
   # required base columns
   needed_basic  <- c("var_title", "var_short")
   missing_basic <- setdiff(needed_basic, names(x))
-  
   if (length(missing_basic) > 0) {
     message(
       "Missing required columns for check: ",
@@ -3132,18 +3133,18 @@ check_census_vectors <- function(x) {
     message("No 'description' or 'explanation' column found, description checks skipped.")
   }
   
-  # helper to extract language from list-cols
+  # helpers ---------------------------------------------------------------
+  is_blank <- function(z) is.na(z) | trimws(z) == ""
+  
   extract_lang <- function(col, lang) {
     vapply(
       col,
       FUN.VALUE = character(1),
       FUN = function(z) {
         if (is.null(z)) return(NA_character_)
-        
         if (length(z) == 1L && is.atomic(z) && is.na(z)) {
           return(NA_character_)
         }
-        
         # list(en = "...", fr = "...")
         if (is.list(z) && !is.null(z[[lang]])) {
           val <- z[[lang]]
@@ -3152,7 +3153,6 @@ check_census_vectors <- function(x) {
           }
           return(as.character(val[1]))
         }
-        
         # plain string → treat as EN only
         if (is.atomic(z) && length(z) == 1L && is.character(z)) {
           if (lang == "en") {
@@ -3161,16 +3161,16 @@ check_census_vectors <- function(x) {
             return(NA_character_)
           }
         }
-        
         NA_character_
       }
     )
   }
+  # -----------------------------------------------------------------------
   
   n <- nrow(x)
   
   # var_code if available
-  var_code_col <- if ("var_code" %in% names(x)) x$var_code else rep(NA_character_, n)
+  var_code <- if ("var_code" %in% names(x)) as.character(x$var_code) else rep(NA_character_, n)
   
   # extract EN/FR for title / short / desc
   title_en <- extract_lang(x$var_title, "en")
@@ -3187,8 +3187,7 @@ check_census_vectors <- function(x) {
     desc_fr <- rep(NA_character_, n)
   }
   
-  is_blank <- function(z) is.na(z) | trimws(z) == ""
-  
+  # missing flags
   missing_title_en <- is_blank(title_en)
   missing_title_fr <- is_blank(title_fr)
   missing_short_en <- is_blank(short_en)
@@ -3196,13 +3195,35 @@ check_census_vectors <- function(x) {
   missing_desc_en  <- is_blank(desc_en)
   missing_desc_fr  <- is_blank(desc_fr)
   
+  # length flags
   short_en_too_long <- !is.na(short_en) & nchar(short_en) > max_short
   short_fr_too_long <- !is.na(short_fr) & nchar(short_fr) > max_short
   
+  # duplicate var_code flags + peers --------------------------------------
+  dup_var_code      <- rep(FALSE, n)
+  dup_var_code_peers <- vector("list", n)
+  
+  non_na_code <- !is.na(var_code) & var_code != ""
+  if (any(non_na_code)) {
+    tab <- table(var_code[non_na_code])
+    dup_vals <- names(tab)[tab > 1L]
+    if (length(dup_vals)) {
+      for (val in dup_vals) {
+        rows <- which(var_code == val & non_na_code)
+        dup_var_code[rows] <- TRUE
+        for (i in rows) {
+          dup_var_code_peers[[i]] <- setdiff(rows, i)
+        }
+      }
+    }
+  }
+  
+  # any issue on the row
   any_issue <- missing_title_en | missing_title_fr |
     missing_short_en | missing_short_fr |
     (!is.null(desc_col) & (missing_desc_en | missing_desc_fr)) |
-    short_en_too_long | short_fr_too_long
+    short_en_too_long | short_fr_too_long |
+    dup_var_code
   
   idx <- which(any_issue)
   
@@ -3211,21 +3232,23 @@ check_census_vectors <- function(x) {
     message(
       "All census vector documentation checks passed ",
       "(titles, short names and descriptions in EN/FR, short names <= ",
-      max_short, " characters)."
+      max_short, " characters, no duplicated var_code)."
     )
     return(invisible(NULL))
   }
   
-  # messages per variable
+  # messages per variable -------------------------------------------------
   for (i in idx) {
-    vc <- var_code_col[i]
+    vc <- var_code[i]
     if (is.na(vc) || vc == "") vc <- "<NA>"
     
     issues <- character(0)
     
+    # missing titles
     if (missing_title_en[i]) issues <- c(issues, "missing English title (var_title en)")
     if (missing_title_fr[i]) issues <- c(issues, "missing French title (var_title fr)")
     
+    # missing / too long short names
     if (missing_short_en[i]) {
       issues <- c(issues, "missing English short name (var_short en)")
     } else if (short_en_too_long[i]) {
@@ -3250,9 +3273,26 @@ check_census_vectors <- function(x) {
       )
     }
     
+    # missing descriptions
     if (!is.null(desc_col)) {
       if (missing_desc_en[i]) issues <- c(issues, "missing English description")
       if (missing_desc_fr[i]) issues <- c(issues, "missing French description")
+    }
+    
+    # duplicated var_code with details
+    if (dup_var_code[i]) {
+      peers <- dup_var_code_peers[[i]]
+      if (!is.null(peers) && length(peers)) {
+        issues <- c(
+          issues,
+          paste0(
+            "duplicate var_code also used at rows ",
+            paste(peers, collapse = ", ")
+          )
+        )
+      } else {
+        issues <- c(issues, "duplicate var_code")
+      }
     }
     
     message(
@@ -3264,7 +3304,7 @@ check_census_vectors <- function(x) {
   invisible(
     tibble::tibble(
       row_id            = idx,
-      var_code          = var_code_col[idx],
+      var_code          = var_code[idx],
       missing_title_en  = missing_title_en[idx],
       missing_title_fr  = missing_title_fr[idx],
       missing_short_en  = missing_short_en[idx],
@@ -3272,10 +3312,12 @@ check_census_vectors <- function(x) {
       missing_desc_en   = missing_desc_en[idx],
       missing_desc_fr   = missing_desc_fr[idx],
       short_en_too_long = short_en_too_long[idx],
-      short_fr_too_long = short_fr_too_long[idx]
+      short_fr_too_long = short_fr_too_long[idx],
+      dup_var_code      = dup_var_code[idx]
     )
   )
 }
+
 
 check_census_vectors(census_vectors_table)
 
