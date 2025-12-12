@@ -56,7 +56,8 @@ Suggests:
     stringi,
     tesseract,
     tidyselect,
-    sp
+    sp,
+    tools
 Remotes:
     Curbcut/cc.buildr
 License: AGPL (>= 3)
