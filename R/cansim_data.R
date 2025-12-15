@@ -632,3 +632,141 @@ cansim_income_inequity <- function() {
   
   return(df)
 }
+
+#' @title GDP CANSIM (PR, CMA ou les deux) — large, dollars
+#' @description Récupère et structure le PIB en dollars (val_norm) :
+#' - Provinces/Territoires : CANSIM 36-10-0402-01 (All industries, Current dollars)
+#' - CMA : CANSIM 36-10-0468-01 (Ottawa–Gatineau séparée en ON/QC)
+#' Retourne des tableaux larges id + gdp_YYYY, ou une liste si level = "both".
+#'
+#' @param level "pr", "cma" ou "both" (par défaut "both")
+#' @return tibble (si "pr" ou "cma") ou list(pr=..., cma=...) si "both"
+#' @export
+cansim_gdp <- function(level = c("both","pr","cma")) {
+  level <- match.arg(level)
+  
+  # ---------- utilitaires ----------
+  norm <- function(x) {
+    x |>
+      stringi::stri_trans_general("Latin-ASCII") |>
+      tolower() |>
+      gsub("[^a-z0-9]+", " ", x = _) |>
+      trimws()
+  }
+  
+  clean_statscan_cma_name <- function(s) {
+    # vectorisé
+    s_name <- sub(",[^,]*$", "", s)
+    s_name <- gsub("\u2013|\u2014", "-", s_name)  # en/em dash -> hyphen
+    s_name <- gsub("\\s*-\\s*", " - ", s_name)
+    s_name <- trimws(s_name)
+    
+    res  <- s_name
+    is_og <- grepl("^Ottawa\\s*[-–]\\s*Gatineau", s_name, ignore.case = TRUE)
+    is_on <- grepl("Ontario part", s, ignore.case = TRUE)
+    is_qc <- grepl("Quebec part", s, ignore.case = TRUE) |
+      grepl("partie du Qu[eé]bec", s, ignore.case = TRUE)
+    
+    res <- ifelse(is_og & is_on, "Ottawa - Gatineau (Ontario part)", res)
+    res <- ifelse(is_og & is_qc, "Ottawa - Gatineau (Quebec part)", res)
+    
+    # deux CMA distinctes, normalisation d'écriture
+    res <- ifelse(grepl("^St\\.?\\s*John'?s$", res, ignore.case = TRUE), "St. John's", res)
+    res <- ifelse(grepl("^Saint\\s*John$",  res, ignore.case = TRUE), "Saint John",  res)
+    res
+  }
+  
+  # ---------- PR ----------
+  get_pr <- function() {
+    pr21 <- cancensus::list_census_regions("CA21", use_cache = FALSE) |>
+      dplyr::filter(level == "PR") |>
+      dplyr::select(id = region, name)
+    
+    gdp_pr <- cansim::get_cansim("36-10-0402-01") |>
+      janitor::clean_names() |>
+      dplyr::filter(
+        prices == "Current dollars",
+        north_american_industry_classification_system_naics == "All industries"
+      ) |>
+      dplyr::transmute(
+        geo  = as.character(geo),
+        year = as.integer(substr(ref_date, 1, 4)),
+        dollars = val_norm
+      )
+    
+    pr21n <- pr21 |>
+      dplyr::mutate(name_norm = norm(name)) |>
+      dplyr::select(id, name_norm)
+    
+    gdp_pr |>
+      dplyr::mutate(name_norm = norm(geo)) |>
+      dplyr::inner_join(pr21n, by = "name_norm") |>
+      dplyr::select(id, year, dollars) |>
+      dplyr::group_by(id, year) |>
+      dplyr::summarise(dollars = sum(dollars, na.rm = TRUE), .groups = "drop") |>
+      dplyr::mutate(var = paste0("gdp_", year)) |>
+      dplyr::select(id, var, dollars) |>
+      tidyr::pivot_wider(names_from = var, values_from = dollars) |>
+      dplyr::arrange(id)
+  }
+  
+  # ---------- CMA (Ottawa–Gatineau séparée) ----------
+  get_cma <- function() {
+    cma21 <- cancensus::list_census_regions("CA21", use_cache = FALSE) |>
+      dplyr::filter(level == "CMA") |>
+      dplyr::select(id = region, name)
+    
+    # ids pour les deux parties d'Ottawa–Gatineau
+    ott_parts <- tibble::tibble(
+      id   = c("35505", "24505"),
+      name = c("Ottawa - Gatineau (Ontario part)", "Ottawa - Gatineau (Quebec part)")
+    )
+    
+    raw <- cansim::get_cansim("36-10-0468-01") |>
+      janitor::clean_names()
+    
+    dat <- raw |>
+      dplyr::filter(
+        !grepl("^Canada$", geo),
+        !grepl("^Non-census metropolitan areas", geo),
+        grepl(",", geo)
+      ) |>
+      dplyr::transmute(
+        geo     = as.character(geo),
+        year    = as.integer(substr(ref_date, 1, 4)),
+        dollars = val_norm
+      ) |>
+      dplyr::mutate(
+        cma_name_clean = clean_statscan_cma_name(geo),
+        name_norm      = norm(cma_name_clean)
+      )
+    
+    cma21n <- cma21 |>
+      dplyr::mutate(name_norm = norm(name)) |>
+      dplyr::select(id, name_norm)
+    
+    ottn <- ott_parts |>
+      dplyr::mutate(name_norm = norm(name)) |>
+      dplyr::select(id, name_norm)
+    
+    dat_ott  <- dat |> dplyr::semi_join(ottn,  by = "name_norm")
+    dat_rest <- dat |> dplyr::anti_join(ottn,  by = "name_norm")
+    
+    joined_ott  <- dat_ott  |> dplyr::inner_join(ottn,  by = "name_norm") |> dplyr::select(id, year, dollars)
+    joined_rest <- dat_rest |> dplyr::inner_join(cma21n, by = "name_norm") |> dplyr::select(id, year, dollars)
+    
+    dplyr::bind_rows(joined_ott, joined_rest) |>
+      dplyr::group_by(id, year) |>
+      dplyr::summarise(dollars = sum(dollars, na.rm = TRUE), .groups = "drop") |>
+      dplyr::mutate(var = paste0("gdp_", year)) |>
+      dplyr::select(id, var, dollars) |>
+      tidyr::pivot_wider(names_from = var, values_from = dollars) |>
+      dplyr::arrange(id)
+  }
+  
+  # ---------- dispatcher ----------
+  if (level == "pr")   return(get_pr())
+  if (level == "cma")  return(get_cma())
+  list(pr = get_pr(), cma = get_cma())
+}
+
