@@ -46,10 +46,12 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
 
   # If the hash exists in the bucket
   if ("hash.qs" %in% all_objects) {
-
     # Create a hash file of local files
     hash_file <- tibble::tibble(file = files)
-    hash_file$hash_disk <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
+    hash_file$hash_disk <- future.apply::future_sapply(
+      hash_file$file,
+      rlang::hash_file
+    )
 
     # Grab the hash file in the bucket
     bucket_hash <- tempfile(fileext = "hash.qs")
@@ -60,7 +62,8 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
       object = "hash.qs",
       bucket = bucket,
       file = bucket_hash
-    ) |> suppressMessages()
+    ) |>
+      suppressMessages()
     bucket_hash <- qs::qread(bucket_hash)
     names(bucket_hash)[2] <- "hash_bucket"
 
@@ -70,7 +73,6 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
     to_prune <- to_prune[is.na(to_prune$hash_disk), ]
 
     if (nrow(to_prune) > 0) {
-
       # Prompt with details about potential pruning
       if (prune == "ask") {
         prune_message <- to_prune$file[seq_len(min(nrow(to_prune), 15))]
@@ -78,49 +80,61 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
         prune_message <- sub("^/", "", prune_message)
         prune_message <- paste0("\u2219 ", prune_message, "\n")
         prune_message <- paste(prune_message, collapse = "")
-        prune_message <- paste0(prettyNum(nrow(to_prune), big.mark = ","),
-                                " files are present in the bucket but ",
-                                "not in the local folder, including:\n",
-                                prune_message,
-                                "Should they be deleted from the bucket? (y/n)\n")
+        prune_message <- paste0(
+          prettyNum(nrow(to_prune), big.mark = ","),
+          " files are present in the bucket but ",
+          "not in the local folder, including:\n",
+          prune_message,
+          "Should they be deleted from the bucket? (y/n)\n"
+        )
         cat(prune_message)
         prune_prompt <- readline()
 
         if (prune_prompt %in% c("y", "Y", "yes", "Yes", "YES")) {
-          aws.s3::delete_object(object = gsub(sprintf("%s||%s/", folder, folder) , "", to_prune$file),
-                                bucket = bucket)
+          aws.s3::delete_object(
+            object = gsub(
+              sprintf("%s||%s/", folder, folder),
+              "",
+              to_prune$file
+            ),
+            bucket = bucket
+          )
           cat("Files succesfully removed. ")
         } else {
           cat("Files will not be deleted. ")
         }
-
       } else if (prune) {
-
-        aws.s3::delete_object(object = gsub(sprintf("%s||%s/", folder, folder) , "", to_prune$file),
-                              bucket = bucket)
+        aws.s3::delete_object(
+          object = gsub(sprintf("%s||%s/", folder, folder), "", to_prune$file),
+          bucket = bucket
+        )
         cat("Files present in the bucket but not locally were removed. ")
-
       } else if (!prune) {
-
         cat("Files present in the bucket but not locally were not removed. ")
-
       }
-
     }
 
     # Find objects which don't match between disk and bucket
     hash <- merge(hash_file, bucket_hash, all.x = TRUE)
-    send_index <- mapply(identical, hash$hash_disk, hash$hash_bucket,
-                         USE.NAMES = FALSE)
+    send_index <- mapply(
+      identical,
+      hash$hash_disk,
+      hash$hash_bucket,
+      USE.NAMES = FALSE
+    )
     send <- hash[!send_index, ]
     send$file <- gsub(paste0("^", folder, "/*"), "", send$file)
     hashed <- length(files) - nrow(send)
     to_send <- send$file
 
     # Report sending plan
-    cat(prettyNum(hashed, big.mark = ","), " files unchanged. ",
-        prettyNum(length(to_send), big.mark = ","),
-        " files will be uploaded to the bucket\n", sep = "")
+    cat(
+      prettyNum(hashed, big.mark = ","),
+      " files unchanged. ",
+      prettyNum(length(to_send), big.mark = ","),
+      " files will be uploaded to the bucket\n",
+      sep = ""
+    )
 
     progressr::with_progress({
       pb <- progressr::progressor(length(to_send))
@@ -133,17 +147,20 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
           file = file_path,
           object = object_name,
           bucket = bucket
-        ) |> suppressMessages()
+        ) |>
+          suppressMessages()
         pb()
         return(invisible(NULL))
       })
     })
-
   } else {
-
     # Report download plan
-    cat("No hash file detected. ", prettyNum(length(files), big.mark = ","),
-        " files will be uploaded to the bucket.\n", sep = "")
+    cat(
+      "No hash file detected. ",
+      prettyNum(length(files), big.mark = ","),
+      " files will be uploaded to the bucket.\n",
+      sep = ""
+    )
 
     progressr::with_progress({
       pb <- progressr::progressor(length(files))
@@ -156,7 +173,8 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
           file = file_path,
           object = object_name,
           bucket = bucket
-        ) |> suppressMessages()
+        ) |>
+          suppressMessages()
         pb()
         return(invisible(NULL))
       })
@@ -166,7 +184,10 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
   # Create a hash file of all the local files
   all_files <- list.files(folder, full.names = TRUE, recursive = TRUE)
   hash_file <- tibble::tibble(file = all_files)
-  hash_file$hash <- future.apply::future_sapply(hash_file$file, rlang::hash_file)
+  hash_file$hash <- future.apply::future_sapply(
+    hash_file$file,
+    rlang::hash_file
+  )
 
   hash_temp <- tempfile(fileext = ".qs")
   qs::qsave(hash_file, hash_temp)
@@ -178,8 +199,8 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
     file = hash_temp,
     object = "hash.qs",
     bucket = bucket
-  ) |> suppressMessages()
-
+  ) |>
+    suppressMessages()
 }
 
 
@@ -204,9 +225,12 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
 #' @return NULL if successful, and an error message if not.
 #' @export
 
-bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
-                              exclude = NULL) {
-
+bucket_get_folder <- function(
+  destination_folder,
+  bucket,
+  prune = "ask",
+  exclude = NULL
+) {
   # Argument check
   stopifnot(is.character(destination_folder))
   stopifnot(is.character(bucket))
@@ -241,7 +265,6 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
   # If there is a hash file in the bucket, only download what is different from
   # the bucket content
   if ("hash.qs" %in% to_download) {
-
     # Grab the hash file in the bucket
     bucket_hash <- tempfile(fileext = "hash.qs")
     aws.s3::save_object(
@@ -251,7 +274,8 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
       object = "hash.qs",
       bucket = bucket,
       file = bucket_hash
-    ) |> suppressMessages()
+    ) |>
+      suppressMessages()
     bucket_hash <- qs::qread(bucket_hash)
     names(bucket_hash)[2] <- "hash_bucket"
 
@@ -260,15 +284,16 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
     all_files <- file.path(destination_folder, all_files)
     hash_file <- tibble::tibble(file = all_files)
     hash_file$hash_disk <- future.apply::future_sapply(
-      hash_file$file, rlang::hash_file)
+      hash_file$file,
+      rlang::hash_file
+    )
 
     # If there are local files not present in the bucket, decide whether to
     # delete them
     to_prune <- merge(hash_file, bucket_hash, all.x = TRUE)
-    to_prune <- to_prune[is.na(to_prune$hash_bucket),]
+    to_prune <- to_prune[is.na(to_prune$hash_bucket), ]
 
     if (nrow(to_prune) > 0) {
-
       # Prompt with details about potential pruning
       if (prune == "ask") {
         prune_message <- to_prune$file[seq_len(min(nrow(to_prune), 3))]
@@ -276,11 +301,13 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
         prune_message <- sub("^/", "", prune_message)
         prune_message <- paste0("\u2219 ", prune_message, "\n")
         prune_message <- paste(prune_message, collapse = "")
-        prune_message <- paste0(prettyNum(nrow(to_prune), big.mark = ","),
-                                " files are present in the destination but ",
-                                "not in the source bucket, including:\n",
-                                prune_message,
-                                "Should they be deleted? (y/n)\n")
+        prune_message <- paste0(
+          prettyNum(nrow(to_prune), big.mark = ","),
+          " files are present in the destination but ",
+          "not in the source bucket, including:\n",
+          prune_message,
+          "Should they be deleted? (y/n)\n"
+        )
         cat(prune_message)
         prune_prompt <- readline()
 
@@ -290,47 +317,59 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
         } else {
           cat("Files will not be deleted. ")
         }
-
       } else if (prune) {
-
         removed <- file.remove(to_prune$file)
-        cat(prettyNum(sum(removed), big.mark = ","),
-            "files present in the destination but not in the source bucket",
-            "were removed. ")
-
+        cat(
+          prettyNum(sum(removed), big.mark = ","),
+          "files present in the destination but not in the source bucket",
+          "were removed. "
+        )
       } else if (!prune) {
-
-        cat(prettyNum(nrow(to_prune), big.mark = ","),
-            "files are present in the destination but not in the source bucket",
-            "and were not removed. ")
-
+        cat(
+          prettyNum(nrow(to_prune), big.mark = ","),
+          "files are present in the destination but not in the source bucket",
+          "and were not removed. "
+        )
       }
-
     }
 
     # Find objects which don't match between disk and bucket
     hash <- merge(bucket_hash, hash_file, all.x = TRUE)
-    retrieve_index <- mapply(identical, hash$hash_bucket, hash$hash_disk,
-                             USE.NAMES = FALSE)
+    retrieve_index <- mapply(
+      identical,
+      hash$hash_bucket,
+      hash$hash_disk,
+      USE.NAMES = FALSE
+    )
     retrieve <- hash[!retrieve_index, ]
-    retrieve$file <- gsub(paste0("^", destination_folder, "/*"), "",
-                          retrieve$file)
+    retrieve$file <- gsub(
+      paste0("^", destination_folder, "/*"),
+      "",
+      retrieve$file
+    )
     hashed <- length(to_download) - nrow(retrieve)
     to_download <- retrieve$file
 
     # Report download plan
-    cat(prettyNum(excluded, big.mark = ","), " files excluded. ",
-        prettyNum(hashed, big.mark = ","), " files unchanged. ",
-        prettyNum(length(to_download), big.mark = ","),
-        " files will be downloaded.\n", sep = "")
-
+    cat(
+      prettyNum(excluded, big.mark = ","),
+      " files excluded. ",
+      prettyNum(hashed, big.mark = ","),
+      " files unchanged. ",
+      prettyNum(length(to_download), big.mark = ","),
+      " files will be downloaded.\n",
+      sep = ""
+    )
   } else {
-
     # Report download plan
-    cat("No hash file detected. ", prettyNum(excluded, big.mark = ","),
-        " files excluded. ", prettyNum(length(to_download), big.mark = ","),
-        " files will be downloaded.\n", sep = "")
-
+    cat(
+      "No hash file detected. ",
+      prettyNum(excluded, big.mark = ","),
+      " files excluded. ",
+      prettyNum(length(to_download), big.mark = ","),
+      " files will be downloaded.\n",
+      sep = ""
+    )
   }
 
   # Download the bucket and place it in the destination folder
@@ -345,7 +384,8 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
         object = object,
         bucket = bucket,
         file = file.path(destination_folder, object)
-      ) |> suppressMessages()
+      ) |>
+        suppressMessages()
     })
   })
 
@@ -363,7 +403,6 @@ bucket_get_folder <- function(destination_folder, bucket, prune = "ask",
 #' @export
 
 bucket_list_content <- function(bucket) {
-
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
     stop(
       "Package \"aws.s3\" must be installed to use this function.",
@@ -375,10 +414,13 @@ bucket_list_content <- function(bucket) {
     stop(paste0("You do not have a Curbcut database user access."))
   }
 
-  aws.s3::get_bucket_df(region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
-                        key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
-                        secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-                        bucket = bucket)
+  aws.s3::get_bucket_df(
+    region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+    key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+    secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+    bucket = bucket,
+    max = Inf
+  )
 }
 
 #' Read single object from AWS bucket
@@ -395,7 +437,6 @@ bucket_list_content <- function(bucket) {
 #' supplied `method`.
 #' @export
 bucket_read_object <- function(object, objectext, bucket, method) {
-
   if (!requireNamespace("aws.s3", quietly = TRUE)) {
     stop(
       "Package \"aws.s3\" must be installed to use this function.",
@@ -408,13 +449,15 @@ bucket_read_object <- function(object, objectext, bucket, method) {
   }
 
   tmp <- tempfile(fileext = objectext)
-  aws.s3::save_object(region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
-                      key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
-                      secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
-                      object = object,
-                      bucket = bucket,
-                      file = tmp,
-                      overwrite = TRUE)
+  aws.s3::save_object(
+    region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
+    key = Sys.getenv("CURBCUT_BUCKET_ACCESS_ID"),
+    secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY"),
+    object = object,
+    bucket = bucket,
+    file = tmp,
+    overwrite = TRUE
+  )
   do.call(method, list(tmp))
 }
 
@@ -435,17 +478,17 @@ bucket_read_object <- function(object, objectext, bucket, method) {
 #' one shapefile. If there are multiple shapefiles, it will only read the first
 #' one it finds.
 bucket_read_object_zip_shp <- function(object, bucket) {
-
   # Get the file from the bucket
-  file <- bucket_read_object(object = object,
-                             bucket = bucket,
-                             objectext = ".zip",
-                             method = c)
+  file <- bucket_read_object(
+    object = object,
+    bucket = bucket,
+    objectext = ".zip",
+    method = c
+  )
 
   # Unzip, grab the shapefile name, and read it
   content <- utils::unzip(file, list = TRUE, exdir = tempdir())$Name
   shp_file <- content[grepl("\\.shp", content)]
   utils::unzip(file, exdir = tempdir())
   sf::st_read(file.path(tempdir(), shp_file))
-
 }

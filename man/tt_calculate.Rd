@@ -9,10 +9,8 @@ tt_calculate(
   max_dist = 120000,
   routing_server = "http://127.0.0.1:5001/",
   profile = "car",
-  output_dir = NULL,
-  n_concurrent = 200L,
-  max_url_coords = 200L,
-  batch_size = Inf
+  n_concurrent = 100L,
+  max_url_coords = 200L
 )
 }
 \arguments{
@@ -23,8 +21,6 @@ tt_calculate(
 \item{routing_server}{<\code{character}> OSRM server URL (must end with /)}
 
 \item{profile}{<\code{character}> OSRM routing profile (driving, foot, bicycle)}
-
-\item{output_dir}{<\code{character}> Directory for per-origin parquet files}
 
 \item{n_concurrent}{<\code{integer}> Simultaneous HTTP requests. Optimal value is
 roughly 3x the number of threads given to the OSRM container (e.g., 200 for
@@ -40,9 +36,6 @@ URL length and matrix computation size. Testing showed:
 Higher values reduce HTTP overhead but increase per-request OSRM computation
 time (matrix calc is O(n²)). Values above 500 may timeout on slower servers.
 }}
-
-\item{batch_size}{<\code{integer}> Origins per batch when using future workers.
-Only relevant if using future plan with multiple workers.}
 }
 \value{
 Named list of data.tables, or invisible(output_dir) if writing to disk
