@@ -2,30 +2,59 @@
 % Please edit documentation in R/travel_time_matrix.R
 \name{tt_calculate}
 \alias{tt_calculate}
-\title{Create a travel time matrix using Dissemination Areas or Dissemination Blocks}
+\title{Create a travel time matrix (batched + async)}
 \usage{
 tt_calculate(
   centroids,
   max_dist = 120000,
-  routing_server = "http://localhost:5001/"
+  routing_server = "http://127.0.0.1:5001/",
+  profile = "car",
+  n_concurrent = 100L,
+  max_url_coords = 200L
 )
 }
 \arguments{
-\item{centroids}{<\verb{sf data.frame}> Points (DA ou DB) servant d'origines
-et de destinations.}
+\item{centroids}{<\code{sf}> Points with \code{id} column}
 
-\item{max_dist}{<\code{numeric}> Distance max utilisée pour couper les destinations.
-Exemples: \code{car} ~ 120000 (120 km/h), \code{bicycle} ~ 30000 (30 km/h),
-\code{foot} ~ 10000 (10 km/h).}
+\item{max_dist}{<\code{numeric}> Max distance in meters for destination filtering}
 
-\item{routing_server}{<\code{character}> Base URL du serveur de routage.
-Si \code{\link{tt_local_osrm}} a été lancé localement, la valeur par défaut
-est \verb{http://localhost:5001/}. D'autres services peuvent être utilisés,
-p.ex. \verb{http://router.project-osrm.org/}.}
+\item{routing_server}{<\code{character}> OSRM server URL (must end with /)}
+
+\item{profile}{<\code{character}> OSRM routing profile (driving, foot, bicycle)}
+
+\item{n_concurrent}{<\code{integer}> Simultaneous HTTP requests. Optimal value is
+roughly 3x the number of threads given to the OSRM container (e.g., 200 for
+a 64-thread server). Beyond ~3x, throughput plateaus as OSRM becomes
+CPU-bound. Too high may cause connection timeouts.}
+
+\item{max_url_coords}{<\code{integer}> Max coordinates per OSRM request. Controls
+URL length and matrix computation size. Testing showed:
+\itemize{
+\item 200: 100\% success, ~16k rows/sec on 28 threads (recommended default)
+\item 500: 100\% success, similar throughput (larger matrices offset fewer requests)
+\item 100: 100\% success but ~40\% slower due to HTTP overhead
+Higher values reduce HTTP overhead but increase per-request OSRM computation
+time (matrix calc is O(n²)). Values above 500 may timeout on slower servers.
+}}
 }
 \value{
-The travel time matrix
+Named list of data.tables, or invisible(output_dir) if writing to disk
 }
 \description{
-Create a travel time matrix using Dissemination Areas or Dissemination Blocks
+Create a travel time matrix (batched + async)
+}
+\details{
+\subsection{Performance tuning}{
+
+The bottleneck is typically the OSRM server, not R. Key findings from benchmarking:
+\itemize{
+\item \strong{n_concurrent}: Throughput plateaus at ~3x OSRM threads. For a 28-thread
+OSRM container, 100 concurrent requests saturates the server. Going higher
+just queues requests without speed gain.
+\item \strong{max_url_coords}: Trade-off between HTTP overhead and matrix computation.
+200 coords/request is the sweet spot — small enough for fast OSRM response,
+large enough to minimize request overhead. Requests are automatically chunked
+if an origin has more neighbors than this limit.
+}
+}
 }

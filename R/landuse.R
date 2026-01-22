@@ -8,6 +8,7 @@
 #' `sf` object (after reprojection to the raster CRS) for every raster file
 #' found. Otherwise, returns one row per CMA-year file (total over all cells).
 #'
+#' @param census_scale <`sf data.frame`> Dataframe at which to calculate landuse.
 #' @param base_dir Character scalar. Root folder containing CMA subfolders.
 #' @param mapping Data.frame with required columns: "folder" (subfolder name)
 #'   and "CMA_UID" (character or numeric id). Extra columns are ignored.
@@ -36,10 +37,12 @@
 #' \code{future::plan(future::multisession, workers = n_cores)}
 #'
 #' @export
-build_landuse_summary <- function(
-  base_dir = "calculated_ignore/landuse_v2/landuse_v2",
+build_landuse_from_file <- function(
+  boundaries,
+  base_dir = "calculated_ignore/landuse_v3",
   mapping = data.table::data.table(
     folder = c(
+      "QBC",
       "VIC",
       "VAN",
       "CGY",
@@ -49,10 +52,10 @@ build_landuse_summary <- function(
       "TOR",
       "OTTGTU",
       "MTL",
-      "QBC",
       "HRM"
     ),
     region = c(
+      "qc_quebec",
       "bc_victoria",
       "bc_vancouver",
       "ab_calgary",
@@ -62,10 +65,10 @@ build_landuse_summary <- function(
       "on_toronto",
       "on_ottawa",
       "qc_montreal",
-      "qc_quebec_city",
       "ns_halifax"
     ),
     CMA_UID = c(
+      24421,
       59935,
       59933,
       48825,
@@ -75,7 +78,6 @@ build_landuse_summary <- function(
       35535,
       505,
       24462,
-      24421,
       12205
     )
   ),
@@ -84,11 +86,16 @@ build_landuse_summary <- function(
   use_data_table = TRUE,
   progress = TRUE
 ) {
+  if (!"id" %in% names(boundaries)) {
+    stop("`boundaries` df must have an `id` column")
+  }
+
   # Load required packages with error handling
   required_pkgs <- c("terra", "sf", "data.table", "future.apply", "cancensus")
   if (use_data_table) {
     required_pkgs <- c(required_pkgs, "data.table")
   }
+  require("data.table")
 
   missing_pkgs <- required_pkgs[
     !sapply(required_pkgs, requireNamespace, quietly = TRUE)
@@ -220,52 +227,32 @@ build_landuse_summary <- function(
 
   # --- Processing Functions ---
 
-  # Fast whole-file processing
-  process_file_simple <- function(file_info) {
-    r <- tryCatch(terra::rast(file_info$tif_path), error = function(e) NULL)
-    if (is.null(r)) {
-      return(NULL)
-    }
-
-    freq_vec <- safe_freq(r)
-    counts <- get_counts_fast(freq_vec)
-    pcts <- compute_percentages(counts)
-
-    list(
-      cma_id = file_info$cma_id,
-      year = file_info$year,
-      landuse_res_lowrise_pct = pcts[1],
-      landuse_res_midrise_pct = pcts[2],
-      landuse_res_highrise_pct = pcts[3],
-      landuse_nonres_pct = pcts[4],
-      landuse_nonbuilt_pct = pcts[5],
-      landuse_res_lowrise = counts[1],
-      landuse_res_midrise = counts[2],
-      landuse_res_highrise = counts[3],
-      landuse_nonres = counts[4],
-      landuse_nonbuilt = counts[5]
-    )
-  }
-
   # Boundary-aware processing with chunking
   process_file_boundaries <- function(file_info, boundaries_chunk) {
+    print(file_info)
     r <- tryCatch(terra::rast(file_info$tif_path), error = function(e) NULL)
     if (is.null(r)) {
-      return(NULL)
+      stop("Failed to load raster: ", file_info$tif_path, ": ", e$message)
     }
 
-    # Reproject boundaries to raster CRS (cached per unique CRS)
+    # TODO: Cache CRS transformations per unique CRS to avoid repeated operations
     b_proj <- sf::st_transform(boundaries_chunk, terra::crs(r))
+
+    # Store original boundary IDs before creating terra vector (critical for mapping)
+    original_ids <- b_proj[["id"]]
     b_vect <- terra::vect(b_proj)
 
-    # Extract with error handling
+    # TODO: Extract actual pixel resolution instead of hardcoding
+    pixel_area_m2 <- prod(terra::res(r)) # Real pixel area from raster metadata
+
+    # Extract with error handling and memory cleanup
     ex <- tryCatch(
       {
+        gc(verbose = FALSE) # Clean memory before large operation
         terra::extract(r, b_vect, exact = exact)
       },
       error = function(e) {
-        warning("Extraction failed for ", file_info$tif_path, ": ", e$message)
-        return(NULL)
+        stop("Extraction failed for ", file_info$tif_path, ": ", e$message)
       }
     )
 
@@ -273,7 +260,7 @@ build_landuse_summary <- function(
       return(NULL)
     }
 
-    # Convert to data.table for faster operations
+    # Convert to data.table and filter valid land use values
     ex_dt <- data.table::as.data.table(ex)
     ex_dt <- ex_dt[!is.na(land_use)]
 
@@ -281,48 +268,53 @@ build_landuse_summary <- function(
       return(NULL)
     }
 
+    # Validate terra IDs don't exceed boundary count (safety check)
+    if (max(ex_dt$ID, na.rm = TRUE) > length(original_ids)) {
+      stop("Terra ID exceeds boundary count - data structure mismatch")
+    }
+
     # Fast aggregation using data.table
     if ("weight" %in% names(ex_dt)) {
-      # Weighted aggregation
+      # Exact=TRUE case: weighted aggregation by area fractions
       agg <- ex_dt[,
         .(count = sum(weight, na.rm = TRUE)),
-        by = .(ID, land_use) # Use actual column name
+        by = .(ID, land_use)
       ]
     } else {
-      # Count aggregation
+      # Exact=FALSE case: simple pixel counting
       agg <- ex_dt[, .(count = .N), by = .(ID, land_use)]
     }
 
-    # Pivot to get counts per polygon
+    # Transform aggregated data into final format
     result_list <- agg[,
       {
+        # Initialize count vector for 5 land use categories
         counts <- numeric(5L)
+
+        # Map land use values (1-5) to array positions
         idx <- match(land_use, 1:5)
         valid_idx <- !is.na(idx)
         counts[idx[valid_idx]] <- count[valid_idx]
-        pcts <- compute_percentages(counts)
+
+        # Convert pixel counts to area (m²)
+        areas <- counts * pixel_area_m2
 
         list(
-          id = as.character(b_proj[["GeoUID"]][ID[1]]),
+          id = as.character(original_ids[ID[1]]), # Safe mapping using stored IDs
           cma_id = file_info$cma_id,
           year = file_info$year,
-          landuse_res_lowrise_pct = pcts[1],
-          landuse_res_midrise_pct = pcts[2],
-          landuse_res_highrise_pct = pcts[3],
-          landuse_nonres_pct = pcts[4],
-          landuse_nonbuilt_pct = pcts[5],
-          landuse_res_lowrise = counts[1],
-          landuse_res_midrise = counts[2],
-          landuse_res_highrise = counts[3],
-          landuse_nonres = counts[4],
-          landuse_nonbuilt = counts[5]
+          landuse_res_lowrise = areas[1],
+          landuse_res_midrise = areas[2],
+          landuse_res_highrise = areas[3],
+          landuse_nonres = areas[4],
+          landuse_nonbuilt = areas[5]
         )
       },
       by = ID
     ]
 
-    result_list[, ID := NULL] # Remove helper column
-    result_list
+    result_list[, ID := NULL] # Remove terra's internal ID column
+    return(result_list)
   }
 
   # --- Main Processing Logic with future.apply ---
@@ -347,12 +339,7 @@ build_landuse_summary <- function(
       # TODO: This hardcoded boundary retrieval should be parameterized
       chunk_result <- process_file_boundaries(
         file_info,
-        boundaries_chunk = cancensus::get_census(
-          "CA21",
-          regions = list(CMA = file_info$cma_id),
-          level = "CT",
-          geo_format = "sf"
-        )["GeoUID"]
+        boundaries_chunk = boundaries
       )
 
       return(chunk_result)
@@ -371,9 +358,138 @@ build_landuse_summary <- function(
     cat("Combining results from", length(valid_results), "successful files\n")
   }
 
-  if (use_data_table) {
-    return(data.table::rbindlist(valid_results))
-  } else {
-    return(dplyr::bind_rows(valid_results))
+  # Efficient combination of results
+  combined <- data.table::rbindlist(
+    valid_results,
+    use.names = TRUE,
+    fill = TRUE
+  )
+
+  if (nrow(combined) == 0) {
+    return(data.table::data.table())
   }
+
+  # Define area columns for aggregation
+  # Define area columns for aggregation
+  area_cols <- c(
+    "landuse_res_lowrise",
+    "landuse_res_midrise",
+    "landuse_res_highrise",
+    "landuse_nonres",
+    "landuse_nonbuilt"
+  )
+
+  # Validate expected columns exist
+  missing_cols <- setdiff(area_cols, names(combined))
+  if (length(missing_cols) > 0) {
+    stop("Missing expected columns: ", paste(missing_cols, collapse = ", "))
+  }
+
+  # STEP 1: Calculate total land use activity per (id, cma_id, year) combination
+  combined[, total_activity := rowSums(.SD), .SDcols = area_cols]
+
+  # STEP 2: For each (id, year), keep only the CMA version with highest total activity
+  # This handles edge effects by assigning boundary to its "primary" CMA
+  deduplicated <- combined[
+    combined[, .I[which.max(total_activity)], by = .(id, year)]$V1
+  ]
+
+  if (progress) {
+    duplicates_removed <- nrow(combined) - nrow(deduplicated)
+    if (duplicates_removed > 0) {
+      cat(
+        "Removed",
+        duplicates_removed,
+        "duplicate id-year combinations (kept highest activity)\n"
+      )
+    }
+  }
+
+  # STEP 3: Now aggregate by (id, year) - should be 1:1 mapping after deduplication
+  aggregated <- deduplicated[,
+    lapply(.SD, sum, na.rm = TRUE),
+    by = .(id, year),
+    .SDcols = area_cols
+  ]
+
+  # Remove the temporary total_activity column if it exists
+  if ("total_activity" %in% names(aggregated)) {
+    aggregated[, total_activity := NULL]
+  }
+
+  # Calculate total area per boundary for percentage computation
+  aggregated[, total_area := rowSums(.SD), .SDcols = area_cols]
+
+  # Compute percentages (0-1 scale) with proper zero handling
+  pct_cols <- paste0(area_cols, "_pct")
+  aggregated[,
+    (pct_cols) := lapply(.SD, function(x) {
+      ifelse(total_area == 0, 0, x / total_area)
+    }),
+    .SDcols = area_cols
+  ]
+
+  # Remove intermediate total_area column
+  aggregated[, total_area := NULL]
+
+  # Validate output structure
+  if (progress) {
+    cat("Final result:", nrow(aggregated), "unique id-year combinations\n")
+    cat("Columns:", paste(names(aggregated), collapse = ", "), "\n")
+  }
+
+  # Validate no duplicates remain
+  duplicates_check <- aggregated[, .N, by = .(id, year)][N > 1]
+  if (nrow(duplicates_check) > 0) {
+    stop("Duplicates still exist after deduplication - logic error")
+  }
+
+  # Validate percentages sum to approximately 1.0
+  pct_sums <- rowSums(aggregated[, ..pct_cols])
+  bad_pcts <- abs(pct_sums - 1.0) > 0.001
+  if (any(bad_pcts, na.rm = TRUE)) {
+    warning(
+      "Some percentage rows don't sum to 1.0 (found ",
+      sum(bad_pcts, na.rm = TRUE),
+      " cases)"
+    )
+  }
+
+  return(aggregated)
 }
+
+# # Increase GDAL cache to 4GB (adjust based on your total system RAM)
+# Sys.setenv("GDAL_CACHEMAX" = "32768")
+# # Increase terra memory fraction to 80%
+# terra::terraOptions(memfrac = 0.8)
+
+# census_dfs <- sapply(
+#   c("DB", "DA", "CT", "CSD", "CMA"),
+#   \(census_scale) {
+#     out <- cancensus::get_census(
+#       "CA21",
+#       regions = list(
+#         CMA = c(
+#           59935,
+#           59933,
+#           48825,
+#           48835,
+#           46602,
+#           35537,
+#           35535,
+#           505,
+#           24462,
+#           24421,
+#           12205
+#         )
+#       ),
+#       level = census_scale,
+#       geo_format = "sf"
+#     )["GeoUID"]
+#     names(out)[1] <- "id"
+#     out
+#   },
+#   simplify = FALSE,
+#   USE.NAMES = TRUE
+# )
+# landuse_dfs <- lapply(census_dfs, build_landuse_from_file, exact = FALSE)

@@ -4,8 +4,12 @@
 ^README\.Rmd$
 ^cc.data\calculated_ignore
 cc.data\calculated_ignore
+^cc.data/calculated_ignore
+cc.data/calculated_ignore
 ^calculated_ignore
 calculated_ignore
+^calculated_ignore/
+calculated_ignore/
 data-raw
 ^data-raw$
 .rcookies

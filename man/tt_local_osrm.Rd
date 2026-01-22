@@ -8,28 +8,27 @@ tt_local_osrm(
   mode = "car",
   port = 5001L,
   osm_pbf = "north-america/canada-latest.osm.pbf",
-  dest_folder = tempdir()
+  dest_folder = tempdir(),
+  threads = parallel::detectCores() - 4L,
+  max_table_size = 10000L
 )
 }
 \arguments{
-\item{mode}{\if{html}{\out{<character>}} One of \code{"car"}, \code{"bicycle"}, or \code{"foot"}. Default \code{"car"}.}
+\item{mode}{<\code{character}> One of "car", "bicycle", or "foot".}
 
-\item{port}{\if{html}{\out{<integer>}} Port for the OSRM HTTP server. Default \code{5001L}.}
+\item{port}{<\code{integer}> Port for the OSRM HTTP server.}
 
-\item{osm_pbf}{\if{html}{\out{<character>}} Path or relative name of the OSM \code{.pbf} to use.
-Default \code{"north-america/canada-latest.osm.pbf"}.}
+\item{osm_pbf}{<\code{character}> Path to OSM .pbf file.}
 
-\item{dest_folder}{\if{html}{\out{<character>}} Directory where data will be downloaded and
-processed. Default \code{tempdir()}.}
+\item{dest_folder}{<\code{character}> Directory for data.}
+
+\item{threads}{<\code{integer}> OSRM routing threads (default: all cores - 1).}
+
+\item{max_table_size}{<\code{integer}> Max coordinates per /table request.}
 }
 \value{
-\if{html}{\out{<character>}} (invisibly) the \code{dest_folder}. Function is called for its side effects.
+<\code{character}> (invisibly) the dest_folder.
 }
 \description{
-Downloads OSM data (if needed), builds the OSRM graph for the chosen \code{mode},
-and launches a local OSRM HTTP server in a Docker container.
-For details, see
-\href{https://github.com/Project-OSRM/osrm-backend}{Project-OSRM/osrm-backend}
-and
-\href{https://github.com/Project-OSRM/osrm-backend/tree/master/profiles}{OSRM profiles}.
+Create a local OSRM instance with Docker
 }
