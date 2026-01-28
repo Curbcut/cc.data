@@ -89,6 +89,15 @@ census_empty_geometries <- function(
     x
   }
 
+  if (!requireNamespace("mirai", quietly = TRUE)) {
+    stop("Package 'mirai' is required for mirai_map().")
+  }
+  if (!requireNamespace("promises", quietly = TRUE)) {
+    stop(
+      "Package 'promises' is required to keep progressr progress updates with mirai_map(.promise=...)."
+    )
+  }
+
   # Progress: 1 step for C/PR, else one per year
   total_steps <- sum(ifelse(
     census_scales %in% c("C", "PR"),
@@ -96,54 +105,102 @@ census_empty_geometries <- function(
     length(census_years)
   ))
 
-  progressr::with_progress({
-    pb <- progressr::progressor(steps = total_steps)
-
-    out_by_scale <- future.apply::future_lapply(
-      census_scales,
-      FUN = function(scale) {
-        # C and PR: fetch once (latest), then replicate across years
-        if (scale %in% c("C", "PR")) {
-          ds <- latest_census
-          out <- fetch_canada_then_pr(ds, scale)
-          out <- post_process(out, scale, "CA9999") # no Nunavut patch here
-          pb()
-
-          by_year <- setNames(
-            rep(list(out), length(census_years)),
-            as.character(census_years)
-          )
-
-          # Apply Nunavut patch only for 1996
-          if (scale == "PR" && any(census_dataset == "CA1996")) {
-            ykey <- as.character(census_years[which(
-              census_dataset == "CA1996"
-            )])
-            by_year[[ykey]] <- post_process(by_year[[ykey]], "PR", "CA1996")
-          }
-
-          return(by_year)
-        }
-
-        # Other scales: parallelize across years
-        by_year <- future.apply::future_lapply(
-          seq_along(census_dataset),
-          FUN = function(i) {
-            ds <- census_dataset[i]
-            out <- fetch_canada_then_pr(ds, scale)
-            out <- post_process(out, scale, ds)
-            pb()
-            out
-          },
-          future.seed = NULL
-        )
-        names(by_year) <- as.character(census_years)
-        by_year
-      },
-      future.seed = NULL
+  jobs <-
+    expand.grid(
+      job_type = "year",
+      scale = census_scales,
+      i = seq_along(census_dataset),
+      KEEP.OUT.ATTRS = FALSE,
+      stringsAsFactors = FALSE
     )
 
-    names(out_by_scale) <- census_scales
-    out_by_scale
-  })
+  mp <- mirai::mirai_map(
+    jobs,
+    function(job_type, scale, i) {
+      ds <- census_dataset[i]
+      if (ds == "CA21" && scale == "DA") {
+        from_bucket <- bucket_read_object_zip_shp(
+          "DA2021_carto.zip",
+          "curbcut.rawdata"
+        )
+        from_bucket <- from_bucket[c("DAUID")]
+        names(from_bucket)[1] <- "ID"
+        from_bucket[, c("ID", "geometry"), drop = FALSE]
+        return(list(
+          kind = "year",
+          scale = scale,
+          year = as.character(census_years[i]),
+          value = from_bucket[,
+            c("ID", "geometry"),
+            drop = FALSE
+          ]
+        ))
+      }
+      out <- fetch_canada_then_pr(ds, scale)
+      out <- post_process(out, scale, ds)
+      list(
+        kind = "year",
+        scale = scale,
+        year = as.character(census_years[i]),
+        value = out
+      )
+    },
+    # keep progressr updates in the main process as each task resolves
+    latest_census = latest_census,
+    census_dataset = census_dataset,
+    census_years = census_years,
+    fetch_canada_then_pr = fetch_canada_then_pr,
+    post_process = post_process,
+    bucket_read_object_zip_shp = bucket_read_object_zip_shp
+  )
+
+  res <- mp[.progress] # collect all results (waits)
+
+  # Hard-fail if any mirai returned an errorValue (miraiError, timeout, interrupt, etc.)
+  bad <- vapply(res, mirai::is_error_value, logical(1))
+  if (any(bad)) {
+    idx <- which(bad)
+    msg <- paste0(
+      "mirai_map had ",
+      length(idx),
+      " failure(s). First failure:\n",
+      "index=",
+      idx[1],
+      "\n",
+      as.character(res[[idx[1]]])
+    )
+    stop(msg, call. = FALSE)
+  }
+
+  # Assemble final out_by_scale
+  out_by_scale <- setNames(
+    vector("list", length(census_scales)),
+    census_scales
+  )
+
+  # seed with static outputs
+  for (x in res) {
+    if (identical(x$kind, "static")) {
+      out_by_scale[[x$scale]] <- x$by_year
+    }
+  }
+
+  # ensure non-static scales have list containers
+  for (s in census_scales) {
+    if (is.null(out_by_scale[[s]])) {
+      out_by_scale[[s]] <- setNames(
+        vector("list", length(census_years)),
+        as.character(census_years)
+      )
+    }
+  }
+
+  # fill year outputs
+  for (x in res) {
+    if (identical(x$kind, "year")) {
+      out_by_scale[[x$scale]][[x$year]] <- x$value
+    }
+  }
+
+  out_by_scale
 }
