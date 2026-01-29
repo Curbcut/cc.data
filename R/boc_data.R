@@ -999,51 +999,6 @@ boc_get_wage_expectations <- function() {
   return(df_final)
 }
 
-# Fonction CORRIGÉE pour être plus robuste
-calculer_volatilite_annuelle_WIDE <- function(df, prefixe_colonne) {
-  
-  # CORRECTION : On utilise `matches` pour sélectionner UNIQUEMENT les colonnes
-  # qui ont le format exact "prefix_YYYYqX". C'est ce qui corrige le bug _NA.
-  df_long <- df %>%
-    tidyr::pivot_longer(
-      cols = matches(paste0("^", prefixe_colonne, "\\d{4}q[1-4]$")),
-      names_to = "trimestre_str",
-      values_to = "valeur"
-    ) %>%
-    dplyr::mutate(
-      trimestre_str = gsub(prefixe_colonne, "", trimestre_str),
-      trimestre = as.yearqtr(trimestre_str)
-    )
-  
-  # Calcul de la volatilité annuelle
-  resultat_long <- df_long %>%
-    dplyr::mutate(annee = year(trimestre)) %>%
-    dplyr::group_by(id, annee) %>%
-    dplyr::arrange(trimestre) %>%
-    # CORRECTION : On s'assure qu'il y a assez de données pour un calcul stable
-    dplyr::summarise(
-      volatilite = if (n() >= 3) { # Il faut au moins 3 trimestres pour un écart-type de différences
-        sd(diff(valeur), na.rm = TRUE) / sqrt(4)
-      } else {
-        NA_real_
-      },
-      .groups = 'drop'
-    )
-  
-  # Pivoter le résultat en format large
-  nom_variable <- gsub("_ce_?$", "", prefixe_colonne) # Enlève "_ce_" ou "_ce"
-  
-  resultat_wide <- resultat_long %>%
-    filter(!is.na(volatilite)) %>% # On ignore les années avec un résultat NA
-    tidyr::pivot_wider(
-      names_from = annee,
-      values_from = volatilite,
-      names_prefix = paste0("volatilite_", nom_variable, "_")
-    )
-  
-  return(resultat_wide)
-}
-
 #' @title Process and Merge Elasticity Data with CMA Identifiers
 #' 
 #' @description This function loads Census Metropolitan Area (CMA) data from Statistics Canada's 2021 census,
