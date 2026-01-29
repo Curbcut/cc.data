@@ -1642,13 +1642,13 @@ census_vectors_income <-
   tibble::add_row(
     var_code = "inc_limat",
     type = list(list(
-      unit = NULL,
-      aggregation_field = "pct",
+      unit = "count",
+      aggregation_field = "sum",
       measurement_scale = "scalar"
     )),
     theme = "Income",
-    vec_2021 = list("v_CA21_1040"),
-    vec_2016 = list("v_CA16_2540"),
+    vec_2021 = list("v_CA21_1025"),
+    vec_2016 = list("v_CA16_2525"),
     vec_2011 = list(NA),
     vec_2006 = list(NA),
     vec_2001 = list(NA),
@@ -2546,36 +2546,7 @@ census_vectors_family <-
     )),
     parent_vec = "census_families",
     parent = FALSE
-  ) |>
-  tibble::add_row(
-    var_code = "family_one_person",
-    type = list(list(
-      unit = "count",
-      aggregation_field = "sum",
-      measurement_scale = "scalar"
-    )),
-    theme = "Household",
-    vec_2021 = list("v_CA21_444"),
-    vec_2016 = list("v_CA16_419"),
-    vec_2011 = list("v_CA11F_210"),
-    vec_2006 = list("v_CA06_129"),
-    vec_2001 = list("v_CA01_122"),
-    vec_1996 = list("v_CA1996_117"),
-    var_title = list(list(
-      en = "Living alone",
-      fr = "Vivant seul"
-    )),
-    var_short = list(list(
-      en = "Living alone",
-      fr = "Vivant seul"
-    )),
-    description = list(list(
-      en = "The number of private households consisting of a single person living alone",
-      fr = "Le nombre de ménages privés composés d’une seule personne vivant seule"
-    )),
-    parent_vec = "census_families",
-    parent = FALSE
-  )
+  ) 
 
 census_vectors_family_parent <-
   tibble::tibble(
@@ -2586,12 +2557,12 @@ census_vectors_family_parent <-
       measurement_scale = "scalar"
     )),
     theme = "Household",
-    vec_2021 = list("v_CA21_443"),
-    vec_2016 = list("v_CA16_418"),
-    vec_2011 = list("v_CA11F_209"),
-    vec_2006 = list("v_CA06_128"),
-    vec_2001 = list("v_CA01_121"),
-    vec_1996 = list("v_CA1996_116"),
+    vec_2021 = list("v_CA21_499"),
+    vec_2016 = list("v_CA16_478"),
+    vec_2011 = list("v_CA11F_110"),
+    vec_2006 = list("v_CA06_50"),
+    vec_2001 = list("v_CA01_53"),
+    vec_1996 = list("v_CA1996_60"),
     var_title = list(list(
       en = "Census families",
       fr = "Familles de recensement"
