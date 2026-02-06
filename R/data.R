@@ -10,6 +10,12 @@
 #' A character (scales) vector
 "census_scales"
 
+#' All available CMAs identifiant
+#'
+#' @format ## `cma_ids`
+#' A character (cma_id) vector
+"cma_ids"
+
 #' Housing census vectors
 #'
 #' The variable code for each year
