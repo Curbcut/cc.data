@@ -25,18 +25,29 @@ census_vectors_details <-
       }, simplify = FALSE)
 
     # Add the parent vector
-    vec_table$parent_vec <- sapply(year_vec_table$var_code, \(vecs) {
-      parent <- census_vectors_table$parent[
-        census_vectors_table$var_code == vecs
-      ]
-      if (all(parent)) return(NA)
-      parent_string <- census_vectors_table$parent_vec[
-        census_vectors_table$var_code == vecs
-      ]
-      census_vectors_table[[paste0("vec_", year)]][
-        census_vectors_table$var_code == parent_string
-      ]
-    }, simplify = FALSE)
+vec_table$parent_vec <- lapply(year_vec_table$var_code, function(vc) {
+
+  is_parent <- census_vectors_table$parent[census_vectors_table$var_code == vc]
+  if (length(is_parent) == 1 && isTRUE(is_parent)) return(NA)
+
+  parents <- census_vectors_table$parent_vec[census_vectors_table$var_code == vc]
+
+  # parents peut être:
+  # - character length 1  (ancien cas)
+  # - list length 1 contenant un vecteur (nouveau cas: c_population + c_population_h/f)
+  if (length(parents) == 0) return(NA)
+
+  parent_codes <- if (is.list(parents)) parents[[1]] else parents
+  if (length(parent_codes) == 0 || all(is.na(parent_codes))) return(NA)
+
+  out <- census_vectors_table[[paste0("vec_", year)]][
+    census_vectors_table$var_code %in% parent_codes
+  ]
+
+  # garder NA si rien trouvé, sinon vecteur (souvent 1 ou 2 valeurs)
+  if (length(out) == 0) return(NA)
+  out
+})
 
     # Add the aggregation
     vec_table$aggregation <-
@@ -48,7 +59,7 @@ census_vectors_details <-
       }, simplify = FALSE)
 
     # Add the parent vector label
-    # vec_table$parent_vec_label <-
+    vec_table$parent_vec_label <-
       sapply(vec_table$parent_vec, \(vecs) {
         if (sum(is.na(vecs)) >= 1) return(NA)
         sapply(vecs, \(vec) {
