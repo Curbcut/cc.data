@@ -2840,6 +2840,69 @@ census_vectors_language <- rbind(
 
 usethis::use_data(census_vectors_language, overwrite = TRUE)
 
+## IMPORT POPULATION CENSUS VECTORS BY SEX ##############################################
+
+census_vectors_age_sex_parent <-
+  tibble::tibble(
+    var_code = "c_population_h",
+    type = list(list(
+      unit = "count",
+      aggregation_field = "sum",
+      measurement_scale = "scalar"
+    )),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_9"),
+    vec_2016 = list("v_CA16_2"),
+    vec_2011 = list("v_CA11F_6"),
+    vec_2006 = list("v_CA06_3"),
+    vec_2001 = list("v_CA01_6"),
+    vec_1996 = list("v_CA1996_6"),
+    var_title = list(list(
+      en = "Men",
+      fr = "Hommes"
+    )),
+    var_short = list(list(
+      en = "Men",
+      fr = "Hommes"
+    )),
+    description = list(list(
+      en = "The number of individuals classified as men in the census sex/gender category.",
+      fr = "Nombre de personnes classées comme hommes selon la catégorie de sexe/genre du recensement."
+    )),
+    parent_vec = "c_population",
+    parent = FALSE
+  ) |>
+  tibble::add_row(
+    var_code = "c_population_f",
+    type = list(list(
+      unit = "count",
+      aggregation_field = "sum",
+      measurement_scale = "scalar"
+    )),
+    theme = "Identity",
+    vec_2021 = list("v_CA21_10"),
+    vec_2016 = list("v_CA16_3"),
+    vec_2011 = list("v_CA11F_7"),
+    vec_2006 = list("v_CA06_22"),
+    vec_2001 = list("v_CA01_25"),
+    vec_1996 = list("v_CA1996_30"),
+    var_title = list(list(
+      en = "Women",
+      fr = "Femmes"
+    )),
+    var_short = list(list(
+      en = "Women",
+      fr = "Femmes"
+    )),
+    description = list(list(
+      en = "The number of individuals classified as women in the census sex/gender category.",
+      fr = "Nombre de personnes classées comme femmes selon la catégorie de sexe/genre du recensement."
+    )),
+    parent_vec = "c_population",
+    parent = FALSE
+  )
+
+
 ## IMPORT AGE CENSUS VECTORS ###################################################
 
 census_vectors_age <- tibble::tibble()
@@ -2854,17 +2917,17 @@ get_rows_from_parent <- function(vecs, parent_vec) {
 recent_census <- function(census_dataset) {
   vecs <- cancensus::list_census_vectors(census_dataset)
   vec_total <- vecs[grepl("Age", vecs$label), ]$vector[1]
-
+  
   # Extracting rows related to total age
   total_age <- get_rows_from_parent(vecs, vec_total)
-
+  
   # Iterate through each category and sub-category of ages
   all_ages <- lapply(total_age$vector, \(bcat) {
     mid_cat <- get_rows_from_parent(vecs, bcat)
     out <- lapply(mid_cat$vector, \(mcat) {
       get_rows_from_parent(vecs, mcat)
     })
-
+    
     # Additional level of depth in some cases
     out <- lapply(out, \(t) {
       if (sum(grepl(" to ", t$label)) > 0) {
@@ -2879,23 +2942,23 @@ recent_census <- function(census_dataset) {
         t
       }
     })
-
+    
     Reduce(rbind, out)
   })
-
+  
   Reduce(rbind, all_ages)
 }
 
 older_census <- function(census_dataset, vec) {
   vecs <- cancensus::list_census_vectors(census_dataset)
-
+  
   # Using the vectors of Total - Age, get its children
   total_age <- get_rows_from_parent(vecs, vec)
-
+  
   total_age_2006 <- lapply(total_age$vector, \(ta) {
     get_rows_from_parent(vecs, ta)
   })
-
+  
   # MALE AND FEMALE
   total_age_2006
 }
@@ -2982,79 +3045,297 @@ final <- c(recent, cleaned_older)
 # Create age page tibble
 categories <- unique(final[[1]]$label)
 
-vectors_table <- lapply(categories, \(cat) {
-  var_code <- gsub(":", "_", cat)
-  var_code <- sprintf("age_%s", var_code)
 
-  vec_2021 <- final$`2021`$vector[final$`2021`$label == cat]
-  vec_2016 <- final$`2016`$vector[final$`2016`$label == cat]
-  vec_2011 <- final$`2011`$vector[final$`2011`$label == cat]
-  vec_2006 <- final$`2006`$vector[final$`2006`$label == cat]
-  vec_2001 <- final$`2001`$vector[final$`2001`$label == cat]
-  vec_1996 <- final$`1996`$vector[final$`1996`$label == cat]
+# ------------------------------------------------------------------------------
+# ADD: Build MALE and FEMALE versions (same structure as 'final')
+# ------------------------------------------------------------------------------
 
-  if (grepl(":", cat)) {
-    bounds <- strsplit(cat, ":")[[1]]
-    from <- bounds[1]
-    to <- bounds[2]
+# Helper: get root vector for CA21/CA16 by sex (type = Male/Female)
+get_recent_age_root <- function(census_dataset, sex_type) {
+  vecs <- cancensus::list_census_vectors(census_dataset)
+  out <- vecs$vector[vecs$label == "Total - Age" & as.character(vecs$type) == sex_type]
+  out[1]
+}
 
-    var_title_en <- sprintf("Persons aged %s to %s years", from, to)
-    var_title_fr <- sprintf("Personnes âgées de %s à %s ans", from, to)
-    var_short_en <- sprintf("%s–%s", from, to)
-    var_short_fr <- sprintf("%s–%s ans", from, to)
-    description_en <- sprintf(
-      "The number of persons aged %s to %s years.",
-      from,
-      to
+# Helper: same traversal as recent_census(), but starting from a provided root vector
+recent_census_root <- function(census_dataset, root_vec) {
+  vecs <- cancensus::list_census_vectors(census_dataset)
+  
+  total_age <- get_rows_from_parent(vecs, root_vec)
+  
+  all_ages <- lapply(total_age$vector, \(bcat) {
+    mid_cat <- get_rows_from_parent(vecs, bcat)
+    out <- lapply(mid_cat$vector, \(mcat) {
+      get_rows_from_parent(vecs, mcat)
+    })
+    
+    out <- lapply(out, \(t) {
+      if (sum(grepl(" to ", t$label)) > 0) {
+        w <- which(grepl(" to ", t$label))
+        for (i in w) {
+          outt <- lapply(t$vector[w], \(lcat) {
+            get_rows_from_parent(vecs, lcat)
+          })
+        }
+        Reduce(rbind, c(outt, list(t[-w, ])))
+      } else {
+        t
+      }
+    })
+    
+    Reduce(rbind, out)
+  })
+  
+  Reduce(rbind, all_ages)
+}
+
+# Helper: get CA11 root vector by sex (Male/Female)
+get_ca11_age_root <- function(sex_type) {
+  vecs <- cancensus::list_census_vectors("CA11")
+  out <- vecs$vector[
+    vecs$label == "Total population by age groups" &
+      as.character(vecs$type) == sex_type
+  ]
+  out[1]
+}
+
+# Helper: get older male/female "total" node (label = 'Male, total' / 'Female, total')
+get_older_sex_root <- function(census_dataset, sex_label) {
+  vecs <- cancensus::list_census_vectors(census_dataset)
+  out <- vecs$vector[vecs$label == sex_label]
+  out[1]
+}
+
+# --- 2021 / 2016 (modern)
+root_21_h <- get_recent_age_root("CA21", "Male")
+root_21_f <- get_recent_age_root("CA21", "Female")
+root_16_h <- get_recent_age_root("CA16", "Male")
+root_16_f <- get_recent_age_root("CA16", "Female")
+
+total_age_2021_h <- recent_census_root("CA21", root_21_h)
+total_age_2021_f <- recent_census_root("CA21", root_21_f)
+total_age_2016_h <- recent_census_root("CA16", root_16_h)
+total_age_2016_f <- recent_census_root("CA16", root_16_f)
+
+# --- 2011
+root_11_h <- get_ca11_age_root("Male")
+root_11_f <- get_ca11_age_root("Female")
+
+total_age_2011_h <- get_rows_from_parent(
+  cancensus::list_census_vectors("CA11"),
+  root_11_h
+)
+total_age_2011_f <- get_rows_from_parent(
+  cancensus::list_census_vectors("CA11"),
+  root_11_f
+)
+
+# --- 2006 / 2001 / 1996 (older)
+vecs_06 <- cancensus::list_census_vectors("CA06")
+vecs_01 <- cancensus::list_census_vectors("CA01")
+vecs_96 <- cancensus::list_census_vectors("CA1996")
+
+root_06_h <- get_older_sex_root("CA06", "Male, total")
+root_06_f <- get_older_sex_root("CA06", "Female, total")
+root_01_h <- get_older_sex_root("CA01", "Male, total")
+root_01_f <- get_older_sex_root("CA01", "Female, total")
+root_96_h <- get_older_sex_root("CA1996", "Male, total")
+root_96_f <- get_older_sex_root("CA1996", "Female, total")
+
+# Wrap in list() so handle_older_data() keeps list-column behavior for older years
+total_age_2006_h <- list(get_rows_from_parent(vecs_06, root_06_h))
+total_age_2006_f <- list(get_rows_from_parent(vecs_06, root_06_f))
+total_age_2001_h <- list(get_rows_from_parent(vecs_01, root_01_h))
+total_age_2001_f <- list(get_rows_from_parent(vecs_01, root_01_f))
+total_age_1996_h <- list(get_rows_from_parent(vecs_96, root_96_h))
+total_age_1996_f <- list(get_rows_from_parent(vecs_96, root_96_f))
+
+older_h <- list(total_age_2011_h, total_age_2006_h, total_age_2001_h, total_age_1996_h)
+names(older_h) <- c("2011", "2006", "2001", "1996")
+cleaned_older_h <- handle_older_data(older_h)
+
+older_f <- list(total_age_2011_f, total_age_2006_f, total_age_2001_f, total_age_1996_f)
+names(older_f) <- c("2011", "2006", "2001", "1996")
+cleaned_older_f <- handle_older_data(older_f)
+
+recent_h <- mapply(
+  \(x, year) {
+    categories <- lapply(cleaned_older_h$`2011`$label, \(z) eval(parse(text = z)))
+    second_penultimate_vecs <- lapply(
+      categories[2:(length(categories) - 1)],
+      \(c) x$vector[x$label %in% c]
     )
-    description_fr <- sprintf(
-      "Le nombre de personnes âgées de %s à %s ans.",
-      from,
-      to
+    first <- list(x$vector[1:5])
+    last <- list(x$vector[which(x$label == 85):nrow(x)])
+    tibble::tibble(
+      vector = c(first, second_penultimate_vecs, last),
+      label = cleaned_older_h$`2011`$label,
+      year = year
     )
-  } else {
-    var_title_en <- "Persons aged 85 years and over"
-    var_title_fr <- "Personnes âgées de 85 ans et plus"
-    var_short_en <- "85+"
-    var_short_fr <- "85+ ans"
-    description_en <- "The number of persons aged 85 years and over."
-    description_fr <- "Le nombre de personnes âgées de 85 ans et plus."
-  }
+  },
+  list(total_age_2021_h, total_age_2016_h),
+  c("2021", "2016"),
+  SIMPLIFY = FALSE
+)
+names(recent_h) <- c("2021", "2016")
+final_h <- c(recent_h, cleaned_older_h)
 
-  tibble::tibble(
-    var_code = var_code,
-    type = list(list(
-      unit = "count",
-      aggregation_field = "sum",
-      measurement_scale = "scalar"
-    )),
-    theme = "Age",
-    vec_2021 = vec_2021,
-    vec_2016 = vec_2016,
-    vec_2011 = vec_2011,
-    vec_2006 = vec_2006,
-    vec_2001 = vec_2001,
-    vec_1996 = vec_1996,
-    var_title = list(list(
-      en = var_title_en,
-      fr = var_title_fr
-    )),
-    var_short = list(list(
-      en = var_short_en,
-      fr = var_short_fr
-    )),
-    description = list(list(
-      en = description_en,
-      fr = description_fr
-    )),
-    parent_vec = "c_population",
-    parent = FALSE
+recent_f <- mapply(
+  \(x, year) {
+    categories <- lapply(cleaned_older_f$`2011`$label, \(z) eval(parse(text = z)))
+    second_penultimate_vecs <- lapply(
+      categories[2:(length(categories) - 1)],
+      \(c) x$vector[x$label %in% c]
+    )
+    first <- list(x$vector[1:5])
+    last <- list(x$vector[which(x$label == 85):nrow(x)])
+    tibble::tibble(
+      vector = c(first, second_penultimate_vecs, last),
+      label = cleaned_older_f$`2011`$label,
+      year = year
+    )
+  },
+  list(total_age_2021_f, total_age_2016_f),
+  c("2021", "2016"),
+  SIMPLIFY = FALSE
+)
+names(recent_f) <- c("2021", "2016")
+final_f <- c(recent_f, cleaned_older_f)
+
+
+# ------------------------------------------------------------------------------
+# REPLACE: Build 54 variables (total + male + female), same base structure
+# ------------------------------------------------------------------------------
+
+final_by_sex <- list(
+  total = final,
+  h = final_h,
+  f = final_f
+)
+
+sex_meta <- list(
+  total = list(
+    suffix = "",
+    parent_vec = c("c_population")
+  ),
+  h = list(
+    suffix = "_h",
+    parent_vec = c("c_population", "c_population_h")
+  ),
+  f = list(
+    suffix = "_f",
+    parent_vec = c("c_population", "c_population_f")
   )
-})
+)
+
+vectors_table <- unlist(lapply(categories, function(cat) {
+  
+  rows_for_cat <- lapply(names(sex_meta), function(sex_key) {
+    
+    suffix <- sex_meta[[sex_key]]$suffix
+    parent_vec <- sex_meta[[sex_key]]$parent_vec
+    
+    var_code <- gsub(":", "_", cat)
+    var_code <- sprintf("age_%s%s", var_code, suffix)
+    
+    vec_2021 <- final_by_sex[[sex_key]]$`2021`$vector[final_by_sex[[sex_key]]$`2021`$label == cat]
+    vec_2016 <- final_by_sex[[sex_key]]$`2016`$vector[final_by_sex[[sex_key]]$`2016`$label == cat]
+    vec_2011 <- final_by_sex[[sex_key]]$`2011`$vector[final_by_sex[[sex_key]]$`2011`$label == cat]
+    vec_2006 <- final_by_sex[[sex_key]]$`2006`$vector[final_by_sex[[sex_key]]$`2006`$label == cat]
+    vec_2001 <- final_by_sex[[sex_key]]$`2001`$vector[final_by_sex[[sex_key]]$`2001`$label == cat]
+    vec_1996 <- final_by_sex[[sex_key]]$`1996`$vector[final_by_sex[[sex_key]]$`1996`$label == cat]
+    
+    if (grepl(":", cat)) {
+      bounds <- strsplit(cat, ":")[[1]]
+      from <- bounds[1]
+      to <- bounds[2]
+      
+      if (sex_key == "total") {
+        var_title_en <- sprintf("Persons aged %s to %s years", from, to)
+        var_title_fr <- sprintf("Personnes âgées de %s à %s ans", from, to)
+        var_short_en <- sprintf("%s–%s", from, to)
+        var_short_fr <- sprintf("%s–%s ans", from, to)
+        description_en <- sprintf("The number of persons aged %s to %s years.", from, to)
+        description_fr <- sprintf("Le nombre de personnes âgées de %s à %s ans.", from, to)
+      } else if (sex_key == "h") {
+        var_title_en <- sprintf("Males aged %s to %s years", from, to)
+        var_title_fr <- sprintf("Hommes âgés de %s à %s ans", from, to)
+        var_short_en <- sprintf("%s–%s (M)", from, to)
+        var_short_fr <- sprintf("%s–%s ans (H)", from, to)
+        description_en <- sprintf("The number of males aged %s to %s years.", from, to)
+        description_fr <- sprintf("Le nombre d'hommes âgés de %s à %s ans.", from, to)
+      } else {
+        var_title_en <- sprintf("Females aged %s to %s years", from, to)
+        var_title_fr <- sprintf("Femmes âgées de %s à %s ans", from, to)
+        var_short_en <- sprintf("%s–%s (F)", from, to)
+        var_short_fr <- sprintf("%s–%s ans (F)", from, to)
+        description_en <- sprintf("The number of females aged %s to %s years.", from, to)
+        description_fr <- sprintf("Le nombre de femmes âgées de %s à %s ans.", from, to)
+      }
+      
+    } else {
+      
+      if (sex_key == "total") {
+        var_title_en <- "Persons aged 85 years and over"
+        var_title_fr <- "Personnes âgées de 85 ans et plus"
+        var_short_en <- "85+"
+        var_short_fr <- "85+ ans"
+        description_en <- "The number of persons aged 85 years and over."
+        description_fr <- "Le nombre de personnes âgées de 85 ans et plus."
+      } else if (sex_key == "h") {
+        var_title_en <- "Males aged 85 years and over"
+        var_title_fr <- "Hommes âgés de 85 ans et plus"
+        var_short_en <- "85+ (M)"
+        var_short_fr <- "85+ ans (H)"
+        description_en <- "The number of males aged 85 years and over."
+        description_fr <- "Le nombre d'hommes âgés de 85 ans et plus."
+      } else {
+        var_title_en <- "Females aged 85 years and over"
+        var_title_fr <- "Femmes âgées de 85 ans et plus"
+        var_short_en <- "85+ (F)"
+        var_short_fr <- "85+ ans (F)"
+        description_en <- "The number of females aged 85 years and over."
+        description_fr <- "Le nombre de femmes âgées de 85 ans et plus."
+      }
+    }
+    
+    tibble::tibble(
+      var_code = var_code,
+      type = list(list(
+        unit = "count",
+        aggregation_field = "sum",
+        measurement_scale = "scalar"
+      )),
+      theme = "Age",
+      vec_2021 = vec_2021,
+      vec_2016 = vec_2016,
+      vec_2011 = vec_2011,
+      vec_2006 = vec_2006,
+      vec_2001 = vec_2001,
+      vec_1996 = vec_1996,
+      var_title = list(list(
+        en = var_title_en,
+        fr = var_title_fr
+      )),
+      var_short = list(list(
+        en = var_short_en,
+        fr = var_short_fr
+      )),
+      description = list(list(
+        en = description_en,
+        fr = description_fr
+      )),
+      parent_vec = list(parent_vec),
+      parent = FALSE
+    )
+  })
+  
+  rows_for_cat
+}), recursive = FALSE)
 
 census_vectors_age_page <- Reduce(rbind, vectors_table)
 
-census_vectors_age <- rbind(census_vectors_age, census_vectors_age_page)
+census_vectors_age <- rbind(census_vectors_age, census_vectors_age_page,census_vectors_age_sex_parent)
 
 usethis::use_data(census_vectors_age, overwrite = TRUE)
 
@@ -3248,9 +3529,7 @@ census_vectors_education <- rbind(
   census_vectors_education_parent
 )
 
-
 usethis::use_data(census_vectors_education, overwrite = TRUE)
-
 
 ## COMBINE ALL CENSUS VECTORS ##################################################
 

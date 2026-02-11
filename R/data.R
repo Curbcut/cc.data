@@ -10,6 +10,22 @@
 #' A character (scales) vector
 "census_scales"
 
+#' All available CMAs identifiant
+#'
+#' @format ## `cma_ids`
+#' A character (cma_id) vector
+"cma_ids"
+
+#' CT identifiers for all CMAs in Canada
+#'
+#' @format ## `cma_ct_ids`
+#' A tibble with two columns:
+#' \describe{
+#'   \item{id}{Census tract identifier (GeoUID, 2021 geography).}
+#'   \item{cma_uid}{CMA identifier (CMA_UID).}
+#' }
+"cma_ct_ids"
+
 #' Housing census vectors
 #'
 #' The variable code for each year
