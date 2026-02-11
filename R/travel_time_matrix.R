@@ -158,6 +158,16 @@ tt_local_osrm <- function(
 #'   - 100: 100% success but ~40% slower due to HTTP overhead
 #'   Higher values reduce HTTP overhead but increase per-request OSRM computation
 #'   time (matrix calc is O(n²)). Values above 500 may timeout on slower servers.
+#' @param n_batches <`integer`> Number of spatial batches for neighbor indexing.
+#' @param flush_every <`integer`> Number of origins to process per flush cycle.
+#'   Controls peak memory: each cycle fetches, parses, writes to disk, then frees
+#'   memory. Lower values = less RAM but more disk I/O overhead. Default 50000 is
+#'   a good balance for most workloads.
+#' @param output_dir <`character`|`NULL`> Directory for incremental output. If
+#'   provided, results are flushed to disk in batches as `.qs` files and the
+#'   function returns `invisible(output_dir)`. If `NULL` (default), all results
+#'   are held in memory and returned as a named list of `data.table`s. For large
+#'   jobs (>50k origins), always set `output_dir` to avoid OOM.
 #'
 #' @return Named list of data.tables, or invisible(output_dir) if writing to disk
 #' @export
@@ -175,13 +185,23 @@ tt_local_osrm <- function(
 #'   200 coords/request is the sweet spot — small enough for fast OSRM response,
 #'   large enough to minimize request overhead. Requests are automatically chunked
 #'   if an origin has more neighbors than this limit.
+#'
+#' ## Memory management
+#'
+#' With `output_dir` set, memory usage is bounded by `flush_every` origins at a
+#' time. Each flush cycle: fetch → parse → write `.qs` → free. This prevents the
+#' OOM kills that occur when millions of origin-destination pairs accumulate in
+#' the `responses` environment and result lists simultaneously.
 tt_calculate <- function(
   centroids,
   max_dist = 120000,
   routing_server = "http://127.0.0.1:5001/",
   profile = "car",
-  n_concurrent = 100L,
-  max_url_coords = 200L
+  n_concurrent = parallel::detectCores() * 3,
+  n_batches = 100,
+  max_url_coords = 200L,
+  flush_every = 50000L,
+  output_dir = NULL
 ) {
   # --- Validation ---
   stopifnot(
@@ -189,8 +209,24 @@ tt_calculate <- function(
     grepl("/$", routing_server)
   )
 
-  if (!is.null(output_dir)) {
+  write_to_disk <- !is.null(output_dir)
+
+  if (write_to_disk) {
     dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
+
+    # Clean up any partially-written temp files from a prior crash
+    stale_temps <- list.files(
+      output_dir,
+      pattern = "\\.qs\\.tmp$",
+      full.names = TRUE
+    )
+    if (length(stale_temps) > 0) {
+      file.remove(stale_temps)
+      message(sprintf(
+        "Cleaned up %d partial temp files from prior run.",
+        length(stale_temps)
+      ))
+    }
   }
 
   # Quick server check
@@ -223,13 +259,35 @@ tt_calculate <- function(
   message("Building spatial neighbor index...")
 
   centroids_proj <- sf::st_transform(centroids, 3347)
-  neighbor_sparse <- sf::st_is_within_distance(
-    centroids_proj,
-    centroids_proj,
-    dist = max_dist,
-    sparse = TRUE
+
+  chunk_size <- nrow(centroids_proj) / n_batches
+  chunks <- split(
+    seq_len(nrow(centroids_proj)),
+    ceiling(seq_len(nrow(centroids_proj)) / chunk_size)
   )
 
+  # Method 1: Use mirai_map's built-in progress
+  neighbor_sparse_raw <- mirai::mirai_map(
+    chunks,
+    function(idx) {
+      sf::st_is_within_distance(
+        centroids_proj[idx, ],
+        centroids_proj,
+        dist = max_dist,
+        sparse = TRUE
+      )
+    },
+    centroids_proj = centroids_proj,
+    max_dist = max_dist
+  )
+
+  # This shows progress and blocks until complete
+  neighbor_sparse_raw[.progress]
+
+  neighbor_sparse <- unlist(neighbor_sparse_raw[], recursive = FALSE)
+  Reduce(c, neighbor_sparse_raw[])
+
+  # Lookup code
   all_ids <- centroids$id
   neighbor_lookup <- setNames(
     lapply(seq_along(neighbor_sparse), function(i) {
@@ -240,8 +298,8 @@ tt_calculate <- function(
     all_ids
   )
 
-  rm(centroids_proj, neighbor_sparse)
-  gc()
+  # Free the large sf objects now that we have the lookup
+  rm(centroids_proj, neighbor_sparse_raw, neighbor_sparse)
 
   # --- Summary stats ---
   total_pairs <- sum(lengths(neighbor_lookup)) + length(all_ids)
@@ -263,18 +321,171 @@ tt_calculate <- function(
     est_time
   ))
 
-  # --- Main loop: batched workers + async HTTP ---
-  out <- fetch_batch_async(
-    origin_ids = all_ids,
-    coords_dt = coords_dt,
-    neighbor_lookup = neighbor_lookup,
-    routing_server = routing_server,
-    profile = profile,
-    n_concurrent = n_concurrent,
-    max_url_coords = max_url_coords
-  )
+  # --- Main loop: batched fetch with periodic flush ---
+  if (write_to_disk) {
+    # Process in flush_every-sized chunks, write each to disk, free memory
+    origin_batches <- split(
+      all_ids,
+      ceiling(seq_along(all_ids) / flush_every)
+    )
+    total_batches <- length(origin_batches)
 
-  out
+    # Build a fingerprint so we can detect if parameters changed between runs.
+    # Digest the origin IDs (order-sensitive) + key routing params. If any of
+    # these change, the old batches are invalid and we must start fresh.
+    run_fingerprint <- digest::digest(
+      list(
+        ids = all_ids,
+        max_dist = max_dist,
+        profile = profile,
+        flush_every = flush_every
+      ),
+      algo = "xxhash64"
+    )
+
+    # --- Resume detection ---
+    manifest_path <- file.path(output_dir, "_manifest.qs")
+    completed_batches <- integer(0)
+
+    if (file.exists(manifest_path)) {
+      prev_manifest <- tryCatch(qs::qread(manifest_path), error = function(e) {
+        NULL
+      })
+
+      if (
+        !is.null(prev_manifest) &&
+          "fingerprint" %in% names(attributes(prev_manifest)) &&
+          attr(prev_manifest, "fingerprint") == run_fingerprint
+      ) {
+        # Fingerprint matches — safe to resume
+        completed_batches <- prev_manifest$batch[prev_manifest$status == "done"]
+
+        if (length(completed_batches) > 0) {
+          message(sprintf(
+            "Resuming: %d / %d batches already completed. Skipping.",
+            length(completed_batches),
+            total_batches
+          ))
+        }
+      } else {
+        # Fingerprint mismatch — parameters changed, start fresh
+        warning(
+          "Existing manifest fingerprint does not match current parameters. ",
+          "Starting fresh (old batch files will be overwritten).",
+          call. = FALSE
+        )
+      }
+    }
+
+    remaining_idx <- setdiff(seq_len(total_batches), completed_batches)
+
+    if (length(remaining_idx) == 0) {
+      message("All batches already completed. Nothing to do.")
+      return(invisible(output_dir))
+    }
+
+    message(sprintf(
+      "Processing %d origins in %d batches (%d remaining, flush_every = %d)...",
+      length(all_ids),
+      total_batches,
+      length(remaining_idx),
+      flush_every
+    ))
+
+    for (batch_idx in remaining_idx) {
+      batch_ids <- origin_batches[[batch_idx]]
+
+      batch_results <- fetch_batch_async(
+        origin_ids = batch_ids,
+        coords_dt = coords_dt,
+        neighbor_lookup = neighbor_lookup,
+        routing_server = routing_server,
+        profile = profile,
+        n_concurrent = n_concurrent,
+        max_url_coords = max_url_coords
+      )
+
+      # Atomic write: temp file -> rename. A crash during qsave leaves only
+      # the .tmp file, which gets cleaned up on the next run.
+      final_path <- file.path(output_dir, sprintf("batch_%04d.qs", batch_idx))
+      tmp_path <- paste0(final_path, ".tmp")
+      qs::qsave(batch_results, tmp_path, preset = "fast")
+      file.rename(tmp_path, final_path)
+
+      # Update manifest incrementally — this is the checkpoint
+      completed_batches <- c(completed_batches, batch_idx)
+      manifest <- data.table::data.table(
+        batch = seq_len(total_batches),
+        file = sprintf("batch_%04d.qs", seq_len(total_batches)),
+        n_origins = lengths(origin_batches),
+        status = ifelse(
+          seq_len(total_batches) %in% completed_batches,
+          "done",
+          "pending"
+        )
+      )
+      attr(manifest, "fingerprint") <- run_fingerprint
+      # Manifest itself uses atomic write
+      manifest_tmp <- paste0(manifest_path, ".tmp")
+      qs::qsave(manifest, manifest_tmp)
+      file.rename(manifest_tmp, manifest_path)
+
+      message(sprintf(
+        "  Batch %d/%d written (%d origins) -> %s",
+        batch_idx,
+        total_batches,
+        length(batch_ids),
+        basename(final_path)
+      ))
+
+      rm(batch_results)
+      gc()
+    }
+
+    message(sprintf(
+      "Done. %d batches written to %s",
+      total_batches,
+      output_dir
+    ))
+    return(invisible(output_dir))
+  } else {
+    # In-memory mode: single pass, same as before
+    # WARNING: this will OOM on large jobs. Consider setting output_dir.
+    results <- fetch_batch_async(
+      origin_ids = all_ids,
+      coords_dt = coords_dt,
+      neighbor_lookup = neighbor_lookup,
+      routing_server = routing_server,
+      profile = profile,
+      n_concurrent = n_concurrent,
+      max_url_coords = max_url_coords
+    )
+    return(results)
+  }
+}
+
+#' Read back results written by tt_calculate
+#'
+#' @param output_dir <`character`> Directory containing batch .qs files
+#' @param origins <`character`|`NULL`> Optional subset of origin IDs to load.
+#'   If NULL, loads everything (watch your RAM).
+#' @return Named list of data.tables
+#' @export
+tt_read_results <- function(output_dir, origins = NULL) {
+  manifest <- qs::qread(file.path(output_dir, "_manifest.qs"))
+  results <- list()
+
+  for (f in manifest$file) {
+    batch <- qs::qread(file.path(output_dir, f))
+    if (!is.null(origins)) {
+      batch <- batch[intersect(names(batch), origins)]
+    }
+    results <- c(results, batch)
+  }
+
+  # TODO: Consider returning a single rbindlist'd data.table with an origin_id
+  # column instead of a named list, depending on downstream usage patterns.
+  results
 }
 
 
@@ -377,6 +588,7 @@ fetch_batch_async <- function(
   })
 
   all_requests <- unlist(request_meta, recursive = FALSE)
+  rm(request_meta) # Free immediately
 
   # --- Handle isolated origins ---
   results <- list()
@@ -390,33 +602,41 @@ fetch_batch_async <- function(
   }
 
   to_fetch <- Filter(function(m) !m$isolated, all_requests)
+  rm(all_requests) # Free the full list
 
   if (length(to_fetch) == 0) {
     return(results)
   }
 
-  # --- Async GET requests ---
+  # --- Async GET requests with retry ---
   pool <- curl::new_pool(total_con = n_concurrent, host_con = n_concurrent)
   responses <- new.env(parent = emptyenv())
+  state <- new.env(parent = emptyenv())
+  state$completed <- 0L
   total_requests <- length(to_fetch)
+  max_retries <- 3L
 
-  for (i in seq_along(to_fetch)) {
-    meta <- to_fetch[[i]]
+  queue_request <- function(meta, pool) {
     request_key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
-
     h <- curl::new_handle()
-    curl::handle_setopt(h, timeout_ms = 600000, connecttimeout = 30000)
+    curl::handle_setopt(h, connecttimeout = 999999L, timeout = 0)
 
     curl::curl_fetch_multi(
       url = meta$url,
       handle = h,
       done = local({
         key <- request_key
-        function(resp) responses[[key]] <- resp
+        function(resp) {
+          responses[[key]] <- resp
+          state$completed <- state$completed + 1L
+        }
       }),
       fail = local({
         key <- request_key
-        function(msg) responses[[key]] <- list(status_code = 0, error = msg)
+        function(msg) {
+          responses[[key]] <- list(status_code = 0, error = msg)
+          state$completed <- state$completed + 1L
+        }
       }),
       pool = pool
     )
@@ -428,33 +648,80 @@ fetch_batch_async <- function(
     length(origin_ids)
   ))
 
+  max_queued <- n_concurrent * 4L
+
   progressr::with_progress({
     pb <- progressr::progressor(steps = total_requests)
-    completed <- 0L
+    reported <- 0L
+    queued <- 0L
 
     repeat {
-      status <- curl::multi_run(pool = pool, poll = TRUE, timeout = 0.1)
-
-      new_completed <- length(ls(responses))
-      if (new_completed > completed) {
-        for (j in seq_len(new_completed - completed)) {
-          pb()
-        }
-        completed <- new_completed
+      pending_in_queue <- queued - state$completed
+      while (pending_in_queue < max_queued && queued < total_requests) {
+        queued <- queued + 1L
+        queue_request(to_fetch[[queued]], pool)
+        pending_in_queue <- pending_in_queue + 1L
       }
 
-      if (status$pending == 0) break
+      curl::multi_run(pool = pool, poll = TRUE, timeout = 1)
+
+      if (state$completed > reported) {
+        pb(amount = state$completed - reported)
+        reported <- state$completed
+      }
+
+      if (state$completed >= total_requests) break
     }
   })
 
-  # --- Log failures ---
+  # --- Retry failed requests ---
+  for (attempt in seq_len(max_retries)) {
+    failed_metas <- Filter(
+      function(meta) {
+        key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
+        resp <- responses[[key]]
+        is.null(resp) || resp$status_code != 200
+      },
+      to_fetch
+    )
+
+    if (length(failed_metas) == 0) {
+      break
+    }
+
+    message(sprintf(
+      "Retry %d/%d: %d failed requests...",
+      attempt,
+      max_retries,
+      length(failed_metas)
+    ))
+
+    # Brief pause to let OSRM recover if it was under pressure
+    Sys.sleep(2)
+
+    # Reset state for retry batch
+    state$completed <- 0L
+    retry_pool <- curl::new_pool(
+      total_con = n_concurrent,
+      host_con = n_concurrent
+    )
+
+    for (meta in failed_metas) {
+      queue_request(meta, retry_pool)
+    }
+
+    curl::multi_run(pool = retry_pool)
+  }
+
+  # --- Log remaining failures ---
   failed_keys <- Filter(
     function(k) responses[[k]]$status_code != 200,
     ls(responses)
   )
   if (length(failed_keys) > 0) {
-    message(sprintf(
-      "Failed requests: %d / %d",
+    warning(sprintf(
+      "Failed requests after %d retries: %d / %d",
+      max_retries,
       length(failed_keys),
       total_requests
     ))
@@ -464,10 +731,8 @@ fetch_batch_async <- function(
       if (!is.null(resp$error)) cat("  error:", resp$error, "\n")
     }
   }
-
-  # --- Parse responses ---
-  # TODO: Add retry logic for transient failures (e.g., 503, timeouts)
-  chunk_results <- list()
+  # --- Parse responses and group by origin ---
+  origin_chunks <- list()
 
   for (meta in to_fetch) {
     request_key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
@@ -478,7 +743,7 @@ fetch_batch_async <- function(
     }
 
     content <- tryCatch(
-      jsonlite::fromJSON(rawToChar(resp$content)),
+      RcppSimdJson::fparse(rawToChar(resp$content)),
       error = function(e) NULL
     )
 
@@ -486,24 +751,26 @@ fetch_batch_async <- function(
       next
     }
 
-    chunk_results[[request_key]] <- data.table::data.table(
+    dt <- data.table::data.table(
       id = c(meta$origin_id, meta$dest_ids),
       time = as.numeric(content$durations[1, ]),
       distance = as.numeric(content$distances[1, ])
     )
+
+    oid <- meta$origin_id
+    if (is.null(origin_chunks[[oid]])) {
+      origin_chunks[[oid]] <- list(dt)
+    } else {
+      origin_chunks[[oid]] <- c(origin_chunks[[oid]], list(dt))
+    }
   }
 
   # --- Merge chunks per origin ---
-  for (oid in unique(sapply(to_fetch, `[[`, "origin_id"))) {
-    origin_chunks <- chunk_results[grep(
-      paste0("^", oid, "_chunk"),
-      names(chunk_results)
-    )]
-    if (length(origin_chunks) == 0) {
-      next
-    }
-
-    merged <- data.table::rbindlist(origin_chunks)
+  # Ff memory becomes a concern at scale, let's write
+  # completed batches to disk (e.g. fst/qs) and clear responses
+  # between batches instead of accumulating everything in memory
+  for (oid in names(origin_chunks)) {
+    merged <- data.table::rbindlist(origin_chunks[[oid]])
     results[[oid]] <- unique(merged, by = "id")
   }
 

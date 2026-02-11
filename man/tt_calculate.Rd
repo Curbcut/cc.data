@@ -9,8 +9,11 @@ tt_calculate(
   max_dist = 120000,
   routing_server = "http://127.0.0.1:5001/",
   profile = "car",
-  n_concurrent = 100L,
-  max_url_coords = 200L
+  n_concurrent = parallel::detectCores() * 3,
+  n_batches = 100,
+  max_url_coords = 200L,
+  flush_every = 50000L,
+  output_dir = NULL
 )
 }
 \arguments{
@@ -27,6 +30,8 @@ roughly 3x the number of threads given to the OSRM container (e.g., 200 for
 a 64-thread server). Beyond ~3x, throughput plateaus as OSRM becomes
 CPU-bound. Too high may cause connection timeouts.}
 
+\item{n_batches}{<\code{integer}> Number of spatial batches for neighbor indexing.}
+
 \item{max_url_coords}{<\code{integer}> Max coordinates per OSRM request. Controls
 URL length and matrix computation size. Testing showed:
 \itemize{
@@ -36,6 +41,17 @@ URL length and matrix computation size. Testing showed:
 Higher values reduce HTTP overhead but increase per-request OSRM computation
 time (matrix calc is O(n²)). Values above 500 may timeout on slower servers.
 }}
+
+\item{flush_every}{<\code{integer}> Number of origins to process per flush cycle.
+Controls peak memory: each cycle fetches, parses, writes to disk, then frees
+memory. Lower values = less RAM but more disk I/O overhead. Default 50000 is
+a good balance for most workloads.}
+
+\item{output_dir}{<\code{character}|\code{NULL}> Directory for incremental output. If
+provided, results are flushed to disk in batches as \code{.qs} files and the
+function returns \code{invisible(output_dir)}. If \code{NULL} (default), all results
+are held in memory and returned as a named list of \code{data.table}s. For large
+jobs (>50k origins), always set \code{output_dir} to avoid OOM.}
 }
 \value{
 Named list of data.tables, or invisible(output_dir) if writing to disk
@@ -56,5 +72,13 @@ just queues requests without speed gain.
 large enough to minimize request overhead. Requests are automatically chunked
 if an origin has more neighbors than this limit.
 }
+}
+
+\subsection{Memory management}{
+
+With \code{output_dir} set, memory usage is bounded by \code{flush_every} origins at a
+time. Each flush cycle: fetch → parse → write \code{.qs} → free. This prevents the
+OOM kills that occur when millions of origin-destination pairs accumulate in
+the \code{responses} environment and result lists simultaneously.
 }
 }

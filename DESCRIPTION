@@ -36,7 +36,9 @@ Imports:
     fuzzyjoin,
     rlang,
     xml2,
-    curl
+    curl,
+    RcppSimdJson,
+    mirai
 Suggests:
     aws.s3,
     gtfsrouter,

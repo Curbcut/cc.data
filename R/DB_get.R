@@ -18,8 +18,7 @@
 #' object with MULTIPOLYGON geometry, and containing population and dwelling counts.
 #' The data is transformed to the specified CRS and intersected with the DA_carto object.
 #' @export
-DB_get <- function(years = cc.data::census_years, crs, DA_carto) {
-
+DB_get <- function(years = cc.data::census_years, crs = NULL, DA_carto = NULL) {
   # 1996 does not have DBs
   years <- years[years != 1996]
 
@@ -28,20 +27,26 @@ DB_get <- function(years = cc.data::census_years, crs, DA_carto) {
 
   years_l <- lapply(years_l, \(x) {
     file <- sprintf("DB_shp_%s.zip", x)
-    if (x == 2021)  file <- "DB_shp_carto.zip"
+    if (x == 2021) {
+      file <- "DB_shp_carto.zip"
+    }
     cc.data::bucket_read_object_zip_shp(file, "curbcut.rawdata")
   })
 
   # Transform and diff with cartographic
-  years_l <- lapply(years_l, sf::st_transform, crs)
+  if (!is.null(crs)) {
+    years_l <- lapply(years_l, sf::st_transform, crs)
+  }
   years_l <- lapply(years_l, sf::st_make_valid)
 
   # Cut it at DA_carto
-  years_l <- lapply(years_l, \(x) {
-    int <- sf::st_intersects(x, DA_carto)
-    only <- x[as.logical(lengths(int)), ]
-    sf::st_intersection(only, DA_carto)
-  })
+  if (!is.null(DA_carto)) {
+    years_l <- lapply(years_l, \(x) {
+      int <- sf::st_intersects(x, DA_carto)
+      only <- x[as.logical(lengths(int)), ]
+      sf::st_intersection(only, DA_carto)
+    })
+  }
 
   # Convert to MULTIPOLYGON
   years_l <- lapply(years_l, sf::st_cast, "MULTIPOLYGON")
@@ -52,7 +57,9 @@ DB_get <- function(years = cc.data::census_years, crs, DA_carto) {
     names(x)[1] <- "ID"
     x <- x[c(names(x)[1], if ("DA_ID" %in% names(x)) "DA_ID")]
 
-    if (!"DA_ID" %in% names(x)) x$DA_ID <- stringr::str_extract(x$ID, "^\\d{8}")
+    if (!"DA_ID" %in% names(x)) {
+      x$DA_ID <- stringr::str_extract(x$ID, "^\\d{8}")
+    }
     x
   })
 
@@ -67,8 +74,12 @@ DB_get <- function(years = cc.data::census_years, crs, DA_carto) {
     progressr::with_progress({
       pb <- progressr::progressor(steps = length(waves))
       dbs <- lapply(waves, \(x) {
-        out <- cancensus::get_census(ds, region = list(DB = x), quiet = TRUE,
-                                     use_cache = TRUE)
+        out <- cancensus::get_census(
+          ds,
+          region = list(DB = x),
+          quiet = TRUE,
+          use_cache = TRUE
+        )
         pb()
         out
       })
@@ -86,7 +97,6 @@ DB_get <- function(years = cc.data::census_years, crs, DA_carto) {
 
     # Merge population and households
     merge(years_l[[as.character(y)]], dbs, by = "ID")
-
   })
 
   names(years_l) <- years

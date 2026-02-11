@@ -4,7 +4,7 @@
 \alias{DB_get}
 \title{Retrieve and Process Dissemination Block Geographical Information}
 \usage{
-DB_get(years = cc.data::census_years, crs, DA_carto)
+DB_get(years = cc.data::census_years, crs = NULL, DA_carto = NULL)
 }
 \arguments{
 \item{years}{<\verb{numeric vector}> A vector of years to process. Default is set to
