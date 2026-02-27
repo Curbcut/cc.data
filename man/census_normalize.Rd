@@ -13,7 +13,7 @@ census_normalize(
 )
 }
 \arguments{
-\item{interpolated}{list [\link{scale}][\link{year}] sf — output of census_interpolate()}
+\item{interpolated}{list [\link{scale}][\link[data.table:IDateTime]{data.table::year}] sf — output of census_interpolate()}
 
 \item{census_vectors}{\if{html}{\out{<character>}} cc.data::census_vectors (used only if unit_type = NULL)}
 
@@ -24,7 +24,7 @@ census_normalize(
 \item{unit_type}{<data.frame|NULL> if NULL, built from variables actually present}
 }
 \value{
-list [\link{scale}][\link{year}] sf with normalized variables
+list [\link{scale}][\link[data.table:IDateTime]{data.table::year}] sf with normalized variables
 }
 \description{
 Normalize census variables to proportions in \verb{[0,1]}

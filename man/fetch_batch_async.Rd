@@ -5,22 +5,15 @@
 \title{Fetch travel times for multiple origins using async HTTP}
 \usage{
 fetch_batch_async(
-  origin_ids,
-  coords_dt,
-  neighbor_lookup,
+  all_requests,
   routing_server,
   profile,
   n_concurrent,
-  max_url_coords
+  max_url_coords,
+  n_daemons
 )
 }
 \arguments{
-\item{origin_ids}{<\code{character}> Vector of origin IDs to process}
-
-\item{coords_dt}{<\code{data.table}> Keyed by id, with x/y columns}
-
-\item{neighbor_lookup}{<\code{list}> Named list: origin_id -> dest_ids vector}
-
 \item{routing_server}{<\code{character}> OSRM base URL}
 
 \item{profile}{<\code{character}> OSRM profile}
@@ -28,6 +21,12 @@ fetch_batch_async(
 \item{n_concurrent}{<\code{integer}> Max simultaneous connections}
 
 \item{max_url_coords}{<\code{integer}> Max coords per request}
+
+\item{origin_ids}{<\code{character}> Vector of origin IDs to process}
+
+\item{coords_dt}{<\code{data.table}> Keyed by id, with x/y columns}
+
+\item{neighbor_lookup}{<\code{list}> Named list: origin_id -> dest_ids vector}
 }
 \value{
 Named list of data.tables (origin_id -> results)
