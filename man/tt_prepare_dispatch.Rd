@@ -31,7 +31,7 @@ tt_prepare_dispatch(
 metadata. If NULL, defaults to \code{file.path(output_dir, "_requests")}}
 }
 \value{
-List with worker_fn, inputs, worker_args, and metadata for stage 2
+List with inputs, worker_args, and metadata for stage 2
 }
 \description{
 Prepare data for dispatch_model-based request building

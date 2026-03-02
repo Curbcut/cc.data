@@ -11,29 +11,56 @@ tt_fetch_routes(
   routing_server = NULL,
   profile = NULL,
   n_concurrent = parallel::detectCores() * 3,
-  flush_every = 50000L
+  flush_every = 50000L,
+  bucket = NULL
 )
 }
 \arguments{
-\item{prep}{<\code{list}|\code{NULL}> Output from tt_prepare_dispatch(). If provided,
-other path/server parameters are extracted from it.}
+\item{prep}{<\code{list}|\code{NULL}> Output from \code{\link[=tt_prepare_dispatch]{tt_prepare_dispatch()}}. If provided,
+\code{requests_dir}, \code{output_dir}, \code{routing_server}, and \code{profile} are extracted
+from it and their individual arguments are ignored.}
 
-\item{requests_dir}{<\code{character}|\code{NULL}> Directory containing {id}.qs files}
+\item{requests_dir}{<\code{character}|\code{NULL}> Directory containing \verb{\{id\}.qs}
+request metadata files produced by \code{\link[=build_origin_requests]{build_origin_requests()}}. Ignored if
+\code{prep} is provided.}
 
-\item{output_dir}{<\code{character}|\code{NULL}> Directory for batch output files}
+\item{output_dir}{<\code{character}|\code{NULL}> Local directory for the resume
+manifest (\verb{_manifest.qs}). When \code{bucket} is \code{NULL}, batch result files are
+also written here. Always required regardless of \code{bucket}. Ignored if
+\code{prep} is provided.}
 
-\item{routing_server}{<\code{character}|\code{NULL}> OSRM server URL}
+\item{routing_server}{<\code{character}|\code{NULL}> OSRM server base URL (must end
+with \code{/}). Ignored if \code{prep} is provided.}
 
-\item{profile}{<\code{character}|\code{NULL}> OSRM routing profile}
+\item{profile}{<\code{character}|\code{NULL}> OSRM routing profile (e.g. \code{"car"},
+\code{"bicycle"}, \code{"foot"}). Ignored if \code{prep} is provided.}
 
-\item{n_concurrent}{<\code{integer}> Simultaneous HTTP requests}
+\item{n_concurrent}{<\code{integer}> Number of simultaneous HTTP connections to
+the OSRM server. Defaults to \code{parallel::detectCores() * 3}.}
 
-\item{flush_every}{<\code{integer}> Number of origins worth of requests to batch
-together when calling fetch_batch_async}
+\item{flush_every}{<\code{integer}> Number of origins to include per batch.
+Controls peak memory usage: lower values reduce RAM but increase overhead.
+Default \code{50000L} is a reasonable balance for most workloads.}
+
+\item{bucket}{<\code{character}|\code{NULL}> Name of an S3 bucket to write batch
+result files to. If \code{NULL} (default), batch files are written locally to
+\code{output_dir}. If provided, batch files are serialized in memory and
+uploaded via multipart upload — nothing beyond the manifest is written to
+disk. Requires \code{aws.s3} and the \code{CURBCUT_BUCKET_ACCESS_ID},
+\code{CURBCUT_BUCKET_ACCESS_KEY}, and \code{CURBCUT_BUCKET_DEFAULT_REGION}
+environment variables to be set.}
 }
 \value{
-invisible(output_dir)
+\code{invisible(output_dir)}
 }
 \description{
-Fetch routes from prepared request metadata
+Stage 2 of the travel time matrix pipeline. Reads request metadata files
+produced by \code{\link[=tt_prepare_dispatch]{tt_prepare_dispatch()}} + \code{\link[=build_origin_requests]{build_origin_requests()}}, fetches
+OSRM table API results in batches, and writes output either to local disk or
+an S3 bucket.
+}
+\details{
+Supports resuming interrupted runs: batch assignments are shuffled once on
+the first call and stored in the manifest so that a resumed run always uses
+the same batch composition.
 }
