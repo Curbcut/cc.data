@@ -285,6 +285,7 @@ format_date_names <- function(x) {
 #' @description Downloads and reshapes CANSIM table 14-10-0287-03 to get monthly unemployment rates
 #'              for each geography (excluding Canada) in wide format (one column per month).
 #' @return A data frame with one row per geographic unit and columns for unemployment rates by month (YYYYMM).
+#' @export
 cansim_unemployment <- function() {
   
   # Load unemployment rate data from CANSIM
