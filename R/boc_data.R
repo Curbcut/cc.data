@@ -103,10 +103,9 @@ boc_inflation_expectations <- function() {
 #'
 #' @return A data.frame with `id` (GeoUID) and one column per quarter (e.g., "uncertainty_ce_2014q4", ...).
 #' @export
-boc_inflation_uncertainty_expectations <- function() {
-  
+boc_inflation_uncertainty_expectations <- function() {  
   url <- "https://www.bankofcanada.ca/valet/observations/group/CES_C2_DEMOGRAPHICS/csv"
-  df <- readr::read_csv(url, skip = 198, col_names = TRUE)
+  df <- data.table::fread(url, skip = 93, header = TRUE) |> as.data.frame()
   
   df_filtered <- df |>
     dplyr::select(date, dplyr::starts_with("CES_C2E_UNCERTAINTY_SHORT_TERM_"))
