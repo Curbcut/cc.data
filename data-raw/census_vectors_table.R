@@ -7,17 +7,17 @@ verify_parents <- function(vectors_df, parents_df) {
   if (length(parents_type) > 1 | parents_type != "count") {
     stop("All vectors of `parents_df` must have `count` as type.")
   }
-  
+
   if (sum(vectors_df$parent) > 0) {
     stop(
       "All vectors of `vectors_df` must be non-parent vectors. `parent` == F"
     )
   }
-  
+
   if (sum(parents_df$parent) != nrow(parents_df)) {
     stop("All vectors of `parents_df` must be parent vectors. `parent` == T")
   }
-  
+
   # Get all non-NA parent vectors and check if they're in the parents_df
   # MODIFIÉ: unlist pour supporter multi-parents
   non_na_parents <- unique(unlist(vectors_df$parent_vec))
@@ -26,13 +26,13 @@ verify_parents <- function(vectors_df, parents_df) {
     missing_parents <- non_na_parents[!non_na_parents %in% parents_df$var_code]
     stop(paste0("Parent vector `", missing_parents, "` is missing. \n"))
   }
-  
+
   vec_cols <- names(vectors_df)[grepl("vec_", names(vectors_df))]
   row_indices <- seq_len(nrow(vectors_df))
-  
+
   lapply(row_indices, function(row_index) {
     row_data <- vectors_df[row_index, ]
-    
+
     # MODIFIÉ: unlist pour supporter multi-parents
     parent_vecs <- unlist(row_data$parent_vec)
     parent_vecs <- parent_vecs[!is.na(parent_vecs)]
@@ -41,7 +41,7 @@ verify_parents <- function(vectors_df, parents_df) {
         "All non-parent entries need to have a parent vector for normalization."
       )
     }
-    
+
     var_vectors <- sapply(
       vec_cols,
       function(col_name) {
@@ -55,23 +55,28 @@ verify_parents <- function(vectors_df, parents_df) {
       USE.NAMES = TRUE
     )
     existing_vars <- names(var_vectors[!sapply(var_vectors, is.null)])
-    
+
     # MODIFIÉ: union de tous les parents disponibles
-    existing_parents <- Reduce(union, lapply(parent_vecs, function(pv) {
-      parent_data <- parents_df[parents_df$var_code == pv, ]
-      parent_vectors <- sapply(
-        vec_cols,
-        function(col_name) {
-          vectors <- unlist(parent_data[[col_name]])
-          if (all(is.na(vectors))) return(NULL)
-          vectors
-        },
-        simplify = FALSE,
-        USE.NAMES = TRUE
-      )
-      names(parent_vectors[!sapply(parent_vectors, is.null)])
-    }))
-    
+    existing_parents <- Reduce(
+      union,
+      lapply(parent_vecs, function(pv) {
+        parent_data <- parents_df[parents_df$var_code == pv, ]
+        parent_vectors <- sapply(
+          vec_cols,
+          function(col_name) {
+            vectors <- unlist(parent_data[[col_name]])
+            if (all(is.na(vectors))) {
+              return(NULL)
+            }
+            vectors
+          },
+          simplify = FALSE,
+          USE.NAMES = TRUE
+        )
+        names(parent_vectors[!sapply(parent_vectors, is.null)])
+      })
+    )
+
     if (!all(existing_vars %in% existing_parents)) {
       var_code <- row_data$var_code
       missing_parents <- existing_vars[!existing_vars %in% existing_parents]
@@ -84,7 +89,7 @@ verify_parents <- function(vectors_df, parents_df) {
       ))
     }
   })
-  
+
   return(invisible(NULL))
 }
 
@@ -171,7 +176,7 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The average monthly shelter expenses paid by tenant households, including, where applicable, rent plus costs of electricity, heat, water and municipal services",
-      fr = "Les frais mensuels moyens de logement payés par les ménages locataires, incluant, s’il y a lieu, le loyer ainsi que les coûts d’électricité, de chauffage, d’eau et des services municipaux"
+      fr = "Les frais mensuels moyens de logement payés par les ménages locataires, incluant, s'il y a lieu, le loyer ainsi que les coûts d'électricité, de chauffage, d'eau et des services municipaux"
     )),
     parent_vec = "tenant_households",
     parent = FALSE
@@ -200,7 +205,7 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The average monthly shelter expenses paid by owner households, including, where applicable, mortgage payments, property taxes, condominium fees, and costs of electricity, heat and water",
-      fr = "Les frais mensuels moyens de logement payés par les ménages propriétaires, incluant, s’il y a lieu, les versements hypothécaires, les taxes foncières, les frais de copropriété ainsi que les coûts d’électricité, de chauffage et d’eau"
+      fr = "Les frais mensuels moyens de logement payés par les ménages propriétaires, incluant, s'il y a lieu, les versements hypothécaires, les taxes foncières, les frais de copropriété ainsi que les coûts d'électricité, de chauffage et d'eau"
     )),
     parent_vec = "owner_households",
     parent = FALSE
@@ -258,7 +263,7 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The average owner-estimated market value of owner-occupied private dwellings, including the value of the entire dwelling, the land it is on, and any other structures on the property (such as a garage)",
-      fr = "Valeur marchande moyenne estimée par le propriétaire pour les logements privés occupés par leur propriétaire, incluant la valeur de l’ensemble du logement, du terrain sur lequel il se trouve et de toute autre construction sur la propriété"
+      fr = "Valeur marchande moyenne estimée par le propriétaire pour les logements privés occupés par leur propriétaire, incluant la valeur de l'ensemble du logement, du terrain sur lequel il se trouve et de toute autre construction sur la propriété"
     )),
     parent_vec = "owner_households",
     parent = FALSE
@@ -316,7 +321,7 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The number of private households living in unsuitable housing, that is, in dwellings that do not have enough bedrooms for the size and composition of the household according to the National Occupancy Standard (NOS)",
-      fr = "Nombre de ménages privés vivant dans un logement de taille non convenable, c’est-à-dire dans des logements qui ne comptent pas suffisamment de chambres pour la taille et la composition du ménage, selon la Norme nationale d’occupation (NNO)"
+      fr = "Nombre de ménages privés vivant dans un logement de taille non convenable, c'est-à-dire dans des logements qui ne comptent pas suffisamment de chambres pour la taille et la composition du ménage, selon la Norme nationale d'occupation (NNO)"
     )),
     parent_vec = "private_households",
     parent = FALSE
@@ -403,11 +408,11 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The number of persons who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
-      fr = "Le nombre de personnes ayant déménagé au cours de l’année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
+      fr = "Le nombre de personnes ayant déménagé au cours de l'année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
     parent_vec = "mobility_status_1",
     parent = FALSE
-  )  |>
+  ) |>
   tibble::add_row(
     var_code = "housing_mobility_one_m",
     type = list(list(
@@ -432,11 +437,11 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The number of males who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
-      fr = "Le nombre d'hommes ayant déménagé au cours de l’année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
+      fr = "Le nombre d'hommes ayant déménagé au cours de l'année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
     parent_vec = "mobility_status_1_m",
     parent = FALSE
-  )|>
+  ) |>
   tibble::add_row(
     var_code = "housing_mobility_one_f",
     type = list(list(
@@ -461,11 +466,11 @@ census_vectors_housing <-
     )),
     description = list(list(
       en = "The number of females who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
-      fr = "Le nombre de femmes ayant déménagé au cours de l’année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
+      fr = "Le nombre de femmes ayant déménagé au cours de l'année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
     parent_vec = "mobility_status_1_f",
     parent = FALSE
-  )|>
+  ) |>
   tibble::add_row(
     var_code = "housing_mobility_five",
     type = list(list(
@@ -608,7 +613,7 @@ census_vectors_housing_parent <-
     )),
     description = list(list(
       en = "The number of private dwellings, defined as a separate set of living quarters with a private entrance from outside the building or from a common area inside, that meet the conditions for year-round occupancy (a source of heat or power and an enclosed space providing shelter from the elements)",
-      fr = "Le nombre de logements privés, définis comme un ensemble séparé de pièces d'habitation possédant une entrée privée depuis l’extérieur de l’immeuble ou à partir d’un espace commun intérieur, qui répondent aux conditions les rendant propres à l’habitation durant toute l’année (source de chauffage ou d’énergie et espace clos permettant de s’abriter des intempéries)"
+      fr = "Le nombre de logements privés, définis comme un ensemble séparé de pièces d'habitation possédant une entrée privée depuis l'extérieur de l'immeuble ou à partir d'un espace commun intérieur, qui répondent aux conditions les rendant propres à l'habitation durant toute l'année (source de chauffage ou d'énergie et espace clos permettant de s'abriter des intempéries)"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -697,7 +702,7 @@ census_vectors_housing_parent <-
     )),
     description = list(list(
       en = "The number of owner households, defined as private households where at least one member of the household owns the dwelling, even if it is still being paid for",
-      fr = "Le nombre de ménages propriétaires, définis comme des ménages privés au sein desquels au moins un des membres du ménage est propriétaire du logement, même s’il est encore en train de le payer"
+      fr = "Le nombre de ménages propriétaires, définis comme des ménages privés au sein desquels au moins un des membres du ménage est propriétaire du logement, même s'il est encore en train de le payer"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -932,7 +937,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are single-detached houses, defined as single dwellings not attached to any other dwelling or structure (except their own garage or shed), surrounded by open space on all sides and with no dwellings above or below. Mobile homes permanently fixed to a foundation are also included in this category.",
-      fr = "Le nombre de logements privés qui sont des maisons individuelles non attenantes, définies comme des logements individuels non joints à un autre logement ou à une autre construction (sauf à leur propre garage ou hangar), entourés d’espaces libres sur tous les côtés et sans logement au-dessus ni au-dessous. Les habitations mobiles installées de façon permanente sur des fondations sont également incluses dans cette catégorie."
+      fr = "Le nombre de logements privés qui sont des maisons individuelles non attenantes, définies comme des logements individuels non joints à un autre logement ou à une autre construction (sauf à leur propre garage ou hangar), entourés d'espaces libres sur tous les côtés et sans logement au-dessus ni au-dessous. Les habitations mobiles installées de façon permanente sur des fondations sont également incluses dans cette catégorie."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -963,7 +968,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are semi-detached houses, defined as one of two dwellings attached side by side (or back to back) to each other, but not attached to any other dwelling or structure (except their own garage or shed), with no dwellings above or below and open space around the pair.",
-      fr = "Le nombre de logements privés qui sont des maisons jumelées, définies comme l’un de deux logements réunis côte à côte (ou de l’arrière à l’arrière) par un mur commun, mais non joints à aucun autre logement ou construction (sauf à leur propre garage ou hangar), sans logement au-dessus ou au-dessous et entourés d’espaces libres."
+      fr = "Le nombre de logements privés qui sont des maisons jumelées, définies comme l'un de deux logements réunis côte à côte (ou de l'arrière à l'arrière) par un mur commun, mais non joints à aucun autre logement ou construction (sauf à leur propre garage ou hangar), sans logement au-dessus ou au-dessous et entourés d'espaces libres."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -994,7 +999,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are row houses, defined as dwellings in a row of at least three dwellings joined side by side (or occasionally side to back), such as townhouses or garden homes, with no dwellings above or below; townhouses attached to a high-rise building are also included in this category.",
-      fr = "Le nombre de logements privés qui sont des maisons en rangée, définies comme des logements dans une rangée d’au moins trois logements réunis côte à côte (ou parfois réunis par un des côtés d’un logement et l’arrière d’un autre logement), comme une maison en bande ou une maison-jardin, sans logement au-dessus ni au-dessous; les maisons en bande jointes à une tour d’habitation sont également incluses dans cette catégorie."
+      fr = "Le nombre de logements privés qui sont des maisons en rangée, définies comme des logements dans une rangée d'au moins trois logements réunis côte à côte (ou parfois réunis par un des côtés d'un logement et l'arrière d'un autre logement), comme une maison en bande ou une maison-jardin, sans logement au-dessus ni au-dessous; les maisons en bande jointes à une tour d'habitation sont également incluses dans cette catégorie."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1025,7 +1030,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are apartments or flats in a duplex, defined as one of two dwellings located one above the other, which may or may not be attached to other dwellings or buildings.",
-      fr = "Le nombre de logements privés qui sont des appartements ou plain-pieds dans un duplex, définis comme l’un de deux logements superposés qui peuvent être ou ne pas être joints à d’autres logements ou immeubles."
+      fr = "Le nombre de logements privés qui sont des appartements ou plain-pieds dans un duplex, définis comme l'un de deux logements superposés qui peuvent être ou ne pas être joints à d'autres logements ou immeubles."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1056,7 +1061,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are apartments in a building that has fewer than five storeys, defined as dwelling units attached to other dwelling units, commercial units or other non-residential space in a building with fewer than five storeys.",
-      fr = "Le nombre de logements privés qui sont des appartements dans un immeuble de moins de cinq étages, définis comme des logements joints à d’autres logements ou à d’autres locaux commerciaux ou non résidentiels dans un immeuble de moins de cinq étages."
+      fr = "Le nombre de logements privés qui sont des appartements dans un immeuble de moins de cinq étages, définis comme des logements joints à d'autres logements ou à d'autres locaux commerciaux ou non résidentiels dans un immeuble de moins de cinq étages."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1087,7 +1092,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are apartments in a building that has five or more storeys, that is, dwelling units in high-rise apartment buildings with five or more storeys.",
-      fr = "Le nombre de logements privés qui sont des appartements dans un immeuble de cinq étages ou plus, c’est-à-dire des logements situés dans une tour d’habitation comportant cinq étages ou plus."
+      fr = "Le nombre de logements privés qui sont des appartements dans un immeuble de cinq étages ou plus, c'est-à-dire des logements situés dans une tour d'habitation comportant cinq étages ou plus."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1118,7 +1123,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are other single-attached houses, defined as single dwellings attached to another building that do not fall into the other dwelling type categories, such as a single dwelling attached to a non-residential structure (e.g., a store or a church) or occasionally to another residential structure (e.g., an apartment building).",
-      fr = "Le nombre de logements privés qui sont d’autres maisons individuelles attenantes, définis comme des logements individuels joints à un autre immeuble et ne se classant dans aucune des autres catégories de type de logement, comme un logement individuel réuni à une construction non résidentielle (p. ex., un magasin ou une église) ou, parfois, à une autre construction résidentielle (p. ex., un immeuble d’appartements)."
+      fr = "Le nombre de logements privés qui sont d'autres maisons individuelles attenantes, définis comme des logements individuels joints à un autre immeuble et ne se classant dans aucune des autres catégories de type de logement, comme un logement individuel réuni à une construction non résidentielle (p. ex., un magasin ou une église) ou, parfois, à une autre construction résidentielle (p. ex., un immeuble d'appartements)."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1149,7 +1154,7 @@ census_vectors_typology <-
     )),
     description = list(list(
       en = "The number of private dwellings that are mobile homes or other movable dwellings, defined as single dwellings designed and constructed to be transported on their own chassis and capable of being moved to a new location on short notice, or other single dwellings used as places of residence that can be moved on short notice, such as tents, recreational vehicles, travel trailers, houseboats or floating homes.",
-      fr = "Le nombre de logements privés qui sont des habitations mobiles ou d’autres logements mobiles, définis comme des logements individuels conçus et construits pour être transportés sur leur propre châssis et pouvant être déplacés sans grand délai, ou d’autres logements individuels utilisés comme résidence et pouvant être déplacés sans grand délai, tels qu’une tente, un véhicule récréatif, une roulotte de voyage, un bateau-maison ou une maison flottante."
+      fr = "Le nombre de logements privés qui sont des habitations mobiles ou d'autres logements mobiles, définis comme des logements individuels conçus et construits pour être transportés sur leur propre châssis et pouvant être déplacés sans grand délai, ou d'autres logements individuels utilisés comme résidence et pouvant être déplacés sans grand délai, tels qu'une tente, un véhicule récréatif, une roulotte de voyage, un bateau-maison ou une maison flottante."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1194,7 +1199,7 @@ census_vectors_bedroomsize <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings with zero bedrooms. Bedrooms refer to rooms designed mainly for sleeping purposes and exclude rooms designed for another use during the day, such as living rooms and dining rooms. One-room private dwellings, such as bachelor or studio apartments, are classified as having zero bedrooms.",
-      fr = "Le nombre de logements privés occupés ne comptant aucune chambre à coucher. Les chambres à coucher désignent des pièces utilisées principalement pour dormir et excluent les pièces conçues pour un autre usage pendant la journée, comme les salons et les salles à manger. Les logements privés d’une pièce, comme les studios, sont classés comme n’ayant aucune chambre à coucher."
+      fr = "Le nombre de logements privés occupés ne comptant aucune chambre à coucher. Les chambres à coucher désignent des pièces utilisées principalement pour dormir et excluent les pièces conçues pour un autre usage pendant la journée, comme les salons et les salles à manger. Les logements privés d'une pièce, comme les studios, sont classés comme n'ayant aucune chambre à coucher."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1227,7 +1232,7 @@ census_vectors_bedroomsize <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings with one bedroom. Bedrooms refer to rooms designed mainly for sleeping purposes, including rooms now used for other purposes (such as guest rooms or television rooms), and excluding rooms such as living rooms and dining rooms.",
-      fr = "Le nombre de logements privés occupés comptant une chambre à coucher. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d’autres fins (comme une chambre d’ami ou une salle de télévision), et excluant les salons et les salles à manger."
+      fr = "Le nombre de logements privés occupés comptant une chambre à coucher. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d'autres fins (comme une chambre d'ami ou une salle de télévision), et excluant les salons et les salles à manger."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1258,7 +1263,7 @@ census_vectors_bedroomsize <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings with two bedrooms. Bedrooms refer to rooms designed mainly for sleeping purposes, including rooms now used for other purposes (such as guest rooms or television rooms), and excluding living rooms and dining rooms.",
-      fr = "Le nombre de logements privés occupés comptant deux chambres à coucher. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d’autres fins (comme une chambre d’ami ou une salle de télévision), et excluant les salons et les salles à manger."
+      fr = "Le nombre de logements privés occupés comptant deux chambres à coucher. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d'autres fins (comme une chambre d'ami ou une salle de télévision), et excluant les salons et les salles à manger."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1289,7 +1294,7 @@ census_vectors_bedroomsize <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings with three bedrooms. Bedrooms refer to rooms designed mainly for sleeping purposes, including rooms now used for other purposes (such as guest rooms or television rooms), and excluding living rooms and dining rooms.",
-      fr = "Le nombre de logements privés occupés comptant trois chambres à coucher. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d’autres fins (comme une chambre d’ami ou une salle de télévision), et excluant les salons et les salles à manger."
+      fr = "Le nombre de logements privés occupés comptant trois chambres à coucher. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d'autres fins (comme une chambre d'ami ou une salle de télévision), et excluant les salons et les salles à manger."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1320,7 +1325,7 @@ census_vectors_bedroomsize <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings with four or more bedrooms. Bedrooms refer to rooms designed mainly for sleeping purposes, including rooms now used for other purposes (such as guest rooms or television rooms), and excluding living rooms and dining rooms.",
-      fr = "Le nombre de logements privés occupés comptant quatre chambres à coucher ou plus. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d’autres fins (comme une chambre d’ami ou une salle de télévision), et excluant les salons et les salles à manger."
+      fr = "Le nombre de logements privés occupés comptant quatre chambres à coucher ou plus. Les chambres à coucher désignant des pièces conçues principalement pour dormir, y compris celles maintenant utilisées à d'autres fins (comme une chambre d'ami ou une salle de télévision), et excluant les salons et les salles à manger."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1360,7 +1365,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built before 1960. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits avant 1960. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits avant 1960. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1389,7 +1394,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 1961 and 1980. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 1961 et 1980. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 1961 et 1980. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1418,7 +1423,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 1981 and 1990. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 1981 et 1990. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 1981 et 1990. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1447,7 +1452,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 1991 and 2000. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 1991 et 2000. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 1991 et 2000. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1476,7 +1481,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 2001 and 2005. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 2001 et 2005. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 2001 et 2005. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1505,7 +1510,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 2006 and 2010. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 2006 et 2010. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 2006 et 2010. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1534,7 +1539,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 2011 and 2015. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 2011 et 2015. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 2011 et 2015. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1563,7 +1568,7 @@ census_vectors_buildingage <-
     )),
     description = list(list(
       en = "The number of occupied private dwellings built between 2016 and 2020. Period of construction refers to the period in time during which the dwelling was originally constructed. It refers to the period when construction was completed, not the time of later remodelling, additions or conversions. For properties with multiple residential structures, it refers to the period in which the most recent structure was completed.",
-      fr = "Le nombre de logements privés occupés construits entre 2016 et 2020. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s’agit de la période d’achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
+      fr = "Le nombre de logements privés occupés construits entre 2016 et 2020. La période de construction désigne la période au cours de laquelle le logement a été originellement construit. Il s'agit de la période d'achèvement de la construction et non de celle des rénovations, rajouts ou transformations ultérieures. Pour les propriétés ayant plusieurs structures résidentielles, la période de construction correspond à la période au cours de laquelle la structure la plus récente a été complétée."
     )),
     parent_vec = "private_dwellings",
     parent = FALSE
@@ -1604,7 +1609,7 @@ census_vectors_householdsize <-
     )),
     description = list(list(
       en = "The number of private households consisting of one person",
-      fr = "Le nombre de ménages privés composés d’une seule personne"
+      fr = "Le nombre de ménages privés composés d'une seule personne"
     )),
     parent_vec = "private_households",
     parent = FALSE
@@ -1798,35 +1803,35 @@ usethis::use_data(census_vectors_householdsize, overwrite = TRUE)
 
 census_vectors_income <-
   # Household (private households) ----
-tibble::tibble(
-  var_code = "median_income_household",
-  type = list(list(
-    unit = "dollar",
-    aggregation_field = "med",
-    measurement_scale = "scalar"
-  )),
-  theme = "Income",
-  vec_2021 = list("v_CA21_906"),
-  vec_2016 = list("v_CA16_2397"),
-  vec_2011 = list("v_CA11N_2562"),
-  vec_2006 = list("v_CA06_2000"),
-  vec_2001 = list("v_CA01_1634"),
-  vec_1996 = list("v_CA1996_1627"),
-  var_title = list(list(
-    en = "Median household income",
-    fr = "Revenu médian des ménages"
-  )),
-  var_short = list(list(
-    en = "Med. inc.",
-    fr = "Rev. Méd."
-  )),
-  description = list(list(
-    en = "The median income of households before tax",
-    fr = "Le revenu médian des ménages avant impôt"
-  )),
-  parent_vec = "private_households",
-  parent = FALSE
-) |>
+  tibble::tibble(
+    var_code = "median_income_household",
+    type = list(list(
+      unit = "dollar",
+      aggregation_field = "med",
+      measurement_scale = "scalar"
+    )),
+    theme = "Income",
+    vec_2021 = list("v_CA21_906"),
+    vec_2016 = list("v_CA16_2397"),
+    vec_2011 = list("v_CA11N_2562"),
+    vec_2006 = list("v_CA06_2000"),
+    vec_2001 = list("v_CA01_1634"),
+    vec_1996 = list("v_CA1996_1627"),
+    var_title = list(list(
+      en = "Median household income",
+      fr = "Revenu médian des ménages"
+    )),
+    var_short = list(list(
+      en = "Med. inc.",
+      fr = "Rev. Méd."
+    )),
+    description = list(list(
+      en = "The median income of households before tax",
+      fr = "Le revenu médian des ménages avant impôt"
+    )),
+    parent_vec = "private_households",
+    parent = FALSE
+  ) |>
   tibble::add_row(
     var_code = "average_income_household",
     type = list(list(
@@ -1866,9 +1871,16 @@ tibble::tibble(
     theme = "Income",
     vec_2021 = list(paste0("v_CA21_9", 24:33)),
     vec_2016 = list(c(
-      "v_CA16_2406", "v_CA16_2407", "v_CA16_2408", "v_CA16_2409",
-      "v_CA16_2410", "v_CA16_2411", "v_CA16_2412", "v_CA16_2413",
-      "v_CA16_2414", "v_CA16_2415"
+      "v_CA16_2406",
+      "v_CA16_2407",
+      "v_CA16_2408",
+      "v_CA16_2409",
+      "v_CA16_2410",
+      "v_CA16_2411",
+      "v_CA16_2412",
+      "v_CA16_2413",
+      "v_CA16_2414",
+      "v_CA16_2415"
     )),
     vec_2011 = list(paste0("v_CA11N_25", 34:40)),
     vec_2006 = list(paste0("v_CA06_19", 89:93)),
@@ -2035,35 +2047,35 @@ tibble::tibble(
     parent = FALSE
   ) |>
   # Individual (persons with income) ----
-tibble::add_row(
-  var_code = "median_income_individual",
-  type = list(list(
-    unit = "dollar",
-    aggregation_field = "med",
-    measurement_scale = "scalar"
-  )),
-  theme = "Income",
-  vec_2021 = list("v_CA21_560"),
-  vec_2016 = list("v_CA16_2207"),
-  vec_2011 = list("v_CA11N_2341"),
-  vec_2006 = list("v_CA06_1583"),
-  vec_2001 = list("v_CA01_1449"),
-  vec_1996 = list("v_CA1996_1454"),
-  var_title = list(list(
-    en = "Median individual income",
-    fr = "Revenu médian individuel"
-  )),
-  var_short = list(list(
-    en = "Med. inc.",
-    fr = "Rev. Méd."
-  )),
-  description = list(list(
-    en = "The median total income of individuals before tax",
-    fr = "Le revenu total médian des individus avant impôt"
-  )),
-  parent_vec = "with_income",
-  parent = FALSE
-) |>
+  tibble::add_row(
+    var_code = "median_income_individual",
+    type = list(list(
+      unit = "dollar",
+      aggregation_field = "med",
+      measurement_scale = "scalar"
+    )),
+    theme = "Income",
+    vec_2021 = list("v_CA21_560"),
+    vec_2016 = list("v_CA16_2207"),
+    vec_2011 = list("v_CA11N_2341"),
+    vec_2006 = list("v_CA06_1583"),
+    vec_2001 = list("v_CA01_1449"),
+    vec_1996 = list("v_CA1996_1454"),
+    var_title = list(list(
+      en = "Median individual income",
+      fr = "Revenu médian individuel"
+    )),
+    var_short = list(list(
+      en = "Med. inc.",
+      fr = "Rev. Méd."
+    )),
+    description = list(list(
+      en = "The median total income of individuals before tax",
+      fr = "Le revenu total médian des individus avant impôt"
+    )),
+    parent_vec = "with_income",
+    parent = FALSE
+  ) |>
   tibble::add_row(
     var_code = "median_income_individual_m",
     type = list(list(
@@ -2218,14 +2230,27 @@ tibble::add_row(
     )),
     theme = "Income",
     vec_2021 = list(c(
-      "v_CA21_674", "v_CA21_677", "v_CA21_680", "v_CA21_683", "v_CA21_686"
+      "v_CA21_674",
+      "v_CA21_677",
+      "v_CA21_680",
+      "v_CA21_683",
+      "v_CA21_686"
     )),
     vec_2016 = list(c(
-      "v_CA16_2258", "v_CA16_2261", "v_CA16_2264", "v_CA16_2267", "v_CA16_2270"
+      "v_CA16_2258",
+      "v_CA16_2261",
+      "v_CA16_2264",
+      "v_CA16_2267",
+      "v_CA16_2270"
     )),
     vec_2011 = list(c(
-      "v_CA11N_2302", "v_CA11N_2305", "v_CA11N_2308", "v_CA11N_2311", "v_CA11N_2314",
-      "v_CA11N_2317", "v_CA11N_2320"
+      "v_CA11N_2302",
+      "v_CA11N_2305",
+      "v_CA11N_2308",
+      "v_CA11N_2311",
+      "v_CA11N_2314",
+      "v_CA11N_2317",
+      "v_CA11N_2320"
     )),
     vec_2006 = list(paste0("v_CA06_15", 67:80)),
     vec_2001 = list(paste0("v_CA01_14", 32:45)),
@@ -2254,14 +2279,27 @@ tibble::add_row(
     )),
     theme = "Income",
     vec_2021 = list(c(
-      "v_CA21_675", "v_CA21_678", "v_CA21_681", "v_CA21_684", "v_CA21_687"
+      "v_CA21_675",
+      "v_CA21_678",
+      "v_CA21_681",
+      "v_CA21_684",
+      "v_CA21_687"
     )),
     vec_2016 = list(c(
-      "v_CA16_2259", "v_CA16_2262", "v_CA16_2265", "v_CA16_2268", "v_CA16_2271"
+      "v_CA16_2259",
+      "v_CA16_2262",
+      "v_CA16_2265",
+      "v_CA16_2268",
+      "v_CA16_2271"
     )),
     vec_2011 = list(c(
-      "v_CA11N_2303", "v_CA11N_2306", "v_CA11N_2309", "v_CA11N_2312",
-      "v_CA11N_2315", "v_CA11N_2318", "v_CA11N_2321"
+      "v_CA11N_2303",
+      "v_CA11N_2306",
+      "v_CA11N_2309",
+      "v_CA11N_2312",
+      "v_CA11N_2315",
+      "v_CA11N_2318",
+      "v_CA11N_2321"
     )),
     vec_2006 = list(paste0("v_CA06_", 1589:1602)),
     vec_2001 = list(paste0("v_CA01_", 1454:1467)),
@@ -2290,14 +2328,27 @@ tibble::add_row(
     )),
     theme = "Income",
     vec_2021 = list(c(
-      "v_CA21_676", "v_CA21_679", "v_CA21_682", "v_CA21_685", "v_CA21_688"
+      "v_CA21_676",
+      "v_CA21_679",
+      "v_CA21_682",
+      "v_CA21_685",
+      "v_CA21_688"
     )),
     vec_2016 = list(c(
-      "v_CA16_2260", "v_CA16_2263", "v_CA16_2266", "v_CA16_2269", "v_CA16_2272"
+      "v_CA16_2260",
+      "v_CA16_2263",
+      "v_CA16_2266",
+      "v_CA16_2269",
+      "v_CA16_2272"
     )),
     vec_2011 = list(c(
-      "v_CA11N_2304", "v_CA11N_2307", "v_CA11N_2310", "v_CA11N_2313",
-      "v_CA11N_2316", "v_CA11N_2319", "v_CA11N_2322"
+      "v_CA11N_2304",
+      "v_CA11N_2307",
+      "v_CA11N_2310",
+      "v_CA11N_2313",
+      "v_CA11N_2316",
+      "v_CA11N_2319",
+      "v_CA11N_2322"
     )),
     vec_2006 = list(paste0("v_CA06_", 1611:1624)),
     vec_2001 = list(paste0("v_CA01_", 1476:1489)),
@@ -2326,13 +2377,23 @@ tibble::add_row(
     )),
     theme = "Income",
     vec_2021 = list(c(
-      "v_CA21_689", "v_CA21_692", "v_CA21_695", "v_CA21_698", "v_CA21_701"
+      "v_CA21_689",
+      "v_CA21_692",
+      "v_CA21_695",
+      "v_CA21_698",
+      "v_CA21_701"
     )),
     vec_2016 = list(c(
-      "v_CA16_2273", "v_CA16_2276", "v_CA16_2279", "v_CA16_2282", "v_CA16_2285"
+      "v_CA16_2273",
+      "v_CA16_2276",
+      "v_CA16_2279",
+      "v_CA16_2282",
+      "v_CA16_2285"
     )),
     vec_2011 = list(c(
-      "v_CA11N_2323", "v_CA11N_2326", "v_CA11N_2329"
+      "v_CA11N_2323",
+      "v_CA11N_2326",
+      "v_CA11N_2329"
     )),
     vec_2006 = list(NA),
     vec_2001 = list(NA),
@@ -2361,13 +2422,23 @@ tibble::add_row(
     )),
     theme = "Income",
     vec_2021 = list(c(
-      "v_CA21_690", "v_CA21_693", "v_CA21_696", "v_CA21_699", "v_CA21_702"
+      "v_CA21_690",
+      "v_CA21_693",
+      "v_CA21_696",
+      "v_CA21_699",
+      "v_CA21_702"
     )),
     vec_2016 = list(c(
-      "v_CA16_2274", "v_CA16_2277", "v_CA16_2280", "v_CA16_2283", "v_CA16_2286"
+      "v_CA16_2274",
+      "v_CA16_2277",
+      "v_CA16_2280",
+      "v_CA16_2283",
+      "v_CA16_2286"
     )),
     vec_2011 = list(c(
-      "v_CA11N_2324", "v_CA11N_2327", "v_CA11N_2330"
+      "v_CA11N_2324",
+      "v_CA11N_2327",
+      "v_CA11N_2330"
     )),
     vec_2006 = list(NA),
     vec_2001 = list(NA),
@@ -2396,13 +2467,23 @@ tibble::add_row(
     )),
     theme = "Income",
     vec_2021 = list(c(
-      "v_CA21_691", "v_CA21_694", "v_CA21_697", "v_CA21_700", "v_CA21_703"
+      "v_CA21_691",
+      "v_CA21_694",
+      "v_CA21_697",
+      "v_CA21_700",
+      "v_CA21_703"
     )),
     vec_2016 = list(c(
-      "v_CA16_2275", "v_CA16_2278", "v_CA16_2281", "v_CA16_2284", "v_CA16_2287"
+      "v_CA16_2275",
+      "v_CA16_2278",
+      "v_CA16_2281",
+      "v_CA16_2284",
+      "v_CA16_2287"
     )),
     vec_2011 = list(c(
-      "v_CA11N_2325", "v_CA11N_2328", "v_CA11N_2331"
+      "v_CA11N_2325",
+      "v_CA11N_2328",
+      "v_CA11N_2331"
     )),
     vec_2006 = list(NA),
     vec_2001 = list(NA),
@@ -3234,35 +3315,35 @@ census_vectors_identity <-
     parent = FALSE
   ) |>
   # Visible minority and ethnic origin ----
-tibble::add_row(
-  var_code = "iden_vm",
-  type = list(list(
-    unit = "count",
-    aggregation_field = "sum",
-    measurement_scale = "scalar"
-  )),
-  theme = "Visible minority and ethnic origin",
-  vec_2021 = list("v_CA21_4875"),
-  vec_2016 = list("v_CA16_3957"),
-  vec_2011 = list("v_CA11N_460"),
-  vec_2006 = list("v_CA06_1303"),
-  vec_2001 = list("v_CA01_703"),
-  vec_1996 = list("v_CA1996_784"),
-  var_title = list(list(
-    en = "Visible minorities",
-    fr = "Minorités visibles"
-  )),
-  var_short = list(list(
-    en = "Vis. minorities",
-    fr = "Minorités vis."
-  )),
-  description = list(list(
-    en = "The number of persons, other than Indigenous peoples, who self-identify as members of at least one visible minority group",
-    fr = "Le nombre de personnes, à l'exception des peuples autochtones, qui s'identifient comme appartenant à au moins un groupe de minorités visibles"
-  )),
-  parent_vec = "population_ph",
-  parent = FALSE
-) |>
+  tibble::add_row(
+    var_code = "iden_vm",
+    type = list(list(
+      unit = "count",
+      aggregation_field = "sum",
+      measurement_scale = "scalar"
+    )),
+    theme = "Visible minority and ethnic origin",
+    vec_2021 = list("v_CA21_4875"),
+    vec_2016 = list("v_CA16_3957"),
+    vec_2011 = list("v_CA11N_460"),
+    vec_2006 = list("v_CA06_1303"),
+    vec_2001 = list("v_CA01_703"),
+    vec_1996 = list("v_CA1996_784"),
+    var_title = list(list(
+      en = "Visible minorities",
+      fr = "Minorités visibles"
+    )),
+    var_short = list(list(
+      en = "Vis. minorities",
+      fr = "Minorités vis."
+    )),
+    description = list(list(
+      en = "The number of persons, other than Indigenous peoples, who self-identify as members of at least one visible minority group",
+      fr = "Le nombre de personnes, à l'exception des peuples autochtones, qui s'identifient comme appartenant à au moins un groupe de minorités visibles"
+    )),
+    parent_vec = "population_ph",
+    parent = FALSE
+  ) |>
   tibble::add_row(
     var_code = "iden_vm_m",
     type = list(list(
@@ -3547,7 +3628,7 @@ census_vectors_transport <-
     )),
     description = list(list(
       en = "The number of employed persons whose main mode of commuting between home and work is to travel as a driver or passenger in a car, truck or van",
-      fr = "Le nombre de personnes occupées dont le principal mode de transport pour la navette entre le domicile et le lieu de travail est de se déplacer comme conducteur ou passager d’une automobile, d’un camion ou d’une fourgonnette"
+      fr = "Le nombre de personnes occupées dont le principal mode de transport pour la navette entre le domicile et le lieu de travail est de se déplacer comme conducteur ou passager d'une automobile, d'un camion ou d'une fourgonnette"
     )),
     parent_vec = "employment_lf",
     parent = FALSE
@@ -3719,8 +3800,8 @@ census_vectors_transport <-
     vec_2016 = list("v_CA16_5801"),
     vec_2011 = list("v_CA11N_2200"),
     vec_2006 = list("v_CA06_1103"),
-    vec_2001 = list(c("v_CA01_1257","v_CA01_1266")),
-    vec_1996 = list(c("v_CA1996_1328","v_CA1996_1337")),
+    vec_2001 = list(c("v_CA01_1257", "v_CA01_1266")),
+    vec_1996 = list(c("v_CA1996_1328", "v_CA1996_1337")),
     var_title = list(list(
       en = "Public transit to work",
       fr = "Se rendent au travail en transport en commun"
@@ -3731,7 +3812,7 @@ census_vectors_transport <-
     )),
     description = list(list(
       en = "The number of employed persons whose main mode of commuting between home and work is public transit, such as bus, subway, light rail, streetcar or commuter train",
-      fr = "Le nombre de personnes occupées dont le principal mode de transport pour la navette entre le domicile et le lieu de travail est le transport en commun, comme l’autobus, le métro, le train léger, le tramway ou le train de banlieue"
+      fr = "Le nombre de personnes occupées dont le principal mode de transport pour la navette entre le domicile et le lieu de travail est le transport en commun, comme l'autobus, le métro, le train léger, le tramway ou le train de banlieue"
     )),
     parent_vec = "employment_lf",
     parent = FALSE
@@ -3880,7 +3961,7 @@ census_vectors_transport <-
     )),
     parent_vec = "employment_lf_dur_f",
     parent = FALSE
-  ) |> 
+  ) |>
   tibble::add_row(
     var_code = "trans_t_45",
     type = list(list(
@@ -3996,7 +4077,7 @@ census_vectors_transport <-
     )),
     parent_vec = "employment_lf_dur",
     parent = FALSE
-  )  |>
+  ) |>
   tibble::add_row(
     var_code = "trans_t_45_plus_m",
     type = list(list(
@@ -4081,7 +4162,7 @@ census_vectors_transport_parent <-
     )),
     description = list(list(
       en = "The number of employed persons aged 15 years and over in private households who have a usual place of work or no fixed workplace address",
-      fr = "Le nombre de personnes occupées âgées de 15 ans et plus, vivant dans des ménages privés, qui ont un lieu habituel de travail ou n’ont pas d’adresse de travail fixe"
+      fr = "Le nombre de personnes occupées âgées de 15 ans et plus, vivant dans des ménages privés, qui ont un lieu habituel de travail ou n'ont pas d'adresse de travail fixe"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -4233,7 +4314,6 @@ census_vectors_transport_parent <-
   )
 
 
-
 verify_parents(
   vectors_df = census_vectors_transport,
   parents_df = census_vectors_transport_parent
@@ -4360,7 +4440,7 @@ census_vectors_employment <-
     )),
     description = list(list(
       en = "The number of persons aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
-      fr = "Le nombre de personnes de 15 ans et plus faisant partie de la population active qui étaient sans travail, disponibles pour travailler et à la recherche d’un emploi, ou mises à pied temporairement en attente de rappel."
+      fr = "Le nombre de personnes de 15 ans et plus faisant partie de la population active qui étaient sans travail, disponibles pour travailler et à la recherche d'un emploi, ou mises à pied temporairement en attente de rappel."
     )),
     parent_vec = "employment_15older",
     parent = FALSE
@@ -4683,7 +4763,7 @@ census_vectors_employment <-
     )),
     parent_vec = "employment_em_f",
     parent = FALSE
-  ) 
+  )
 
 ## PARENTS #####################################################################
 
@@ -5006,7 +5086,7 @@ census_vectors_family <-
     )),
     parent_vec = "census_families",
     parent = FALSE
-  ) 
+  )
 
 census_vectors_family_parent <-
   tibble::tibble(
@@ -5097,7 +5177,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows French only - Male", fr = "Connaissent seulement le français - Homme")),
+    var_title = list(list(
+      en = "Knows French only - Male",
+      fr = "Connaissent seulement le français - Homme"
+    )),
     var_short = list(list(en = "Fr. only M", fr = "Fr. seulement H")),
     description = list(list(
       en = "The number of males who know only French as an official language",
@@ -5120,7 +5203,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows French only - Female", fr = "Connaissent seulement le français - Femme")),
+    var_title = list(list(
+      en = "Knows French only - Female",
+      fr = "Connaissent seulement le français - Femme"
+    )),
     var_short = list(list(en = "Fr. only F", fr = "Fr. seulement F")),
     description = list(list(
       en = "The number of females who know only French as an official language",
@@ -5145,7 +5231,7 @@ census_vectors_language <-
     vec_1996 = list("v_CA1996_311"),
     var_title = list(list(
       en = "Knows English only",
-      fr = "Connaissent seulement l’anglais"
+      fr = "Connaissent seulement l'anglais"
     )),
     var_short = list(list(
       en = "Eng. only",
@@ -5153,7 +5239,7 @@ census_vectors_language <-
     )),
     description = list(list(
       en = "The number of individuals who know only English as an official language",
-      fr = "Nombre de personnes qui connaissent seulement l’anglais comme langue officielle"
+      fr = "Nombre de personnes qui connaissent seulement l'anglais comme langue officielle"
     )),
     parent_vec = "c_population",
     parent = FALSE
@@ -5172,7 +5258,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows English only - Male", fr = "Connaissent seulement l'anglais - Homme")),
+    var_title = list(list(
+      en = "Knows English only - Male",
+      fr = "Connaissent seulement l'anglais - Homme"
+    )),
     var_short = list(list(en = "Eng. only M", fr = "Ang seulement H")),
     description = list(list(
       en = "The number of males who know only English as an official language",
@@ -5195,7 +5284,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows English only - Female", fr = "Connaissent seulement l'anglais - Femme")),
+    var_title = list(list(
+      en = "Knows English only - Female",
+      fr = "Connaissent seulement l'anglais - Femme"
+    )),
     var_short = list(list(en = "Eng. only F", fr = "Ang seulement F")),
     description = list(list(
       en = "The number of females who know only English as an official language",
@@ -5220,7 +5312,7 @@ census_vectors_language <-
     vec_1996 = list("v_CA1996_313"),
     var_title = list(list(
       en = "Knows French and English",
-      fr = "Connaissent le français et l’anglais"
+      fr = "Connaissent le français et l'anglais"
     )),
     var_short = list(list(
       en = "Fr. and Eng.",
@@ -5247,7 +5339,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows French and English - Male", fr = "Connaissent le français et l'anglais - Homme")),
+    var_title = list(list(
+      en = "Knows French and English - Male",
+      fr = "Connaissent le français et l'anglais - Homme"
+    )),
     var_short = list(list(en = "Fr. and Eng. M", fr = "Fr. et ang. H")),
     description = list(list(
       en = "The number of males who know both official languages (French and English)",
@@ -5270,7 +5365,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows French and English - Female", fr = "Connaissent le français et l'anglais - Femme")),
+    var_title = list(list(
+      en = "Knows French and English - Female",
+      fr = "Connaissent le français et l'anglais - Femme"
+    )),
     var_short = list(list(en = "Fr. and Eng. F", fr = "Fr. et ang. F")),
     description = list(list(
       en = "The number of females who know both official languages (French and English)",
@@ -5295,7 +5393,7 @@ census_vectors_language <-
     vec_1996 = list("v_CA1996_314"),
     var_title = list(list(
       en = "Knows neither French nor English",
-      fr = "Ne connaissent ni le français ni l’anglais"
+      fr = "Ne connaissent ni le français ni l'anglais"
     )),
     var_short = list(list(
       en = "Non-official",
@@ -5303,7 +5401,7 @@ census_vectors_language <-
     )),
     description = list(list(
       en = "The number of individuals who do not know either of the official languages (French or English)",
-      fr = "Nombre de personnes qui ne connaissent ni le français ni l’anglais, les deux langues officielles"
+      fr = "Nombre de personnes qui ne connaissent ni le français ni l'anglais, les deux langues officielles"
     )),
     parent_vec = "c_population",
     parent = FALSE
@@ -5322,7 +5420,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows neither French nor English - Male", fr = "Ne connaissent ni le français ni l'anglais - Homme")),
+    var_title = list(list(
+      en = "Knows neither French nor English - Male",
+      fr = "Ne connaissent ni le français ni l'anglais - Homme"
+    )),
     var_short = list(list(en = "Non-official M", fr = "Non off H")),
     description = list(list(
       en = "The number of males who do not know either of the official languages",
@@ -5345,7 +5446,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Knows neither French nor English - Female", fr = "Ne connaissent ni le français ni l'anglais - Femme")),
+    var_title = list(list(
+      en = "Knows neither French nor English - Female",
+      fr = "Ne connaissent ni le français ni l'anglais - Femme"
+    )),
     var_short = list(list(en = "Non-official F", fr = "Non off F")),
     description = list(list(
       en = "The number of females who do not know either of the official languages",
@@ -5378,7 +5482,7 @@ census_vectors_language <-
     )),
     description = list(list(
       en = "The number of individuals who report English as the language spoken most often at home",
-      fr = "Nombre de personnes qui déclarent l’anglais comme langue parlée le plus souvent à la maison"
+      fr = "Nombre de personnes qui déclarent l'anglais comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population",
     parent = FALSE
@@ -5397,7 +5501,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Most often speak English at home - Male", fr = "Parle le plus souvent l'anglais à la maison - Homme")),
+    var_title = list(list(
+      en = "Most often speak English at home - Male",
+      fr = "Parle le plus souvent l'anglais à la maison - Homme"
+    )),
     var_short = list(list(en = "English M", fr = "Anglais H")),
     description = list(list(
       en = "The number of males who report English as the language spoken most often at home",
@@ -5420,7 +5527,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Most often speak English at home - Female", fr = "Parle le plus souvent l'anglais à la maison - Femme")),
+    var_title = list(list(
+      en = "Most often speak English at home - Female",
+      fr = "Parle le plus souvent l'anglais à la maison - Femme"
+    )),
     var_short = list(list(en = "English F", fr = "Anglais F")),
     description = list(list(
       en = "The number of females who report English as the language spoken most often at home",
@@ -5472,7 +5582,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Most often speak French at home - Male", fr = "Parle le plus souvent le français à la maison - Homme")),
+    var_title = list(list(
+      en = "Most often speak French at home - Male",
+      fr = "Parle le plus souvent le français à la maison - Homme"
+    )),
     var_short = list(list(en = "French M", fr = "Français H")),
     description = list(list(
       en = "The number of males who report French as the language spoken most often at home",
@@ -5495,7 +5608,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Most often speak French at home - Female", fr = "Parle le plus souvent le français à la maison - Femme")),
+    var_title = list(list(
+      en = "Most often speak French at home - Female",
+      fr = "Parle le plus souvent le français à la maison - Femme"
+    )),
     var_short = list(list(en = "French F", fr = "Français F")),
     description = list(list(
       en = "The number of females who report French as the language spoken most often at home",
@@ -5547,7 +5663,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Most often speak a non-official language at home - Male", fr = "Parle le plus souvent une langue non officielle à la maison - Homme")),
+    var_title = list(list(
+      en = "Most often speak a non-official language at home - Male",
+      fr = "Parle le plus souvent une langue non officielle à la maison - Homme"
+    )),
     var_short = list(list(en = "Non-official M", fr = "Non off H")),
     description = list(list(
       en = "The number of males who report a non-official language as the language spoken most often at home",
@@ -5570,7 +5689,10 @@ census_vectors_language <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Most often speak a non-official language at home - Female", fr = "Parle le plus souvent une langue non officielle à la maison - Femme")),
+    var_title = list(list(
+      en = "Most often speak a non-official language at home - Female",
+      fr = "Parle le plus souvent une langue non officielle à la maison - Femme"
+    )),
     var_short = list(list(en = "Non-official F", fr = "Non off F")),
     description = list(list(
       en = "The number of females who report a non-official language as the language spoken most often at home",
@@ -5683,17 +5805,17 @@ get_rows_from_parent <- function(vecs, parent_vec) {
 recent_census <- function(census_dataset) {
   vecs <- cancensus::list_census_vectors(census_dataset)
   vec_total <- vecs[grepl("Age", vecs$label), ]$vector[1]
-  
+
   # Extracting rows related to total age
   total_age <- get_rows_from_parent(vecs, vec_total)
-  
+
   # Iterate through each category and sub-category of ages
   all_ages <- lapply(total_age$vector, \(bcat) {
     mid_cat <- get_rows_from_parent(vecs, bcat)
     out <- lapply(mid_cat$vector, \(mcat) {
       get_rows_from_parent(vecs, mcat)
     })
-    
+
     # Additional level of depth in some cases
     out <- lapply(out, \(t) {
       if (sum(grepl(" to ", t$label)) > 0) {
@@ -5708,23 +5830,23 @@ recent_census <- function(census_dataset) {
         t
       }
     })
-    
+
     Reduce(rbind, out)
   })
-  
+
   Reduce(rbind, all_ages)
 }
 
 older_census <- function(census_dataset, vec) {
   vecs <- cancensus::list_census_vectors(census_dataset)
-  
+
   # Using the vectors of Total - Age, get its children
   total_age <- get_rows_from_parent(vecs, vec)
-  
+
   total_age_2006 <- lapply(total_age$vector, \(ta) {
     get_rows_from_parent(vecs, ta)
   })
-  
+
   # MALE AND FEMALE
   total_age_2006
 }
@@ -5819,22 +5941,24 @@ categories <- unique(final[[1]]$label)
 # Helper: get root vector for CA21/CA16 by sex (type = Male/Female)
 get_recent_age_root <- function(census_dataset, sex_type) {
   vecs <- cancensus::list_census_vectors(census_dataset)
-  out <- vecs$vector[vecs$label == "Total - Age" & as.character(vecs$type) == sex_type]
+  out <- vecs$vector[
+    vecs$label == "Total - Age" & as.character(vecs$type) == sex_type
+  ]
   out[1]
 }
 
 # Helper: same traversal as recent_census(), but starting from a provided root vector
 recent_census_root <- function(census_dataset, root_vec) {
   vecs <- cancensus::list_census_vectors(census_dataset)
-  
+
   total_age <- get_rows_from_parent(vecs, root_vec)
-  
+
   all_ages <- lapply(total_age$vector, \(bcat) {
     mid_cat <- get_rows_from_parent(vecs, bcat)
     out <- lapply(mid_cat$vector, \(mcat) {
       get_rows_from_parent(vecs, mcat)
     })
-    
+
     out <- lapply(out, \(t) {
       if (sum(grepl(" to ", t$label)) > 0) {
         w <- which(grepl(" to ", t$label))
@@ -5848,10 +5972,10 @@ recent_census_root <- function(census_dataset, root_vec) {
         t
       }
     })
-    
+
     Reduce(rbind, out)
   })
-  
+
   Reduce(rbind, all_ages)
 }
 
@@ -5916,17 +6040,29 @@ total_age_2001_f <- list(get_rows_from_parent(vecs_01, root_01_f))
 total_age_1996_m <- list(get_rows_from_parent(vecs_96, root_96_m))
 total_age_1996_f <- list(get_rows_from_parent(vecs_96, root_96_f))
 
-older_m <- list(total_age_2011_m, total_age_2006_m, total_age_2001_m, total_age_1996_m)
+older_m <- list(
+  total_age_2011_m,
+  total_age_2006_m,
+  total_age_2001_m,
+  total_age_1996_m
+)
 names(older_m) <- c("2011", "2006", "2001", "1996")
 cleaned_older_m <- handle_older_data(older_m)
 
-older_f <- list(total_age_2011_f, total_age_2006_f, total_age_2001_f, total_age_1996_f)
+older_f <- list(
+  total_age_2011_f,
+  total_age_2006_f,
+  total_age_2001_f,
+  total_age_1996_f
+)
 names(older_f) <- c("2011", "2006", "2001", "1996")
 cleaned_older_f <- handle_older_data(older_f)
 
 recent_m <- mapply(
   \(x, year) {
-    categories <- lapply(cleaned_older_m$`2011`$label, \(z) eval(parse(text = z)))
+    categories <- lapply(cleaned_older_m$`2011`$label, \(z) {
+      eval(parse(text = z))
+    })
     second_penultimate_vecs <- lapply(
       categories[2:(length(categories) - 1)],
       \(c) x$vector[x$label %in% c]
@@ -5948,7 +6084,9 @@ final_m <- c(recent_m, cleaned_older_m)
 
 recent_f <- mapply(
   \(x, year) {
-    categories <- lapply(cleaned_older_f$`2011`$label, \(z) eval(parse(text = z)))
+    categories <- lapply(cleaned_older_f$`2011`$label, \(z) {
+      eval(parse(text = z))
+    })
     second_penultimate_vecs <- lapply(
       categories[2:(length(categories) - 1)],
       \(c) x$vector[x$label %in% c]
@@ -5984,7 +6122,7 @@ sex_meta <- list(
     suffix = "",
     parent_vec = c("c_population")
   ),
-  m = list(                                
+  m = list(
     suffix = "_m",
     parent_vec = c("c_population", "c_population_m")
   ),
@@ -5994,115 +6132,153 @@ sex_meta <- list(
   )
 )
 
-vectors_table <- unlist(lapply(categories, function(cat) {
-  
-  rows_for_cat <- lapply(names(sex_meta), function(sex_key) {
-    
-    suffix <- sex_meta[[sex_key]]$suffix
-    parent_vec <- sex_meta[[sex_key]]$parent_vec
-    
-    var_code <- gsub(":", "_", cat)
-    var_code <- sprintf("age_%s%s", var_code, suffix)
-    
-    vec_2021 <- final_by_sex[[sex_key]]$`2021`$vector[final_by_sex[[sex_key]]$`2021`$label == cat]
-    vec_2016 <- final_by_sex[[sex_key]]$`2016`$vector[final_by_sex[[sex_key]]$`2016`$label == cat]
-    vec_2011 <- final_by_sex[[sex_key]]$`2011`$vector[final_by_sex[[sex_key]]$`2011`$label == cat]
-    vec_2006 <- final_by_sex[[sex_key]]$`2006`$vector[final_by_sex[[sex_key]]$`2006`$label == cat]
-    vec_2001 <- final_by_sex[[sex_key]]$`2001`$vector[final_by_sex[[sex_key]]$`2001`$label == cat]
-    vec_1996 <- final_by_sex[[sex_key]]$`1996`$vector[final_by_sex[[sex_key]]$`1996`$label == cat]
-    
-    if (grepl(":", cat)) {
-      bounds <- strsplit(cat, ":")[[1]]
-      from <- bounds[1]
-      to <- bounds[2]
-      
-      if (sex_key == "total") {
-        var_title_en <- sprintf("Persons aged %s to %s years", from, to)
-        var_title_fr <- sprintf("Personnes âgées de %s à %s ans", from, to)
-        var_short_en <- sprintf("%s–%s", from, to)
-        var_short_fr <- sprintf("%s–%s ans", from, to)
-        description_en <- sprintf("The number of persons aged %s to %s years.", from, to)
-        description_fr <- sprintf("Le nombre de personnes âgées de %s à %s ans.", from, to)
-      } else if (sex_key == "m") {
-        var_title_en <- sprintf("Males aged %s to %s years", from, to)
-        var_title_fr <- sprintf("Hommes âgés de %s à %s ans", from, to)
-        var_short_en <- sprintf("%s–%s (M)", from, to)
-        var_short_fr <- sprintf("%s–%s ans (H)", from, to)
-        description_en <- sprintf("The number of males aged %s to %s years.", from, to)
-        description_fr <- sprintf("Le nombre d'hommes âgés de %s à %s ans.", from, to)
+vectors_table <- unlist(
+  lapply(categories, function(cat) {
+    rows_for_cat <- lapply(names(sex_meta), function(sex_key) {
+      suffix <- sex_meta[[sex_key]]$suffix
+      parent_vec <- sex_meta[[sex_key]]$parent_vec
+
+      var_code <- gsub(":", "_", cat)
+      var_code <- sprintf("age_%s%s", var_code, suffix)
+
+      vec_2021 <- final_by_sex[[sex_key]]$`2021`$vector[
+        final_by_sex[[sex_key]]$`2021`$label == cat
+      ]
+      vec_2016 <- final_by_sex[[sex_key]]$`2016`$vector[
+        final_by_sex[[sex_key]]$`2016`$label == cat
+      ]
+      vec_2011 <- final_by_sex[[sex_key]]$`2011`$vector[
+        final_by_sex[[sex_key]]$`2011`$label == cat
+      ]
+      vec_2006 <- final_by_sex[[sex_key]]$`2006`$vector[
+        final_by_sex[[sex_key]]$`2006`$label == cat
+      ]
+      vec_2001 <- final_by_sex[[sex_key]]$`2001`$vector[
+        final_by_sex[[sex_key]]$`2001`$label == cat
+      ]
+      vec_1996 <- final_by_sex[[sex_key]]$`1996`$vector[
+        final_by_sex[[sex_key]]$`1996`$label == cat
+      ]
+
+      if (grepl(":", cat)) {
+        bounds <- strsplit(cat, ":")[[1]]
+        from <- bounds[1]
+        to <- bounds[2]
+
+        if (sex_key == "total") {
+          var_title_en <- sprintf("Persons aged %s to %s years", from, to)
+          var_title_fr <- sprintf("Personnes âgées de %s à %s ans", from, to)
+          var_short_en <- sprintf("%s–%s", from, to)
+          var_short_fr <- sprintf("%s–%s ans", from, to)
+          description_en <- sprintf(
+            "The number of persons aged %s to %s years.",
+            from,
+            to
+          )
+          description_fr <- sprintf(
+            "Le nombre de personnes âgées de %s à %s ans.",
+            from,
+            to
+          )
+        } else if (sex_key == "m") {
+          var_title_en <- sprintf("Males aged %s to %s years", from, to)
+          var_title_fr <- sprintf("Hommes âgés de %s à %s ans", from, to)
+          var_short_en <- sprintf("%s–%s (M)", from, to)
+          var_short_fr <- sprintf("%s–%s ans (H)", from, to)
+          description_en <- sprintf(
+            "The number of males aged %s to %s years.",
+            from,
+            to
+          )
+          description_fr <- sprintf(
+            "Le nombre d'hommes âgés de %s à %s ans.",
+            from,
+            to
+          )
+        } else {
+          var_title_en <- sprintf("Females aged %s to %s years", from, to)
+          var_title_fr <- sprintf("Femmes âgées de %s à %s ans", from, to)
+          var_short_en <- sprintf("%s–%s (F)", from, to)
+          var_short_fr <- sprintf("%s–%s ans (F)", from, to)
+          description_en <- sprintf(
+            "The number of females aged %s to %s years.",
+            from,
+            to
+          )
+          description_fr <- sprintf(
+            "Le nombre de femmes âgées de %s à %s ans.",
+            from,
+            to
+          )
+        }
       } else {
-        var_title_en <- sprintf("Females aged %s to %s years", from, to)
-        var_title_fr <- sprintf("Femmes âgées de %s à %s ans", from, to)
-        var_short_en <- sprintf("%s–%s (F)", from, to)
-        var_short_fr <- sprintf("%s–%s ans (F)", from, to)
-        description_en <- sprintf("The number of females aged %s to %s years.", from, to)
-        description_fr <- sprintf("Le nombre de femmes âgées de %s à %s ans.", from, to)
+        if (sex_key == "total") {
+          var_title_en <- "Persons aged 85 years and over"
+          var_title_fr <- "Personnes âgées de 85 ans et plus"
+          var_short_en <- "85+"
+          var_short_fr <- "85+ ans"
+          description_en <- "The number of persons aged 85 years and over."
+          description_fr <- "Le nombre de personnes âgées de 85 ans et plus."
+        } else if (sex_key == "m") {
+          var_title_en <- "Males aged 85 years and over"
+          var_title_fr <- "Hommes âgés de 85 ans et plus"
+          var_short_en <- "85+ (M)"
+          var_short_fr <- "85+ ans (H)"
+          description_en <- "The number of males aged 85 years and over."
+          description_fr <- "Le nombre d'hommes âgés de 85 ans et plus."
+        } else {
+          var_title_en <- "Females aged 85 years and over"
+          var_title_fr <- "Femmes âgées de 85 ans et plus"
+          var_short_en <- "85+ (F)"
+          var_short_fr <- "85+ ans (F)"
+          description_en <- "The number of females aged 85 years and over."
+          description_fr <- "Le nombre de femmes âgées de 85 ans et plus."
+        }
       }
-      
-    } else {
-      
-      if (sex_key == "total") {
-        var_title_en <- "Persons aged 85 years and over"
-        var_title_fr <- "Personnes âgées de 85 ans et plus"
-        var_short_en <- "85+"
-        var_short_fr <- "85+ ans"
-        description_en <- "The number of persons aged 85 years and over."
-        description_fr <- "Le nombre de personnes âgées de 85 ans et plus."
-      } else if (sex_key == "m") {
-        var_title_en <- "Males aged 85 years and over"
-        var_title_fr <- "Hommes âgés de 85 ans et plus"
-        var_short_en <- "85+ (M)"
-        var_short_fr <- "85+ ans (H)"
-        description_en <- "The number of males aged 85 years and over."
-        description_fr <- "Le nombre d'hommes âgés de 85 ans et plus."
-      } else {
-        var_title_en <- "Females aged 85 years and over"
-        var_title_fr <- "Femmes âgées de 85 ans et plus"
-        var_short_en <- "85+ (F)"
-        var_short_fr <- "85+ ans (F)"
-        description_en <- "The number of females aged 85 years and over."
-        description_fr <- "Le nombre de femmes âgées de 85 ans et plus."
-      }
-    }
-    
-    tibble::tibble(
-      var_code = var_code,
-      type = list(list(
-        unit = "count",
-        aggregation_field = "sum",
-        measurement_scale = "scalar"
-      )),
-      theme = "Age",
-      vec_2021 = vec_2021,
-      vec_2016 = vec_2016,
-      vec_2011 = vec_2011,
-      vec_2006 = vec_2006,
-      vec_2001 = vec_2001,
-      vec_1996 = vec_1996,
-      var_title = list(list(
-        en = var_title_en,
-        fr = var_title_fr
-      )),
-      var_short = list(list(
-        en = var_short_en,
-        fr = var_short_fr
-      )),
-      description = list(list(
-        en = description_en,
-        fr = description_fr
-      )),
-      parent_vec = list(parent_vec),
-      parent = FALSE
-    )
-  })
-  
-  rows_for_cat
-}), recursive = FALSE)
+
+      tibble::tibble(
+        var_code = var_code,
+        type = list(list(
+          unit = "count",
+          aggregation_field = "sum",
+          measurement_scale = "scalar"
+        )),
+        theme = "Age",
+        vec_2021 = vec_2021,
+        vec_2016 = vec_2016,
+        vec_2011 = vec_2011,
+        vec_2006 = vec_2006,
+        vec_2001 = vec_2001,
+        vec_1996 = vec_1996,
+        var_title = list(list(
+          en = var_title_en,
+          fr = var_title_fr
+        )),
+        var_short = list(list(
+          en = var_short_en,
+          fr = var_short_fr
+        )),
+        description = list(list(
+          en = description_en,
+          fr = description_fr
+        )),
+        parent_vec = list(parent_vec),
+        parent = FALSE
+      )
+    })
+
+    rows_for_cat
+  }),
+  recursive = FALSE
+)
 
 census_vectors_age_page <- Reduce(rbind, vectors_table)
 
 # Parents divided with language
-verify_parents(vectors_df = census_vectors_age_page, parents_df = census_vectors_language_parent)
+verify_parents(
+  vectors_df = census_vectors_age_page,
+  parents_df = census_vectors_language_parent
+)
 
 census_vectors_age <- rbind(census_vectors_age, census_vectors_age_page)
 
@@ -6125,7 +6301,10 @@ census_vectors_education <-
     vec_2006 = list(c("v_CA06_1235", "v_CA06_1249", "v_CA06_1263")),
     vec_2001 = list(c("v_CA01_1387", "v_CA01_1391", "v_CA01_1394")),
     vec_1996 = list(c("v_CA1996_1350", "v_CA1996_1354", "v_CA1996_1357")),
-    var_title = list(list(en = "No certificate, diploma or degree", fr = "Aucun certificat, diplôme ou grade")),
+    var_title = list(list(
+      en = "No certificate, diploma or degree",
+      fr = "Aucun certificat, diplôme ou grade"
+    )),
     var_short = list(list(en = "No degree", fr = "Sans diplôme")),
     description = list(list(
       en = "The number of persons aged 15 years and over without any certificate, diploma or degree.",
@@ -6148,7 +6327,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "No certificate, diploma or degree - Male", fr = "Aucun certificat, diplôme ou grade - Homme")),
+    var_title = list(list(
+      en = "No certificate, diploma or degree - Male",
+      fr = "Aucun certificat, diplôme ou grade - Homme"
+    )),
     var_short = list(list(en = "No degree M", fr = "Sans diplôme H")),
     description = list(list(
       en = "The number of males aged 15 years and over without any certificate, diploma or degree.",
@@ -6171,7 +6353,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "No certificate, diploma or degree - Female", fr = "Aucun certificat, diplôme ou grade - Femme")),
+    var_title = list(list(
+      en = "No certificate, diploma or degree - Female",
+      fr = "Aucun certificat, diplôme ou grade - Femme"
+    )),
     var_short = list(list(en = "No degree F", fr = "Sans diplôme F")),
     description = list(list(
       en = "The number of females aged 15 years and over without any certificate, diploma or degree.",
@@ -6194,7 +6379,10 @@ census_vectors_education <-
     vec_2006 = list(c("v_CA06_1237", "v_CA06_1251", "v_CA06_1265")),
     vec_2001 = list("v_CA01_1388"),
     vec_1996 = list("v_CA1996_1351"),
-    var_title = list(list(en = "Secondary school diploma or equivalent", fr = "Diplôme d'études secondaires ou équivalent")),
+    var_title = list(list(
+      en = "Secondary school diploma or equivalent",
+      fr = "Diplôme d'études secondaires ou équivalent"
+    )),
     var_short = list(list(en = "Secondary", fr = "Secondaire")),
     description = list(list(
       en = "The number of persons aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
@@ -6217,7 +6405,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Secondary school diploma or equivalent - Male", fr = "Diplôme d'études secondaires ou équivalent - Homme")),
+    var_title = list(list(
+      en = "Secondary school diploma or equivalent - Male",
+      fr = "Diplôme d'études secondaires ou équivalent - Homme"
+    )),
     var_short = list(list(en = "Secondary M", fr = "Secondaire H")),
     description = list(list(
       en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
@@ -6240,7 +6431,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Secondary school diploma or equivalent - Female", fr = "Diplôme d'études secondaires ou équivalent - Femme")),
+    var_title = list(list(
+      en = "Secondary school diploma or equivalent - Female",
+      fr = "Diplôme d'études secondaires ou équivalent - Femme"
+    )),
     var_short = list(list(en = "Secondary F", fr = "Secondaire F")),
     description = list(list(
       en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
@@ -6263,7 +6457,10 @@ census_vectors_education <-
     vec_2006 = list(c("v_CA06_1239", "v_CA06_1253", "v_CA06_1267")),
     vec_2001 = list("v_CA01_1392"),
     vec_1996 = list("v_CA1996_1355"),
-    var_title = list(list(en = "College, CEGEP or other non-university certificate or diploma", fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire")),
+    var_title = list(list(
+      en = "College, CEGEP or other non-university certificate or diploma",
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire"
+    )),
     var_short = list(list(en = "College / CEGEP", fr = "Collège / CÉGEP")),
     description = list(list(
       en = "The number of persons aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
@@ -6286,7 +6483,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "College, CEGEP or other non-university certificate or diploma - Male", fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - Homme")),
+    var_title = list(list(
+      en = "College, CEGEP or other non-university certificate or diploma - Male",
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - Homme"
+    )),
     var_short = list(list(en = "College/CEGEP M", fr = "Collège/CÉGEP H")),
     description = list(list(
       en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
@@ -6309,7 +6509,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "College, CEGEP or other non-university certificate or diploma - Female", fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - Femme")),
+    var_title = list(list(
+      en = "College, CEGEP or other non-university certificate or diploma - Female",
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - Femme"
+    )),
     var_short = list(list(en = "College/CEGEP F", fr = "Collège/CÉGEP F")),
     description = list(list(
       en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
@@ -6332,7 +6535,10 @@ census_vectors_education <-
     vec_2006 = list(c("v_CA06_1241", "v_CA06_1255", "v_CA06_1269")),
     vec_2001 = list("v_CA01_1396"),
     vec_1996 = list("v_CA1996_1359"),
-    var_title = list(list(en = "University certificate or diploma below bachelor level", fr = "Certificat ou diplôme universitaire inférieur au baccalauréat")),
+    var_title = list(list(
+      en = "University certificate or diploma below bachelor level",
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat"
+    )),
     var_short = list(list(en = "Sub-bch. uni.", fr = "Uni. sous bac.")),
     description = list(list(
       en = "The number of persons aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
@@ -6355,7 +6561,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "University certificate or diploma below bachelor level - Male", fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - Homme")),
+    var_title = list(list(
+      en = "University certificate or diploma below bachelor level - Male",
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - Homme"
+    )),
     var_short = list(list(en = "Sub-bch uni M", fr = "Uni sous bac H")),
     description = list(list(
       en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
@@ -6378,7 +6587,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "University certificate or diploma below bachelor level - Female", fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - Femme")),
+    var_title = list(list(
+      en = "University certificate or diploma below bachelor level - Female",
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - Femme"
+    )),
     var_short = list(list(en = "Sub-bch uni F", fr = "Uni sous bac F")),
     description = list(list(
       en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
@@ -6398,10 +6610,20 @@ census_vectors_education <-
     vec_2021 = list("v_CA21_5847"),
     vec_2016 = list("v_CA16_5078"),
     vec_2011 = list("v_CA11N_1792"),
-    vec_2006 = list(c("v_CA06_1243", "v_CA06_1244", "v_CA06_1257", "v_CA06_1258", "v_CA06_1271", "v_CA06_1272")),
+    vec_2006 = list(c(
+      "v_CA06_1243",
+      "v_CA06_1244",
+      "v_CA06_1257",
+      "v_CA06_1258",
+      "v_CA06_1271",
+      "v_CA06_1272"
+    )),
     vec_2001 = list("v_CA01_1397"),
     vec_1996 = list("v_CA1996_1360"),
-    var_title = list(list(en = "Bachelor and above", fr = "Baccalauréat et plus")),
+    var_title = list(list(
+      en = "Bachelor and above",
+      fr = "Baccalauréat et plus"
+    )),
     var_short = list(list(en = "Bachelor+", fr = "Baccalauréat+")),
     description = list(list(
       en = "The number of persons aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
@@ -6424,7 +6646,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Bachelor and above - Male", fr = "Baccalauréat et plus - Homme")),
+    var_title = list(list(
+      en = "Bachelor and above - Male",
+      fr = "Baccalauréat et plus - Homme"
+    )),
     var_short = list(list(en = "Bachelor+ M", fr = "Bacc+ H")),
     description = list(list(
       en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
@@ -6447,7 +6672,10 @@ census_vectors_education <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Bachelor and above - Female", fr = "Baccalauréat et plus - Femme")),
+    var_title = list(list(
+      en = "Bachelor and above - Female",
+      fr = "Baccalauréat et plus - Femme"
+    )),
     var_short = list(list(en = "Bachelor+ F", fr = "Baccalauréat+ F")),
     description = list(list(
       en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
@@ -6461,9 +6689,11 @@ census_vectors_education <-
 census_vectors_education_parent <-
   tibble::tibble(
     var_code = "population_15plus",
-    type = list(list(unit = "count", 
-                     aggregation_field = "sum", 
-                     measurement_scale = "scalar")),
+    type = list(list(
+      unit = "count",
+      aggregation_field = "sum",
+      measurement_scale = "scalar"
+    )),
     theme = "Identity",
     vec_2021 = list("v_CA21_5817"),
     vec_2016 = list("v_CA16_5051"),
@@ -6471,7 +6701,10 @@ census_vectors_education_parent <-
     vec_2006 = list(c("v_CA06_1234", "v_CA06_1248", "v_CA06_1262")),
     vec_2001 = list("v_CA01_1384"),
     vec_1996 = list("v_CA1996_1347"),
-    var_title = list(list(en = "Population aged 15 years and over", fr = "Population âgée de 15 ans et plus")),
+    var_title = list(list(
+      en = "Population aged 15 years and over",
+      fr = "Population âgée de 15 ans et plus"
+    )),
     var_short = list(list(en = "Individuals", fr = "Individus")),
     description = list(list(
       en = "The total number of persons aged 15 years and over in private households.",
@@ -6494,7 +6727,10 @@ census_vectors_education_parent <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Population aged 15 years and over - Male", fr = "Population âgée de 15 ans et plus - Homme")),
+    var_title = list(list(
+      en = "Population aged 15 years and over - Male",
+      fr = "Population âgée de 15 ans et plus - Homme"
+    )),
     var_short = list(list(en = "Individuals M", fr = "Individus H")),
     description = list(list(
       en = "The total number of males aged 15 years and over in private households.",
@@ -6517,7 +6753,10 @@ census_vectors_education_parent <-
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
-    var_title = list(list(en = "Population aged 15 years and over - Female", fr = "Population âgée de 15 ans et plus - Femme")),
+    var_title = list(list(
+      en = "Population aged 15 years and over - Female",
+      fr = "Population âgée de 15 ans et plus - Femme"
+    )),
     var_short = list(list(en = "Individuals F", fr = "Individus F")),
     description = list(list(
       en = "The total number of females aged 15 years and over in private households.",
@@ -6559,21 +6798,32 @@ census_vectors_table <- rbind(
 )
 
 ########################
-# Final check 
+# Final check
 ########################
 
 #### Check vectors duplication
 
 check_census_vectors_vec <- function(x) {
-  
   vec_cols <- grep("^vec_\\d{4}$", names(x), value = TRUE)
   n <- nrow(x)
-  var_code <- if ("var_code" %in% names(x)) as.character(x$var_code) else rep(NA_character_, n)
-  parent_flag <- if ("parent" %in% names(x)) as.logical(x$parent) else rep(NA, n)
-  
+  var_code <- if ("var_code" %in% names(x)) {
+    as.character(x$var_code)
+  } else {
+    rep(NA_character_, n)
+  }
+  parent_flag <- if ("parent" %in% names(x)) {
+    as.logical(x$parent)
+  } else {
+    rep(NA, n)
+  }
+
   normalize_vec_cell <- function(z) {
-    if (is.null(z)) return(character(0))
-    if (length(z) == 1L && is.atomic(z) && is.na(z)) return(character(0))
+    if (is.null(z)) {
+      return(character(0))
+    }
+    if (length(z) == 1L && is.atomic(z) && is.na(z)) {
+      return(character(0))
+    }
     if (is.list(z)) {
       out <- unlist(z, recursive = TRUE, use.names = FALSE)
     } else {
@@ -6585,34 +6835,38 @@ check_census_vectors_vec <- function(x) {
     out <- out[out != ""]
     unique(out)
   }
-  
+
   # Pattern 1 : Total = M + F (même préfixe, l'un sans suffixe, l'autre avec _m/_f)
   is_valid_mf_pair <- function(vc_i, vc_j) {
     base_i <- sub("_(m|f)$", "", vc_i)
     base_j <- sub("_(m|f)$", "", vc_j)
-    if (base_i != base_j) return(FALSE)
+    if (base_i != base_j) {
+      return(FALSE)
+    }
     has_suffix_i <- grepl("_(m|f)$", vc_i)
     has_suffix_j <- grepl("_(m|f)$", vc_j)
     xor(has_suffix_i, has_suffix_j)
   }
-  
+
   # Pattern 2 : même concept, un parent = TRUE et l'autre parent = FALSE
   is_valid_parent_child_pair <- function(i, j) {
     pi <- parent_flag[i]
     pj <- parent_flag[j]
-    if (is.na(pi) || is.na(pj)) return(FALSE)
+    if (is.na(pi) || is.na(pj)) {
+      return(FALSE)
+    }
     xor(pi, pj)
   }
-  
+
   is_valid_pair <- function(i, j) {
     is_valid_mf_pair(var_code[i], var_code[j]) ||
       is_valid_parent_child_pair(i, j)
   }
-  
+
   # --- Duplicate var_code ---
-  dup_var_code       <- rep(FALSE, n)
+  dup_var_code <- rep(FALSE, n)
   dup_var_code_peers <- vector("list", n)
-  
+
   non_na_code <- !is.na(var_code) & var_code != ""
   if (any(non_na_code)) {
     tab <- table(var_code[non_na_code])
@@ -6621,108 +6875,152 @@ check_census_vectors_vec <- function(x) {
       for (val in dup_vals) {
         rows <- which(var_code == val & non_na_code)
         dup_var_code[rows] <- TRUE
-        for (i in rows) dup_var_code_peers[[i]] <- setdiff(rows, i)
+        for (i in rows) {
+          dup_var_code_peers[[i]] <- setdiff(rows, i)
+        }
       }
     }
   }
-  
+
   # --- Duplicate vectors ---
-  dup_vec_any     <- rep(FALSE, n)
+  dup_vec_any <- rep(FALSE, n)
   dup_vec_details <- vector("list", n)
-  
+
   if (length(vec_cols) > 0) {
     for (colname in vec_cols) {
       all_codes <- vector("list", n)
       for (i in seq_len(n)) {
         all_codes[[i]] <- normalize_vec_cell(x[[colname]][[i]])
       }
-      
+
       occ <- list()
       for (i in seq_len(n)) {
         codes <- all_codes[[i]]
-        if (length(codes) == 0) next
+        if (length(codes) == 0) {
+          next
+        }
         for (cc in codes) {
           occ[[cc]] <- c(occ[[cc]], i)
         }
       }
-      
-      dup_codes <- names(occ)[vapply(occ, function(rr) length(unique(rr)) > 1L, logical(1))]
-      if (length(dup_codes) == 0) next
-      
+
+      dup_codes <- names(occ)[vapply(
+        occ,
+        function(rr) length(unique(rr)) > 1L,
+        logical(1)
+      )]
+      if (length(dup_codes) == 0) {
+        next
+      }
+
       for (vc in dup_codes) {
         rows <- unique(occ[[vc]])
         pairs <- combn(rows, 2, simplify = FALSE)
-        
-        all_valid <- all(vapply(pairs, function(p) {
-          is_valid_pair(p[1], p[2])
-        }, logical(1)))
-        
-        if (all_valid) next
-        
+
+        all_valid <- all(vapply(
+          pairs,
+          function(p) {
+            is_valid_pair(p[1], p[2])
+          },
+          logical(1)
+        ))
+
+        if (all_valid) {
+          next
+        }
+
         for (i in rows) {
-          invalid_peers <- setdiff(rows, i)[!vapply(
-            setdiff(rows, i),
-            function(j) is_valid_pair(i, j),
-            logical(1)
-          )]
-          if (length(invalid_peers) == 0) next
+          invalid_peers <- setdiff(rows, i)[
+            !vapply(
+              setdiff(rows, i),
+              function(j) is_valid_pair(i, j),
+              logical(1)
+            )
+          ]
+          if (length(invalid_peers) == 0) {
+            next
+          }
           dup_vec_any[i] <- TRUE
           dup_vec_details[[i]] <- c(
             dup_vec_details[[i]],
-            paste0(colname, " duplicated: ", vc, " (also rows ", paste(invalid_peers, collapse = ", "), ")")
+            paste0(
+              colname,
+              " duplicated: ",
+              vc,
+              " (also rows ",
+              paste(invalid_peers, collapse = ", "),
+              ")"
+            )
           )
         }
       }
     }
   }
-  
+
   any_issue <- dup_var_code | dup_vec_any
   idx <- which(any_issue)
-  
+
   if (length(idx) == 0L) {
-    message("All vector checks passed (no duplicate var_code, no invalid duplicate vec_YYYY values).")
+    message(
+      "All vector checks passed (no duplicate var_code, no invalid duplicate vec_YYYY values)."
+    )
     return(invisible(NULL))
   }
-  
+
   for (i in idx) {
     vc <- var_code[i]
-    if (is.na(vc) || vc == "") vc <- "<NA>"
-    
+    if (is.na(vc) || vc == "") {
+      vc <- "<NA>"
+    }
+
     issues <- character(0)
-    
+
     if (dup_var_code[i]) {
       peers <- dup_var_code_peers[[i]]
       if (!is.null(peers) && length(peers)) {
-        issues <- c(issues, paste0("duplicate var_code also at rows ", paste(peers, collapse = ", ")))
+        issues <- c(
+          issues,
+          paste0(
+            "duplicate var_code also at rows ",
+            paste(peers, collapse = ", ")
+          )
+        )
       } else {
         issues <- c(issues, "duplicate var_code")
       }
     }
-    
+
     if (dup_vec_any[i]) {
       issues <- c(issues, dup_vec_details[[i]])
     }
-    
-    message("var_code '", vc, "' (row ", i, "): ", paste(issues, collapse = "; "))
+
+    message(
+      "var_code '",
+      vc,
+      "' (row ",
+      i,
+      "): ",
+      paste(issues, collapse = "; ")
+    )
   }
-  
+
   invisible(
     tibble::tibble(
-      row_id       = idx,
-      var_code     = var_code[idx],
+      row_id = idx,
+      var_code = var_code[idx],
       dup_var_code = dup_var_code[idx],
-      dup_vec_any  = dup_vec_any[idx]
+      dup_vec_any = dup_vec_any[idx]
     )
   )
 }
 
 check_census_vectors_vec(census_vectors_table)
 
-#### Check vectors documentation 
+#### Check vectors documentation
 
 check_census_vectors_doc <- function(x) {
   max_short <- 15L
-  
+
   needed_basic <- c("var_title", "var_short")
   missing_basic <- setdiff(needed_basic, names(x))
   if (length(missing_basic) > 0) {
@@ -6733,28 +7031,36 @@ check_census_vectors_doc <- function(x) {
     )
     return(invisible(NULL))
   }
-  
+
   desc_col <- NULL
   if ("description" %in% names(x)) {
     desc_col <- "description"
   } else if ("explanation" %in% names(x)) {
     desc_col <- "explanation"
   } else {
-    message("No 'description' or 'explanation' column found, description checks skipped.")
+    message(
+      "No 'description' or 'explanation' column found, description checks skipped."
+    )
   }
-  
+
   is_blank <- function(z) is.na(z) | trimws(z) == ""
-  
+
   extract_lang <- function(col, lang) {
     vapply(
       col,
       FUN.VALUE = character(1),
       FUN = function(z) {
-        if (is.null(z)) return(NA_character_)
-        if (length(z) == 1L && is.atomic(z) && is.na(z)) return(NA_character_)
+        if (is.null(z)) {
+          return(NA_character_)
+        }
+        if (length(z) == 1L && is.atomic(z) && is.na(z)) {
+          return(NA_character_)
+        }
         if (is.list(z) && !is.null(z[[lang]])) {
           val <- z[[lang]]
-          if (is.null(val) || length(val) == 0L || all(is.na(val))) return(NA_character_)
+          if (is.null(val) || length(val) == 0L || all(is.na(val))) {
+            return(NA_character_)
+          }
           return(as.character(val[1]))
         }
         if (is.atomic(z) && length(z) == 1L && is.character(z)) {
@@ -6764,15 +7070,19 @@ check_census_vectors_doc <- function(x) {
       }
     )
   }
-  
+
   n <- nrow(x)
-  var_code <- if ("var_code" %in% names(x)) as.character(x$var_code) else rep(NA_character_, n)
-  
+  var_code <- if ("var_code" %in% names(x)) {
+    as.character(x$var_code)
+  } else {
+    rep(NA_character_, n)
+  }
+
   title_en <- extract_lang(x$var_title, "en")
   title_fr <- extract_lang(x$var_title, "fr")
   short_en <- extract_lang(x$var_short, "en")
   short_fr <- extract_lang(x$var_short, "fr")
-  
+
   if (!is.null(desc_col)) {
     desc_en <- extract_lang(x[[desc_col]], "en")
     desc_fr <- extract_lang(x[[desc_col]], "fr")
@@ -6780,71 +7090,108 @@ check_census_vectors_doc <- function(x) {
     desc_en <- rep(NA_character_, n)
     desc_fr <- rep(NA_character_, n)
   }
-  
-  missing_title_en  <- is_blank(title_en)
-  missing_title_fr  <- is_blank(title_fr)
-  missing_short_en  <- is_blank(short_en)
-  missing_short_fr  <- is_blank(short_fr)
-  missing_desc_en   <- is_blank(desc_en)
-  missing_desc_fr   <- is_blank(desc_fr)
+
+  missing_title_en <- is_blank(title_en)
+  missing_title_fr <- is_blank(title_fr)
+  missing_short_en <- is_blank(short_en)
+  missing_short_fr <- is_blank(short_fr)
+  missing_desc_en <- is_blank(desc_en)
+  missing_desc_fr <- is_blank(desc_fr)
   short_en_too_long <- !is.na(short_en) & nchar(short_en) > max_short
   short_fr_too_long <- !is.na(short_fr) & nchar(short_fr) > max_short
-  
-  any_issue <- missing_title_en | missing_title_fr |
-    missing_short_en | missing_short_fr |
+
+  any_issue <- missing_title_en |
+    missing_title_fr |
+    missing_short_en |
+    missing_short_fr |
     (!is.null(desc_col) & (missing_desc_en | missing_desc_fr)) |
-    short_en_too_long | short_fr_too_long
-  
+    short_en_too_long |
+    short_fr_too_long
+
   idx <- which(any_issue)
-  
+
   if (length(idx) == 0L) {
     message(
       "All documentation checks passed ",
       "(titles, short names and descriptions in EN/FR, short names <= ",
-      max_short, " characters)."
+      max_short,
+      " characters)."
     )
     return(invisible(NULL))
   }
-  
+
   for (i in idx) {
     vc <- var_code[i]
-    if (is.na(vc) || vc == "") vc <- "<NA>"
-    
+    if (is.na(vc) || vc == "") {
+      vc <- "<NA>"
+    }
+
     issues <- character(0)
-    
-    if (missing_title_en[i]) issues <- c(issues, "missing English title")
-    if (missing_title_fr[i]) issues <- c(issues, "missing French title")
-    
+
+    if (missing_title_en[i]) {
+      issues <- c(issues, "missing English title")
+    }
+    if (missing_title_fr[i]) {
+      issues <- c(issues, "missing French title")
+    }
+
     if (missing_short_en[i]) {
       issues <- c(issues, "missing English short name")
     } else if (short_en_too_long[i]) {
-      issues <- c(issues, paste0("English short name > ", max_short, " chars (len = ", nchar(short_en[i]), ")"))
+      issues <- c(
+        issues,
+        paste0(
+          "English short name > ",
+          max_short,
+          " chars (len = ",
+          nchar(short_en[i]),
+          ")"
+        )
+      )
     }
-    
+
     if (missing_short_fr[i]) {
       issues <- c(issues, "missing French short name")
     } else if (short_fr_too_long[i]) {
-      issues <- c(issues, paste0("French short name > ", max_short, " chars (len = ", nchar(short_fr[i]), ")"))
+      issues <- c(
+        issues,
+        paste0(
+          "French short name > ",
+          max_short,
+          " chars (len = ",
+          nchar(short_fr[i]),
+          ")"
+        )
+      )
     }
-    
+
     if (!is.null(desc_col)) {
-      if (missing_desc_en[i]) issues <- c(issues, "missing English description")
+      if (missing_desc_en[i]) {
+        issues <- c(issues, "missing English description")
+      }
       if (missing_desc_fr[i]) issues <- c(issues, "missing French description")
     }
-    
-    message("var_code '", vc, "' (row ", i, "): ", paste(issues, collapse = "; "))
+
+    message(
+      "var_code '",
+      vc,
+      "' (row ",
+      i,
+      "): ",
+      paste(issues, collapse = "; ")
+    )
   }
-  
+
   invisible(
     tibble::tibble(
-      row_id           = idx,
-      var_code         = var_code[idx],
+      row_id = idx,
+      var_code = var_code[idx],
       missing_title_en = missing_title_en[idx],
       missing_title_fr = missing_title_fr[idx],
       missing_short_en = missing_short_en[idx],
       missing_short_fr = missing_short_fr[idx],
-      missing_desc_en  = missing_desc_en[idx],
-      missing_desc_fr  = missing_desc_fr[idx],
+      missing_desc_en = missing_desc_en[idx],
+      missing_desc_fr = missing_desc_fr[idx],
       short_en_too_long = short_en_too_long[idx],
       short_fr_too_long = short_fr_too_long[idx]
     )
@@ -6854,4 +7201,3 @@ check_census_vectors_doc <- function(x) {
 check_census_vectors_doc(census_vectors_table)
 
 usethis::use_data(census_vectors_table, overwrite = TRUE)
-
