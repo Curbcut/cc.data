@@ -329,8 +329,8 @@ census_vectors_housing <-
   tibble::add_row(
     var_code = "housing_stress_renter",
     type = list(list(
-      unit = "count",
-      aggregation_field = "sum",
+      unit = NULL,
+      aggregation_field = "pct",
       measurement_scale = "scalar"
     )),
     theme = "Housing",
@@ -358,8 +358,8 @@ census_vectors_housing <-
   tibble::add_row(
     var_code = "housing_stress_owner",
     type = list(list(
-      unit = "count",
-      aggregation_field = "sum",
+      unit = NULL,
+      aggregation_field = "pct",
       measurement_scale = "scalar"
     )),
     theme = "Housing",
