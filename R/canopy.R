@@ -180,11 +180,10 @@ canopy_load_tiles <- function(
 }
 
 
-
-#' Compute canopy shares by census geography for Montreal CMA
+#' Compute canopy areas by census geography for Montreal CMA
 #'
 #' Uses a pre-built canopy SpatRaster (already mosaicked) and returns,
-#' for each requested census level, the share of area in canopy classes 1–4.
+#' for each requested census level, the area in m² for canopy classes 1–4.
 #'
 #' Canopy classes are:
 #'   1 = mineral low  (NDVI < 0.3,  MNH < 3 m)
@@ -198,32 +197,29 @@ canopy_load_tiles <- function(
 #'   "DB", "DA", "CT", "CSD", "CMA".
 #' @param chunk_size Integer. Number of polygons per batch in
 #'   \code{terra::extract()} for levels other than CMA.
-#'   Smaller values use less memory but are slower.
 #'
 #' @return Named list of sf objects, one per requested level, each including:
-#'   \code{id}, the four canopy share variables, and \code{geometry}.
+#'   \code{id}, the four canopy area variables in m², and \code{geometry}.
 #' @export
-canopy_get_shares <- function(
+canopy_get_areas <- function(
     canopy,
     levels     = c("DB", "DA", "CT", "CSD", "CMA"),
     chunk_size = 200L
 ) {
   stopifnot(inherits(canopy, "SpatRaster"))
-  
-  # Internal constants (not exposed as arguments)
-  cma_uid  <- "24462"  # Montreal CMA
-  dataset  <- "CA21"   # 2021 census
-  agg_fact <- 10L      # larger = coarser raster = lighter in memory
-  
-  # Names for the four canopy share variables
+
+  cma_uid  <- "24462"
+  dataset  <- "CA21"
+  agg_fact <- 10L
+
   canopy_names <- c(
-    "canopy_mineral_low",   # class 1
-    "canopy_mineral_high",  # class 2
-    "canopy_veg_low",       # class 3
-    "canopy_veg_high"       # class 4
+    "canopy_mineral_low_m2",
+    "canopy_mineral_high_m2",
+    "canopy_veg_low_m2",
+    "canopy_veg_high_m2"
   )
-  
-  ## 0) Clip canopy raster to Montreal CMA -------------------------------
+
+  ## 0) Clip canopy raster to Montreal CMA ───────────────────────────────
   cma_sf <- cancensus::get_census(
     dataset    = dataset,
     regions    = list(CMA = cma_uid),
@@ -232,51 +228,44 @@ canopy_get_shares <- function(
     geo_format = "sf",
     quiet      = TRUE
   )
-  
-  cma_sf   <- sf::st_transform(cma_sf, terra::crs(canopy, proj = TRUE))
-  cma_vect <- terra::vect(cma_sf)
-  
-  canopy_cma <- terra::crop(canopy, cma_vect)
-  
-  ## 1) Optional aggregation to reduce raster size -----------------------
+
+  cma_sf     <- sf::st_transform(cma_sf, terra::crs(canopy, proj = TRUE))
+  canopy_cma <- terra::crop(canopy, terra::vect(cma_sf))
+
+  ## 1) Optional aggregation ─────────────────────────────────────────────
   if (!is.null(agg_fact) && agg_fact > 1L) {
     message("Aggregating canopy raster with factor = ", agg_fact, " ...")
     canopy_cma <- terra::aggregate(
       canopy_cma,
-      fact = agg_fact,
-      fun  = "modal",
+      fact  = agg_fact,
+      fun   = "modal",
       na.rm = TRUE
     )
   }
-  
-  ## 2) Helper to compute shares of canopy categories 1–4 ----------------
+
+  ## 2) Pixel area in m² ─────────────────────────────────────────────────
+  pixel_area_m2 <- prod(terra::res(canopy_cma))
+
+  ## 3) Helper to compute m² per canopy class ────────────────────────────
   cat_fun <- function(vals, ...) {
-    # Drop NA and category 5 (no canopy / other)
-    vals <- vals[!is.na(vals) & vals %in% 1:4]
-    
-    out <- numeric(4L)
+    vals    <- vals[!is.na(vals) & vals %in% 1:4]
+    out     <- numeric(4L)
     names(out) <- canopy_names
-    
-    if (!length(vals)) {
-      # If no valid pixels, return 0 for all categories
-      return(out)
-    }
-    
-    tab  <- table(factor(vals, levels = 1:4))
-    prop <- as.numeric(tab) / sum(tab)
-    names(prop) <- canopy_names
-    prop
+    if (!length(vals)) return(out)
+    tab        <- table(factor(vals, levels = 1:4))
+    area_m2    <- as.numeric(tab) * pixel_area_m2
+    names(area_m2) <- canopy_names
+    area_m2
   }
-  
-  ## 3) Loop over requested census levels --------------------------------
-  levels    <- unique(levels)
-  res_list  <- vector("list", length(levels))
+
+  ## 4) Loop over census levels ──────────────────────────────────────────
+  levels   <- unique(levels)
+  res_list <- vector("list", length(levels))
   names(res_list) <- levels
-  
+
   for (lvl in levels) {
     message("Processing level: ", lvl, " ...")
-    
-    # Download geometries for this level inside Montreal CMA
+
     geo_sf <- cancensus::get_census(
       dataset    = dataset,
       regions    = list(CMA = cma_uid),
@@ -285,82 +274,48 @@ canopy_get_shares <- function(
       geo_format = "sf",
       quiet      = TRUE
     )
-    
+
     geo_sf   <- sf::st_transform(geo_sf, terra::crs(canopy_cma, proj = TRUE))
     geo_vect <- terra::vect(geo_sf)
-    
-    n <- nrow(geo_sf)
+    n        <- nrow(geo_sf)
+
     if (n == 0L) {
       warning("No geometries found for level ", lvl, ". Skipping.")
       res_list[[lvl]] <- geo_sf
       next
     }
-    
-    ## Special case: CMA = single polygon --------------------------------
+
+    ## CMA = single polygon ──────────────────────────────────────────────
     if (lvl == "CMA") {
-      ext <- terra::extract(
-        canopy_cma,
-        geo_vect,
-        fun = cat_fun
-      )
-      
+      ext    <- terra::extract(canopy_cma, geo_vect, fun = cat_fun)
       ext_df <- tibble::as_tibble(ext)[, -1, drop = FALSE]
-      
-      # Force column names for canopy shares
-      if (ncol(ext_df) == 4L) {
-        names(ext_df) <- canopy_names
-      }
-      
-      out <- dplyr::bind_cols(geo_sf, ext_df)
-      
-      res_list[[lvl]] <- out |>
-        dplyr::select(
-          id = GeoUID,
-          dplyr::all_of(canopy_names),
-          geometry
-        )
-      
+      if (ncol(ext_df) == 4L) names(ext_df) <- canopy_names
+
+      res_list[[lvl]] <- dplyr::bind_cols(geo_sf, ext_df) |>
+        dplyr::select(id = GeoUID, dplyr::all_of(canopy_names), geometry)
       next
     }
-    
-    ## Other levels: process in chunks to control memory -----------------
-    idx_chunks <- split(seq_len(n), ceiling(seq_len(n) / chunk_size))
-    
+
+    ## Other levels: chunked ─────────────────────────────────────────────
+    idx_chunks    <- split(seq_len(n), ceiling(seq_len(n) / chunk_size))
     chunk_results <- lapply(idx_chunks, function(idx) {
-      ext <- terra::extract(
-        canopy_cma,
-        geo_vect[idx, ],
-        fun = cat_fun
-      )
-      
+      ext    <- terra::extract(canopy_cma, geo_vect[idx, ], fun = cat_fun)
       ext_df <- tibble::as_tibble(ext)[, -1, drop = FALSE]
-      
-      if (ncol(ext_df) == 4L) {
-        names(ext_df) <- canopy_names
-      }
-      
+      if (ncol(ext_df) == 4L) names(ext_df) <- canopy_names
       ext_df
     })
-    
+
     ext_all <- dplyr::bind_rows(chunk_results)
-    
+
     if (nrow(ext_all) != nrow(geo_sf)) {
-      stop(
-        "Mismatch between number of polygons and extracted rows for level ",
-        lvl, ".", call. = FALSE
-      )
+      stop("Mismatch between polygons and extracted rows for level ", lvl, ".",
+           call. = FALSE)
     }
-    
-    out <- dplyr::bind_cols(geo_sf, ext_all)
-    
-    res_list[[lvl]] <- out |>
-      dplyr::select(
-        id = GeoUID,
-        dplyr::all_of(canopy_names),
-        geometry
-      )
+
+    res_list[[lvl]] <- dplyr::bind_cols(geo_sf, ext_all) |>
+      dplyr::select(id = GeoUID, dplyr::all_of(canopy_names), geometry)
   }
-  
+
   res_list
 }
 
@@ -551,50 +506,42 @@ forest_load_polygons <- function(
   forest
 }
 
-
-#' Compute forest cover share by census geography for Montreal CMA
+#' Compute forest cover area by census geography for Montreal CMA
 #'
 #' Uses a forest cover layer (polygons, sf) and returns, for each requested
-#' census level, the share of polygon area covered by the forest cover.
+#' census level, the total area in m² covered by forest.
 #'
 #' @param forest sf object with forest cover polygons.
 #' @param levels Character vector of census levels. Any of:
 #'   "DB", "DA", "CT", "CSD", "CMA".
-#' @param chunk_size Integer. Number of polygons per batch in the
-#'   intersection with the forest cover. Smaller values use less memory
-#'   but are slower.
+#' @param chunk_size Integer. Number of polygons per batch.
 #'
 #' @return Named list of sf objects, one per requested level, each including:
-#'   \code{id}, \code{forest_cover_share}, and \code{geometry}.
+#'   \code{id}, \code{forest_cover_m2}, and \code{geometry}.
 #' @export
-forest_get_shares <- function(
+forest_get_areas <- function(
     forest,
     levels     = c("DB", "DA", "CT", "CSD", "CMA"),
     chunk_size = 200L
 ) {
-  if (!inherits(forest, "sf")) {
-    stop("'forest' must be an sf object.", call. = FALSE)
-  }
-  
-  # Internal constants ---------------------------------------------------
-  cma_uid <- "24462"  # Montreal CMA
-  dataset <- "CA21"   # 2021 census
-  
+  if (!inherits(forest, "sf")) stop("'forest' must be an sf object.", call. = FALSE)
+
+  cma_uid   <- "24462"
+  dataset   <- "CA21"
   forest_sf <- sf::st_make_valid(forest)
-  
+
   if (is.na(sf::st_crs(forest_sf))) {
     forest_sf <- sf::st_set_crs(forest_sf, 2950)
   }
-  
+
   forest_crs <- sf::st_crs(forest_sf)
-  
-  levels   <- unique(levels)
-  res_list <- vector("list", length(levels))
+  levels     <- unique(levels)
+  res_list   <- vector("list", length(levels))
   names(res_list) <- levels
-  
+
   for (lvl in levels) {
     message("Processing level: ", lvl, " ...")
-    
+
     geo_sf <- cancensus::get_census(
       dataset    = dataset,
       regions    = list(CMA = cma_uid),
@@ -603,61 +550,43 @@ forest_get_shares <- function(
       geo_format = "sf",
       quiet      = TRUE
     )
-    
+
     if (!nrow(geo_sf)) {
       warning("No geometries found for level ", lvl, ". Skipping.")
       res_list[[lvl]] <- geo_sf
       next
     }
-    
-    geo_sf <- sf::st_transform(geo_sf, forest_crs)
-    geo_sf <- sf::st_make_valid(geo_sf)
-    
-    n <- nrow(geo_sf)
-    
-    area_total   <- as.numeric(sf::st_area(geo_sf))
-    forest_share <- numeric(n)
-    names(forest_share) <- geo_sf$GeoUID
-    
+
+    geo_sf       <- sf::st_transform(geo_sf, forest_crs) |> sf::st_make_valid()
+    n            <- nrow(geo_sf)
+    forest_area  <- numeric(n)
+    names(forest_area) <- geo_sf$GeoUID
+
     idx_chunks <- split(seq_len(n), ceiling(seq_len(n) / chunk_size))
-    
+
     for (idx in idx_chunks) {
-      geo_chunk <- geo_sf[idx, ]
-      
       inter <- suppressWarnings(
-        sf::st_intersection(
-          geo_chunk[, c("GeoUID")],
-          forest_sf
-        )
+        sf::st_intersection(geo_sf[idx, "GeoUID"], forest_sf)
       )
-      
-      if (!nrow(inter)) {
-        next
-      }
-      
+      if (!nrow(inter)) next
+
       inter$area <- as.numeric(sf::st_area(inter))
-      
+
       agg <- inter |>
         sf::st_drop_geometry() |>
         dplyr::group_by(GeoUID) |>
         dplyr::summarise(area = sum(area, na.rm = TRUE), .groups = "drop")
-      
+
       idx_match <- match(agg$GeoUID, geo_sf$GeoUID)
-      
-      forest_share[idx_match] <-
-        forest_share[idx_match] + agg$area / area_total[idx_match]
+      forest_area[idx_match] <- forest_area[idx_match] + agg$area
     }
-    
-    geo_sf$forest_cover_share <- forest_share
-    
+
+    geo_sf$forest_cover_m2 <- forest_area
+
     res_list[[lvl]] <- geo_sf |>
-      dplyr::select(
-        id = GeoUID,
-        forest_cover_share,
-        geometry
-      )
+      dplyr::select(id = GeoUID, forest_cover_m2, geometry)
   }
-  
+
   res_list
 }
 
