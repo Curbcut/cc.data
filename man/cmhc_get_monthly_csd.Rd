@@ -2,22 +2,20 @@
 % Please edit documentation in R/cmhc_data.R
 \name{cmhc_get_monthly_csd}
 \alias{cmhc_get_monthly_csd}
-\title{Retrieve Monthly CMHC Data for All CSDs (Parallel Version)}
+\title{Retrieve Monthly CMHC Data for All CSDs (Historical Per-CSD)}
 \usage{
-cmhc_get_monthly_csd(requests, csd_correspondence_list, csd_uids)
+cmhc_get_monthly_csd(requests, csd_uids, output_dir = NULL)
 }
 \arguments{
-\item{requests}{A list of request objects. Each must include the keys \code{survey}, \code{series}, \code{dimension}, \code{years}, and \code{months}.}
-
-\item{csd_correspondence_list}{A named list of correspondence tables used to map older GeoUIDs to 2021 equivalents.}
+\item{requests}{A list of request objects. Each must include the keys \code{survey}, \code{series}, \code{dimension}.}
 
 \item{csd_uids}{A vector of CSD GeoUIDs to include.}
 }
 \value{
-A named list \code{CSD} containing reshaped and harmonized data frames for each variable,
-with columns formatted as "YYYYMM" for each month.
+A named list \code{CSD} containing reshaped data frames for each variable.
 }
 \description{
 Downloads and reshapes monthly CMHC Census Subdivision (CSD) data
-and harmonizes it to the 2021 geography using correspondence tables.
+using historical time series per individual CSD (one call per CSD,
+all months returned).
 }

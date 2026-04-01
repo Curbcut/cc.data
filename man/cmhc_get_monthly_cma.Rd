@@ -4,7 +4,7 @@
 \alias{cmhc_get_monthly_cma}
 \title{Retrieve Monthly CMHC Data for All CMAs}
 \usage{
-cmhc_get_monthly_cma(requests)
+cmhc_get_monthly_cma(requests, cma_uids = NULL, output_dir = NULL)
 }
 \arguments{
 \item{requests}{A list of request objects. Each must include \code{survey}, \code{series}, and optionally \code{dimension} and \code{frequency}.}

@@ -259,12 +259,12 @@ tt_prepare_dispatch <- function(
 
 #' Build OSRM request metadata for a single origin
 #'
-#' Worker function for use with [dispatch_model()] to compute spatial neighbors
+#' Worker function for use with `dispatch_model()` to compute spatial neighbors
 #' and construct OSRM API request URLs for one origin point. Results are saved
 #' to disk as `{origin_id}.qs` files containing request metadata (URLs,
 #' destination IDs, coordinates).
 #'
-#' This function is called in parallel by [dispatch_model()], with each worker
+#' This function is called in parallel by `dispatch_model()`, with each worker
 #' processing one origin independently. The spatial neighbor computation
 #' (via `sf::st_is_within_distance`) is done per-origin to avoid holding all
 #' neighbor relationships in memory simultaneously.

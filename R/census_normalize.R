@@ -1,11 +1,11 @@
 #' Normalize census variables to proportions in `[0,1]`
 #'
-#' @param interpolated list [[scale]][[year]] sf — output of census_interpolate()
+#' @param interpolated `list[[scale]][[year]]` sf — output of census_interpolate()
 #' @param census_vectors <character> cc.data::census_vectors (used only if unit_type = NULL)
 #' @param census_scales  <character> cc.data::census_scales
 #' @param census_years   <numeric>   cc.data::census_years
 #' @param unit_type <data.frame|NULL> if NULL, built from variables actually present
-#' @return list [[scale]][[year]] sf with normalized variables
+#' @return `list[[scale]][[year]]` sf with normalized variables
 #' @export
 census_normalize <- function(
   interpolated,

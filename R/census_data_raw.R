@@ -1,10 +1,10 @@
 #' Download census vectors and join to geometries for specific variables.
 #'
-#' @param empty_geometries list [[scale]][[year]] sf(ID, geometry) in target CRS
+#' @param empty_geometries list `[[scale]][[year]]` sf(ID, geometry) in target CRS
 #' @param census_scales    character, e.g., c("C","PR","CMA","CSD","CT","DA")
 #' @param census_years     numeric, e.g., c(1996, 2001, ..., 2021)
 #' @param var_codes        character|NULL subset of var_code; NULL = all (+parents)
-#' @return list[[scale]][[year]] sf(ID, geometry, <vars>)
+#' @return `list[[scale]][[year]]` sf(ID, geometry, \<vars\>)
 #' @export
 census_data_raw <- function(
   empty_geometries,

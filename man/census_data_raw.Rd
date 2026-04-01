@@ -12,7 +12,7 @@ census_data_raw(
 )
 }
 \arguments{
-\item{empty_geometries}{list [\link{scale}][\link{year}] sf(ID, geometry) in target CRS}
+\item{empty_geometries}{list \verb{[[scale]][[year]]} sf(ID, geometry) in target CRS}
 
 \item{census_scales}{character, e.g., c("C","PR","CMA","CSD","CT","DA")}
 
@@ -21,7 +21,7 @@ census_data_raw(
 \item{var_codes}{character|NULL subset of var_code; NULL = all (+parents)}
 }
 \value{
-list[\link{scale}][\link{year}] sf(ID, geometry, \if{html}{\out{<vars>}})
+\code{list[[scale]][[year]]} sf(ID, geometry, \<vars\>)
 }
 \description{
 Download census vectors and join to geometries for specific variables.

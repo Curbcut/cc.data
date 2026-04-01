@@ -4,7 +4,7 @@
 \alias{cmhc_get_monthly_survey_zone}
 \title{Retrieve Monthly CMHC Data for Survey Zones}
 \usage{
-cmhc_get_monthly_survey_zone(requests, survey_zones_ref)
+cmhc_get_monthly_survey_zone(requests, survey_zones_ref, output_dir = NULL)
 }
 \arguments{
 \item{requests}{A list of request objects. Each must include the following elements:

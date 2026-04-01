@@ -5,7 +5,7 @@
 #' @param census_scales  <character vector> Should be equal to cc.data::census_scales
 #' @param census_years   <numeric vector>   Should be equal to cc.data::census_years
 #' @param agg_type <named list|NULL> If NULL, built from variables actually present in data_raw.
-#' @return list [[scale]][[year]] sf with geometries of max year and values interpolated.
+#' @return `list[[scale]][[year]]` sf with geometries of max year and values interpolated.
 #' @export
 census_interpolate <- function(
   data_raw,

@@ -6,17 +6,15 @@
 for each year and CSD specified in the request list.
 Data is harmonized to the 2021 geography using correspondence tables.}
 \usage{
-cmhc_get_annual_csd(requests, csd_correspondence_list, csd_uids)
+cmhc_get_annual_csd(requests, csd_uids, output_dir = NULL)
 }
 \arguments{
 \item{requests}{A list of request objects. Each must include \code{survey}, \code{series}, \code{dimension}, and \code{years}.}
 
-\item{csd_correspondence_list}{A named list of correspondence tables to convert older CSD GeoUIDs to 2021 equivalents.}
-
 \item{csd_uids}{A character vector of CSD GeoUIDs to include.}
 }
 \value{
-A named list \code{CSD} containing reshaped and harmonized data frames for each variable.
+A named list \code{CSD} containing reshaped data frames for each variable.
 }
 \description{
 Downloads and reshapes annual CMHC Census Subdivision (CSD) data

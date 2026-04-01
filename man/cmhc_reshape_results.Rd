@@ -2,24 +2,20 @@
 % Please edit documentation in R/cmhc_data.R
 \name{cmhc_reshape_results}
 \alias{cmhc_reshape_results}
-\title{Reshape CMHC Results to Wide Format}
+\title{Reshape CMHC Results to Long Format}
 \usage{
-cmhc_reshape_results(df, dimension, series_prefix = TRUE)
-
-cmhc_reshape_results(df, dimension, series_prefix = TRUE)
+cmhc_reshape_results(df, dimension)
 }
 \arguments{
 \item{df}{A cleaned \code{data.frame} containing at least \code{GeoUID}, \code{Series}, \code{year_month}, and \code{Value}.}
 
 \item{dimension}{Character. Optional name of a breakdown column (e.g., "Bedroom Type").}
-
-\item{series_prefix}{Logical. If \code{TRUE}, prefixes column names with the series name.}
 }
 \value{
-A named list of reshaped data frames.
-
-A named list of reshaped data frames.
+A named list of long-format data frames with columns (GeoUID, time, value).
 }
 \description{
-Converts long-format CMHC data to wide format, grouping by \code{Series}, \code{year_month}, and optionally by a breakdown dimension.
+Converts cleaned CMHC data to long format (GeoUID, time, value), grouping by
+\code{Series} and optionally by a breakdown dimension. Series listed in
+\code{CMHC_PCT_SERIES} are automatically divided by 100.
 }

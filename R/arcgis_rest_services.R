@@ -106,15 +106,22 @@ arcgis_rest_services_ret <- function(url, limit = 1000, sf = TRUE) {
       # Append data
       all_data <- append(all_data, list(sf_data))
     } else {
-      # Extract and unnest all 'list' columns dynamically
-      json_data_parsed <- jsonlite::fromJSON(json_data)
+      # Parse JSON — handles both GeoJSON (features[].properties) and
+      # ArcGIS JSON (features[].attributes) formats.
+      json_data_parsed <- jsonlite::fromJSON(json_data, flatten = TRUE)
 
-      # Identify columns that are lists and unnest them
-      unnested_data <- json_data_parsed$features |>
-        tidyr::unnest_wider(where(is.list)) |>
-        tibble::as_tibble()
-
-      all_data <- append(all_data, list(unnested_data))
+      if (!is.null(json_data_parsed$features)) {
+        feat <- json_data_parsed$features
+        # GeoJSON nests attributes under "properties.*", ArcGIS under "attributes.*"
+        # flatten = TRUE handles both; just drop geometry columns if present
+        if (is.data.frame(feat)) {
+          geom_cols <- grep("^geometry\\.", names(feat), value = TRUE)
+          if (length(geom_cols) > 0) feat <- feat[, !names(feat) %in% geom_cols, drop = FALSE]
+          # Strip "properties." or "attributes." prefix from column names
+          names(feat) <- sub("^(properties|attributes)\\.", "", names(feat))
+          all_data <- append(all_data, list(tibble::as_tibble(feat)))
+        }
+      }
     }
 
     # If the offset + default limit is equal to the total_records, it means

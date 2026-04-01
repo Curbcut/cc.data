@@ -56,13 +56,13 @@ existed)
 }
 }
 \description{
-Worker function for use with \code{\link[=dispatch_model]{dispatch_model()}} to compute spatial neighbors
+Worker function for use with \code{dispatch_model()} to compute spatial neighbors
 and construct OSRM API request URLs for one origin point. Results are saved
 to disk as \verb{\{origin_id\}.qs} files containing request metadata (URLs,
 destination IDs, coordinates).
 }
 \details{
-This function is called in parallel by \code{\link[=dispatch_model]{dispatch_model()}}, with each worker
+This function is called in parallel by \code{dispatch_model()}, with each worker
 processing one origin independently. The spatial neighbor computation
 (via \code{sf::st_is_within_distance}) is done per-origin to avoid holding all
 neighbor relationships in memory simultaneously.

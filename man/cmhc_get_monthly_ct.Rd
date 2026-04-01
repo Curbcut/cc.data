@@ -2,22 +2,22 @@
 % Please edit documentation in R/cmhc_data.R
 \name{cmhc_get_monthly_ct}
 \alias{cmhc_get_monthly_ct}
-\title{Retrieve Monthly CMHC Data for All CTs (by CMA and Year/Month)}
+\title{Retrieve Monthly CMHC Data for All CTs (Historical Per-CT)}
 \usage{
-cmhc_get_monthly_ct(requests, ct_correspondence_list, cma_uids = NULL)
+cmhc_get_monthly_ct(requests, ct_uids, output_dir = NULL)
 }
 \arguments{
-\item{requests}{A list of request objects. Each must include the keys \code{survey}, \code{series}, \code{dimension}, \code{years}, and \code{months}.}
+\item{requests}{A list of request objects. Each must include the keys \code{survey}, \code{series}, \code{dimension}.}
 
-\item{ct_correspondence_list}{A named list of correspondence tables used to map older GeoUIDs to 2021 equivalents.}
+\item{ct_uids}{A character vector of CT UIDs in CMHC short format (e.g. "9330010.02").}
 
-\item{cma_uids}{Optional. A vector of CMAUIDs to include. If NULL, all CMAUIDs available in the 2021 CT geography will be used.}
+\item{output_dir}{Optional. Directory (or S3 prefix) for caching per-task .qs files.}
 }
 \value{
-A named list \code{CT} containing reshaped and harmonized data frames for each variable,
-with columns formatted as "YYYYMM" for each month.
+A named list \code{CT} containing reshaped data frames for each variable.
 }
 \description{
-Downloads and reshapes monthly CMHC Census Tract (CT) data for each CMA, year, and month
-specified in the request list. Data is harmonized to the 2021 geography using correspondence tables.
+Downloads and reshapes monthly CMHC Census Tract (CT) data using
+historical time series per individual CT (one call per CT, all months
+returned).
 }

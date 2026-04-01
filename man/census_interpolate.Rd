@@ -24,7 +24,7 @@ census_interpolate(
 \item{agg_type}{<named list|NULL> If NULL, built from variables actually present in data_raw.}
 }
 \value{
-list [\link{scale}][\link{year}] sf with geometries of max year and values interpolated.
+\code{list[[scale]][[year]]} sf with geometries of max year and values interpolated.
 }
 \description{
 Interpolate all census years to the current year's geography
