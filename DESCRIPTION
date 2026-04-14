@@ -41,6 +41,10 @@ Imports:
     mirai
 Suggests:
     aws.s3,
+    aws.signature,
+    arrow,
+    bit64,
+    duckdb,
     gtfsrouter,
     gtfstools,
     matchr,
