@@ -4,11 +4,38 @@
 \alias{geocode_localhost}
 \title{Geocode using a local Nominatim instance (docker)}
 \usage{
-geocode_localhost(address)
+geocode_localhost(
+  address,
+  expand_french_directions = TRUE,
+  strip_noise = TRUE,
+  strip_unit = TRUE,
+  strip_leading_unit = TRUE,
+  photon_fallback = TRUE
+)
 }
 \arguments{
 \item{address}{< \code{character}> Character vector corresponding to an address,
 e.g. 6540, Avenue Baldwin, Anjou, Montreal}
+
+\item{expand_french_directions}{< \code{logical}> Whether to expand French cardinal
+directions (E, O, N, S, NE, NO, SE, SO) to their full form (Est, Ouest, Nord,
+Sud, Nord-Est, Nord-Ouest, Sud-Est, Sud-Ouest) to improve geocoding results.}
+
+\item{strip_noise}{< \code{logical}> Whether to strip common address noise before
+geocoding: parenthetical descriptors (e.g. \code{"(sous-sol)"}), slash-separated
+alternate street names (e.g. \code{"rue Meunier/7e avenue"}), and leading venue
+or building names preceding the civic number.}
+
+\item{strip_unit}{< \code{logical}> Whether to strip unit/apartment tokens from the
+address before geocoding.}
+
+\item{strip_leading_unit}{< \code{logical}> Whether to strip a leading unit prefix
+in the format \code{{unit}-{civic}} (e.g. \code{"513-3300, rue des Châteaux"} becomes
+\code{"3300, rue des Châteaux"}). Common in Quebec addresses.}
+
+\item{photon_fallback}{< \code{logical}> Whether to fall back to the Photon geocoder
+(photon.komoot.io) when Nominatim returns an empty result. Photon uses
+Elasticsearch and supports fuzzy matching, useful for misspelled street names.}
 }
 \value{
 \code{sf} point
