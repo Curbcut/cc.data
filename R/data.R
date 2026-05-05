@@ -499,3 +499,33 @@
 #' }
 #' @keywords datasets
 "census_vectors_typology"
+
+#' CMHC neighbourhood name matching table
+#'
+#' Lookup table to reconcile differences between CMHC API neighbourhood
+#' names and CMHC shapefile names (`NBHDNAME_E`). The CMHC API returns
+#' neighbourhood data keyed only by name (no stable ID), so a name-based
+#' match is required to attach geometries.
+#'
+#' Extracted from manual reconciliation work in David Wachsmuth's
+#' `02_cmhc_census_import.R` (sections "Reconcile naming differences"
+#' for the 2015 and 2023 RMS API fetches), covering ~52 CMAs across Canada.
+#'
+#' @format ## `cmhc_nbhd_matching`
+#' A data.frame with 113 rows and 3 columns:
+#' \describe{
+#'   \item{name_api}{Character. Neighbourhood name as returned by
+#'   `cmhc::get_cmhc(breakdown = "Neighbourhoods")`.}
+#'   \item{name_shp}{Character. Neighbourhood name as it appears in the
+#'   CMHC shapefile (`NBHDNAME_E` column).}
+#'   \item{match_type}{Character. Type of match to apply:
+#'     \itemize{
+#'       \item `"exact"`: apply when `name == name_api` (84 rows)
+#'       \item `"starts"`: apply when `str_starts(name, name_api)` (27 rows)
+#'       \item `"detect"`: apply when `str_detect(name, name_api)` (2 rows)
+#'     }
+#'   }
+#' }
+#' @source Manual reconciliation by David Wachsmuth in
+#' `02_cmhc_census_import.R`, extracted to CSV format.
+"cmhc_nbhd_matching"
