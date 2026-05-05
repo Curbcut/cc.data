@@ -180,11 +180,15 @@ ndvi_get_items_modis <- function(year, limit = 25, zone_bbox) {
 #' @param years <`numeric vector`> A vector of years for which NDVI features are
 #' to be retrieved. Defaults to the result of \code{ndvi_years()}.
 #' @param output_path <`character`> A character string specifying the path where the
-#' retrieved data will be saved. Defaults to "calculated_ignore/ndvi/".
+#' retrieved data will be saved. Defaults to
+#' `paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/")`.
 #' @return NULL The function performs the retrieval and saving operations but
 #' does not return any value.
 ndvi_get_features <- function(years = ndvi_years(),
-                              output_path = "calculated_ignore/ndvi/") {
+                              output_path = paste0(
+                                Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+                                "cc.data/ndvi/"
+                              )) {
 
   # Get Canada shapefile
   latest_census <- cc.data::census_years[length(cc.data::census_years)]
@@ -553,7 +557,8 @@ ndvi_features_to_point <- function(master_polygon, features,
 #' @param years <`numeric vector`> A vector of years for which NDVI features are
 #' to be retrieved. Defaults to the result of \code{ndvi_years()}.
 #' @param output_path <`character`> A character string specifying the path
-#' where the calculated NDVI data should be saved. Defaults to "calculated_ignore/ndvi/".
+#' where the calculated NDVI data should be saved. Defaults to
+#' `paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/")`.
 #' @param temp_folder <`character`> Link to a managed temporary folder in a dedicated
 #' directory. This allows to have complete control over permissions and other attributes
 #' when paralleling. Temporary files are not removed otherwise, and the usual temporary
@@ -567,8 +572,14 @@ ndvi_features_to_point <- function(master_polygon, features,
 #' @return NDVI raters (.tiff) are saved in the output path.
 #' @export
 ndvi_import <- function(years = ndvi_years(),
-                        output_path = "calculated_ignore/ndvi/",
-                        temp_folder = "calculated_ignore/ndvi/tmp/") {
+                        output_path = paste0(
+                          Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+                          "cc.data/ndvi/"
+                        ),
+                        temp_folder = paste0(
+                          Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+                          "cc.data/ndvi/tmp/"
+                        )) {
 
   if (!exists(".nasa_earthdata_user") || !exists(".nasa_earthdata_pw")) {
     stop(paste0("User and password objects (an account on Nasa Earthdata ",

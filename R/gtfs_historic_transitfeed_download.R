@@ -591,14 +591,15 @@ download_feeds_to_s3 <- function(
 # # Setup parallel processing
 # future::plan(future::multisession)
 
+# # transit_dir <- paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/transitfeeds_legacy/")
 # # Get all providers
 # all_providers <- scrape_all_providers()
 # qs::qsave(
 #   all_providers,
-#   "calculated_ignore/transitfeeds_legacy/01_all_providers.qs"
+#   paste0(transit_dir, "01_all_providers.qs")
 # )
 # aws.s3::put_object(
-#   file = "calculated_ignore/transitfeeds_legacy/01_all_providers.qs",
+#   file = paste0(transit_dir, "01_all_providers.qs"),
 #   object = "CA/01_all_providers.qs",
 #   bucket = "curbcut.gtfs",
 #   region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
@@ -617,10 +618,10 @@ download_feeds_to_s3 <- function(
 # all_feeds <- scrape_all_feeds(all_providers)
 # qs::qsave(
 #   all_feeds,
-#   "calculated_ignore/transitfeeds_legacy/02_all_feeds.qs"
+#   paste0(transit_dir, "02_all_feeds.qs")
 # )
 # aws.s3::put_object(
-#   file = "calculated_ignore/transitfeeds_legacy/02_all_feeds.qs",
+#   file = paste0(transit_dir, "02_all_feeds.qs"),
 #   object = "CA/02_all_feeds.qs",
 #   bucket = "curbcut.gtfs",
 #   region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
@@ -642,10 +643,10 @@ download_feeds_to_s3 <- function(
 # all_versions$s3_key <- from_version_to_s3key(all_versions)
 # data.table::fwrite(
 #   all_versions,
-#   "calculated_ignore/transitfeeds_legacy/03_transit_feed_versions_canada.csv"
+#   paste0(transit_dir, "03_transit_feed_versions_canada.csv")
 # )
 # aws.s3::put_object(
-#   file = "calculated_ignore/transitfeeds_legacy/03_transit_feed_versions_canada.csv",
+#   file = paste0(transit_dir, "03_transit_feed_versions_canada.csv"),
 #   object = "CA/03_transit_feed_versions_canada.csv",
 #   bucket = "curbcut.gtfs",
 #   region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),

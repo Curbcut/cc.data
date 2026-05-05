@@ -208,13 +208,14 @@ download_mobilitydatabase_gtfs <- function(
   })
 
   # Save metadata
+  mdb_dir <- paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/")
   data.table::fwrite(
     all_versions,
-    sprintf("calculated_ignore/mobilitydatabase_versions_%s.csv", country_code)
+    sprintf("%smobilitydatabase_versions_%s.csv", mdb_dir, country_code)
   )
 
   aws.s3::put_object(
-    file = "calculated_ignore/mobilitydatabase_versions_CA.csv",
+    file = paste0(mdb_dir, "mobilitydatabase_versions_CA.csv"),
     object = "mobilitydatabase/CA/03_mobility_feed_versions_canada.csv",
     bucket = "curbcut.gtfs",
     region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),

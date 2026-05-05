@@ -27,8 +27,9 @@ build_alp <- function(
     USE.NAMES = TRUE
   )
   names(three_ways) <- years
-  # qs::qsave(three_ways, "calculated_ignore/alp/three_ways.qs")
-  # three_ways <- qs::qread("calculated_ignore/alp/three_ways.qs")
+  # alp_dir <- paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/alp/")
+  # qs::qsave(three_ways, paste0(alp_dir, "three_ways.qs"))
+  # three_ways <- qs::qread(paste0(alp_dir, "three_ways.qs"))
 
   # Get travel time matrices by foot. Only 900 seconds (15 minutes walk)
   ttm_foot <- {
@@ -46,8 +47,8 @@ build_alp <- function(
       travel_seconds = 0
     )
   )
-  # qs::qsave(ttm_foot, "calculated_ignore/alp/ttm_foot.qs")
-  # ttm_foot <- qs::qread("calculated_ignore/alp/ttm_foot.qs")
+  # qs::qsave(ttm_foot, paste0(alp_dir, "ttm_foot.qs"))
+  # ttm_foot <- qs::qread(paste0(alp_dir, "ttm_foot.qs"))
 
   # How many 3+ way intersection per DB buffer
   DB_table_tw <- DB_table
@@ -182,7 +183,13 @@ build_alp <- function(
     DB_sf,
     SIMPLIFY = FALSE
   )
-  qs::qsave(dwellings_sf, file = "calculated_ignore/alp/dwellings_sf.qs")
+  qs::qsave(
+    dwellings_sf,
+    file = paste0(
+      Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+      "cc.data/alp/dwellings_sf.qs"
+    )
+  )
 
   # Calculate dwelling density using the most recent DA table
   dwellings <- lapply(dwellings_sf, \(dw) {

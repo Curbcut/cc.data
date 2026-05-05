@@ -39,7 +39,10 @@
 #' @export
 build_landuse_from_file <- function(
   boundaries,
-  base_dir = "calculated_ignore/landuse_v3",
+  base_dir = paste0(
+    Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+    "cc.data/landuse_v3"
+  ),
   mapping = data.table::data.table(
     folder = c(
       "QBC",

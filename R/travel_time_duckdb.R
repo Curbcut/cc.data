@@ -145,7 +145,8 @@ put_object_retry <- function(file, object, bucket, retries = 5, wait = 10) {
 #' @param min_batch_size <`integer`> Minimum file size in bytes; smaller files
 #'   are assumed empty and skipped. Default `1000`.
 #' @param manifest_dir <`character`> Local directory where the manifest `.qs`
-#'   file is written. Default `"calculated_ignore"`.
+#'   file is written. Default
+#'   `paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")`.
 #'
 #' @return Invisibly returns the manifest as a `data.table` with columns
 #'   `origin_db`, `n_rows`, `s3_key`, `cum_rows`, `part_num`.
@@ -156,7 +157,10 @@ put_object_retry <- function(file, object, bucket, retries = 5, wait = 10) {
 #'   the build pipeline without re-scanning all batch files.
 #'   To force a fresh scan, delete the file:
 #'   ```r
-#'   file.remove("calculated_ignore/manifest_car.qs")
+#'   file.remove(paste0(
+#'     Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+#'     "cc.data/manifest_car.qs"
+#'   ))
 #'   tt_build_manifest("car")
 #'   ```
 #'
@@ -167,7 +171,7 @@ tt_build_manifest <- function(
   source_prefix = "2026",
   rows_per_part = 25e6,
   min_batch_size = 1000,
-  manifest_dir = "calculated_ignore"
+  manifest_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")
 ) {
   stopifnot(mode %in% c("car", "bicycle", "foot"))
 
@@ -259,7 +263,8 @@ tt_build_manifest <- function(
 #' @param dest_bucket <`character`> S3 bucket for output fragments and final
 #'   parts. Default `"curbcut.traveltimes"`.
 #' @param manifest_dir <`character`> Directory where `manifest_{mode}.qs` was
-#'   written by [tt_build_manifest()]. Default `"calculated_ignore"`.
+#'   written by [tt_build_manifest()]. Default
+#'   `paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")`.
 #'
 #' @return Called for side effects. Stops with an error if shredding is
 #'   incomplete at the end (safe guard against premature merging).
@@ -281,7 +286,7 @@ tt_shred_to_s3 <- function(
   mode,
   source_bucket = "curbcut.routing",
   dest_bucket = "curbcut.traveltimes",
-  manifest_dir = "calculated_ignore"
+  manifest_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")
 ) {
   stopifnot(mode %in% c("car", "bicycle", "foot"))
 
@@ -618,7 +623,8 @@ tt_merge_parts <- function(
 #' @param mode <`character`> Transport mode. One of `"car"`, `"bicycle"`,
 #'   `"foot"`.
 #' @param db_path <`character`> Path to the local DuckDB file. Created if it
-#'   does not exist. Default `"calculated_ignore/traveltimes.duckdb"`.
+#'   does not exist. Default
+#'   `paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/traveltimes.duckdb")`.
 #' @param source_bucket <`character`> S3 bucket containing the final Parquet
 #'   parts. Default `"curbcut.traveltimes"`.
 #' @param region <`character`> AWS region for `httpfs`. Default `"us-east-1"`.
@@ -647,7 +653,10 @@ tt_merge_parts <- function(
 #' @export
 tt_import_mode <- function(
   mode,
-  db_path = "calculated_ignore/traveltimes.duckdb",
+  db_path = paste0(
+    Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+    "cc.data/traveltimes.duckdb"
+  ),
   source_bucket = "curbcut.traveltimes",
   region = "us-east-1",
   memory_limit = "90GB",
@@ -714,7 +723,8 @@ tt_import_mode <- function(
 #' when done.
 #'
 #' @param db_path <`character`> Path to the local DuckDB file.
-#'   Default `"calculated_ignore/traveltimes.duckdb"`.
+#'   Default
+#'   `paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/traveltimes.duckdb")`.
 #'
 #' @return A `DBIConnection` object.
 #'
@@ -722,7 +732,10 @@ tt_import_mode <- function(
 #'   local database.
 #'
 #' @export
-tt_connect <- function(db_path = "calculated_ignore/traveltimes.duckdb") {
+tt_connect <- function(db_path = paste0(
+  Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+  "cc.data/traveltimes.duckdb"
+)) {
   DBI::dbConnect(duckdb::duckdb(dbdir = db_path, read_only = FALSE))
 }
 
