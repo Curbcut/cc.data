@@ -4,11 +4,14 @@
 \alias{tt_connect}
 \title{Open a read-write connection to the local DuckDB travel-time database}
 \usage{
-tt_connect(db_path = "calculated_ignore/traveltimes.duckdb")
+tt_connect(
+  db_path = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/traveltimes.duckdb")
+)
 }
 \arguments{
 \item{db_path}{<\code{character}> Path to the local DuckDB file.
-Default \code{"calculated_ignore/traveltimes.duckdb"}.}
+Default
+\code{paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/traveltimes.duckdb")}.}
 }
 \value{
 A \code{DBIConnection} object.

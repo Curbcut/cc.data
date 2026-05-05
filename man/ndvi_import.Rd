@@ -6,8 +6,8 @@
 \usage{
 ndvi_import(
   years = ndvi_years(),
-  output_path = "calculated_ignore/ndvi/",
-  temp_folder = "calculated_ignore/ndvi/tmp/"
+  output_path = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/"),
+  temp_folder = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/tmp/")
 )
 }
 \arguments{
@@ -15,7 +15,8 @@ ndvi_import(
 to be retrieved. Defaults to the result of \code{ndvi_years()}.}
 
 \item{output_path}{<\code{character}> A character string specifying the path
-where the calculated NDVI data should be saved. Defaults to "calculated_ignore/ndvi/".}
+where the calculated NDVI data should be saved. Defaults to
+\code{paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/")}.}
 
 \item{temp_folder}{<\code{character}> Link to a managed temporary folder in a dedicated
 directory. This allows to have complete control over permissions and other attributes

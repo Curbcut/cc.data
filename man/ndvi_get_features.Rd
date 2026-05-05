@@ -6,7 +6,7 @@
 \usage{
 ndvi_get_features(
   years = ndvi_years(),
-  output_path = "calculated_ignore/ndvi/"
+  output_path = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/")
 )
 }
 \arguments{
@@ -14,7 +14,8 @@ ndvi_get_features(
 to be retrieved. Defaults to the result of \code{ndvi_years()}.}
 
 \item{output_path}{<\code{character}> A character string specifying the path where the
-retrieved data will be saved. Defaults to "calculated_ignore/ndvi/".}
+retrieved data will be saved. Defaults to
+\code{paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/ndvi/")}.}
 }
 \value{
 NULL The function performs the retrieval and saving operations but

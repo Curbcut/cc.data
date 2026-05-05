@@ -8,9 +8,9 @@ tt_build_manifest(
   mode,
   source_bucket = "curbcut.routing",
   source_prefix = "2026",
-  rows_per_part = 25000000,
+  rows_per_part = 2.5e+07,
   min_batch_size = 1000,
-  manifest_dir = "calculated_ignore"
+  manifest_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")
 )
 }
 \arguments{
@@ -30,7 +30,8 @@ origin→destination rows per output part file. Default \code{25e6}.}
 are assumed empty and skipped. Default \code{1000}.}
 
 \item{manifest_dir}{<\code{character}> Local directory where the manifest \code{.qs}
-file is written. Default \code{"calculated_ignore"}.}
+file is written. Default
+\code{paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")}.}
 }
 \value{
 Invisibly returns the manifest as a \code{data.table} with columns
@@ -54,7 +55,10 @@ from disk and returned immediately. This lets you safely kill and resume
 the build pipeline without re-scanning all batch files.
 To force a fresh scan, delete the file:
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{file.remove("calculated_ignore/manifest_car.qs")
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{file.remove(paste0(
+  Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+  "cc.data/manifest_car.qs"
+))
 tt_build_manifest("car")
 }\if{html}{\out{</div>}}
 }

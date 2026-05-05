@@ -6,7 +6,7 @@
 \usage{
 build_landuse_from_file(
   boundaries,
-  base_dir = "calculated_ignore/landuse_v3",
+  base_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/landuse_v3"),
   mapping = data.table::data.table(folder = c("QBC", "VIC", "VAN", "CGY", "EDM", "WPG",
     "HMT", "TOR", "OTTGTU", "MTL", "HRM"), region = c("qc_quebec", "bc_victoria",
     "bc_vancouver", "ab_calgary", "ab_edmonton", "mb_winnipeg", "on_hamilton",

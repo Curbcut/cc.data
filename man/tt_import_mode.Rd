@@ -6,7 +6,7 @@
 \usage{
 tt_import_mode(
   mode,
-  db_path = "calculated_ignore/traveltimes.duckdb",
+  db_path = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/traveltimes.duckdb"),
   source_bucket = "curbcut.traveltimes",
   region = "us-east-1",
   memory_limit = "90GB",
@@ -18,7 +18,8 @@ tt_import_mode(
 \code{"foot"}.}
 
 \item{db_path}{<\code{character}> Path to the local DuckDB file. Created if it
-does not exist. Default \code{"calculated_ignore/traveltimes.duckdb"}.}
+does not exist. Default
+\code{paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/traveltimes.duckdb")}.}
 
 \item{source_bucket}{<\code{character}> S3 bucket containing the final Parquet
 parts. Default \code{"curbcut.traveltimes"}.}

@@ -8,7 +8,7 @@ tt_shred_to_s3(
   mode,
   source_bucket = "curbcut.routing",
   dest_bucket = "curbcut.traveltimes",
-  manifest_dir = "calculated_ignore"
+  manifest_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")
 )
 }
 \arguments{
@@ -22,7 +22,8 @@ batches. Default \code{"curbcut.routing"}.}
 parts. Default \code{"curbcut.traveltimes"}.}
 
 \item{manifest_dir}{<\code{character}> Directory where \verb{manifest_\{mode\}.qs} was
-written by \code{\link[=tt_build_manifest]{tt_build_manifest()}}. Default \code{"calculated_ignore"}.}
+written by \code{\link[=tt_build_manifest]{tt_build_manifest()}}. Default
+\code{paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data")}.}
 }
 \value{
 Called for side effects. Stops with an error if shredding is
