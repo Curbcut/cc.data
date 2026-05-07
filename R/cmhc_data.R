@@ -2616,273 +2616,327 @@ cmhc_get_monthly_csd <- function(
   list(CSD = cmhc_finalize_results(collected))
 }
 
-#' Fetch CMHC Data for a Specific Survey Zone (Monthly or Annual)
+# ============================================================================
+# CMHC Neighbourhood-level functions
+#
+# Pipeline mirrors cmhc_get_ct_by_cma() / cmhc_get_annual_csd():
+#   - One task = (CMA × request × year [× month]) — API does not support
+#     breakdown="Historical Time Periods" for Neighbourhoods
+#   - Worker: fetch -> apply renames -> attach GeoUID -> clean -> reshape
+#   - geo_vintage = "2026" (reference geo for nbhd, analogous to "2021"
+#     used for CSD/CMA/CT — downstream interpolation reconciles years)
+#
+# Required dataset: cc.data::cmhc_nbhd_matching (116 name reconciliation rules)
+# Required external file: harmonized .qsm bundle (passed via qsm_path arg)
+# ============================================================================
+
+
+#' Fetch CMHC Data at the Neighbourhood Level
 #'
-#' Downloads raw CMHC data for a given Survey Zone (CMA GeoUID) and time period.
+#' Wraps `cmhc::get_cmhc(breakdown = "Neighbourhoods")` with retry logic and
+#' drops rows where `Neighbourhoods` is NA.
 #'
-#' @param survey Character. The CMHC survey code (e.g., `"Scss"`).
-#' @param series Character. The CMHC data series to retrieve (e.g., `"Starts"`).
-#' @param dimension Character. The breakdown dimension (e.g., `"Dwelling Type"`).
-#' @param geo_uid Character. The CMA GeoUID (e.g., `"24462"` for Montréal).
-#' @param year Character or numeric. The year of the data (format `"YYYY"`).
-#' @param month Character or numeric, optional. The month of the data (format `"MM"`). Use `NULL` for annual data.
+#' @param survey Character. CMHC survey code (e.g., `"Scss"`, `"Rms"`).
+#' @param series Character. Data series (e.g., `"Starts"`, `"Vacancy Rate"`).
+#' @param dimension Character. Breakdown dimension (e.g., `"Dwelling Type"`).
+#' @param geo_uid Character. CMA GeoUID (e.g., `"24462"` for Montréal).
+#' @param year Integer or character. Year of the data request.
+#' @param month Integer, character, or NULL. Optional month (1-12).
+#'   If NULL, retrieves annual data.
 #'
-#' @return A `data.frame` (tibble) of raw CMHC results, or `NULL` in case of error.
-cmhc_fetch_survey_zone_data <- function(
-  survey,
-  series,
-  dimension,
-  geo_uid,
-  year,
-  month = NULL
-) {
-  cmhc_with_retry(
+#' @return A `data.frame` from the CMHC API, or `NULL` on error or no data.
+cmhc_fetch_nbhd_data <- function(survey, series, dimension, geo_uid,
+                                 year, month = NULL) {
+  df <- cc.data:::cmhc_with_retry(
     function() {
       cmhc::get_cmhc(
-        survey = survey,
-        series = series,
+        survey    = survey,
+        series    = series,
         dimension = dimension,
-        breakdown = "Survey Zones",
-        geo_uid = geo_uid,
-        year = year,
-        month = month
+        breakdown = "Neighbourhoods",
+        geo_uid   = geo_uid,
+        year      = year,
+        month     = if (!is.null(month)) sprintf("%02d", as.integer(month)) else NULL
       )
     },
-    label = sprintf("SZ %s (%s-%s)", geo_uid, year, month %||% "--")
+    label = sprintf("NBHD %s (%s-%s)", geo_uid, year, month %||% "--")
   )
+  
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  df[!is.na(df$Neighbourhoods), ]
 }
 
-#' Attach GeoUID to raw CMHC Survey Zone data
+
+#' Reconcile CMHC Neighbourhood Names with Shapefile Names
 #'
-#' Matches `Survey Zones` from raw CMHC data with official survey zone references using fuzzy string matching,
-#' and attaches the corresponding `GeoUID` (`METZONE_UID`) for further processing.
+#' Applies the rules stored in `cc.data::cmhc_nbhd_matching` to translate
+#' API neighbourhood names to their shapefile equivalents. Rules are applied
+#' in three passes: exact match (vectorized), starts-with, and detect.
 #'
-#' @param df A raw CMHC data.frame that must contain a column named `"Survey Zones"`.
-#' @param survey_zones_ref A reference table (data.frame) with columns `"ZONE_NAME_EN"` and `"METZONE_UID"`.
-#' @param max_dist Integer. Maximum Levenshtein distance allowed for fuzzy matching (default is 3).
+#' @param df A `data.frame` containing a column with neighbourhood names.
+#' @param name_col Character. Name of the column containing neighbourhood
+#'   names (default `"Neighbourhoods"`).
 #'
-#' @return A `data.frame` with an added column `GeoUID`. Returns `NULL` if input is empty or unmatched.
-cmhc_attach_zone_geouid <- function(df, survey_zones_ref, max_dist = 3) {
-  if (is.null(df) || nrow(df) == 0) {
-    return(NULL)
+#' @return The input `data.frame` with `name_col` values replaced by their
+#'   matched shapefile equivalents.
+cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
+  if (is.null(df) || nrow(df) == 0) return(df)
+  if (!name_col %in% names(df)) return(df)
+  
+  rules <- cc.data::cmhc_nbhd_matching
+  
+  # Pass 1: exact match (vectorized)
+  exact_rules <- rules[rules$match_type == "exact", c("name_api", "name_shp")]
+  df <- df |>
+    dplyr::left_join(exact_rules, by = stats::setNames("name_api", name_col)) |>
+    dplyr::mutate(
+      !!name_col := dplyr::coalesce(name_shp, .data[[name_col]])
+    ) |>
+    dplyr::select(-name_shp)
+  
+  # Pass 2: starts-with
+  starts_rules <- rules[rules$match_type == "starts", ]
+  for (i in seq_len(nrow(starts_rules))) {
+    idx <- stringr::str_starts(df[[name_col]],
+                               stringr::fixed(starts_rules$name_api[i]))
+    idx[is.na(idx)] <- FALSE
+    df[[name_col]][idx] <- starts_rules$name_shp[i]
   }
-  stopifnot(
-    "Survey Zones" %in% names(df),
-    all(c("ZONE_NAME_EN", "METZONE_UID") %in% colnames(survey_zones_ref))
-  )
-
-  df <- dplyr::filter(df, !is.na(`Survey Zones`))
-  if (nrow(df) == 0) {
-    return(NULL)
+  
+  # Pass 3: detect (substring)
+  detect_rules <- rules[rules$match_type == "detect", ]
+  for (i in seq_len(nrow(detect_rules))) {
+    idx <- stringr::str_detect(df[[name_col]],
+                               stringr::fixed(detect_rules$name_api[i]))
+    idx[is.na(idx)] <- FALSE
+    df[[name_col]][idx] <- detect_rules$name_shp[i]
   }
-
-  zone_names <- unique(df$`Survey Zones`)
-
-  clean_zone_name <- function(name) {
-    name |>
-      stringr::str_to_lower() |>
-      stringr::str_replace_all("[éèêë]", "e") |>
-      stringr::str_replace_all("[àâä]", "a") |>
-      stringr::str_replace_all("[ç]", "c") |>
-      stringr::str_replace_all("[^a-z0-9]", "") |>
-      stringr::str_trim()
-  }
-
-  input_df <- tibble::tibble(
-    zone_raw = zone_names,
-    zone_clean = clean_zone_name(zone_names)
-  )
-  ref_df <- dplyr::mutate(
-    survey_zones_ref,
-    zone_clean = clean_zone_name(ZONE_NAME_EN)
-  )
-
-  matched <- fuzzyjoin::stringdist_inner_join(
-    input_df,
-    ref_df,
-    by = "zone_clean",
-    method = "lv",
-    max_dist = max_dist,
-    distance_col = "dist"
-  ) |>
-    dplyr::group_by(zone_raw) |>
-    dplyr::slice_min(order_by = dist, n = 1, with_ties = FALSE) |>
-    dplyr::ungroup() |>
-    dplyr::select(zone_raw, METZONE_UID)
-
-  dplyr::left_join(df, matched, by = c("Survey Zones" = "zone_raw")) |>
-    dplyr::rename(GeoUID = METZONE_UID)
+  
+  df
 }
 
-#' Retrieve Annual CMHC Data for Survey Zones
+
+#' Attach GeoUID to CMHC Neighbourhood-level Data
 #'
-#' Downloads, cleans, reshapes, and merges annual CMHC data for survey zones associated with selected parent CMAs.
-#' This function runs in parallel over all requested parent CMA GeoUIDs and returns data harmonized by zone and year.
+#' Joins API neighbourhood data with the harmonized shapefile bundle to add a
+#' stable `GeoUID = paste0(CMA, NBHDCODE)`. Selects the shapefile vintage
+#' based on `year`: 2010-2022 use the year-specific shp, 2023+ fall back to
+#' the 2022 shp (empirically 100% match validated through 2026).
 #'
-#' @param requests A list of request objects. Each must include the following elements:
-#'   - `survey`: Character. The CMHC survey code (e.g., `"Scss"`).
-#'   - `series`: Character. The data series (e.g., `"Starts"`).
-#'   - `dimension`: Character. The breakdown dimension (e.g., `"Dwelling Type"`).
-#'   - `years`: Integer vector. List of years to request (e.g., `2010:2024`).
-#' @param survey_zones_ref A reference `data.frame` with columns `ZONE_NAME_EN` and `METZONE_UID`, used to attach unique `GeoUID` to each zone.
+#' Rows whose `Neighbourhoods` value cannot be matched after upstream renames
+#' are dropped silently.
 #'
-#' @return A named list with element `survey_zone`, containing one cleaned `data.frame` per variable requested.
-#'         Each data.frame has one row per survey zone (`id`), and one column per year (e.g., `starts_dwelling_type_all_2010`, ...).
+#' @param df A `data.frame` with a `Neighbourhoods` column (typically the
+#'   output of `cmhc_apply_nbhd_renames()`).
+#' @param year Integer or character. Data year, used to pick the shapefile.
+#' @param geo_uid Character. CMA GeoUID used to filter the shapefile.
+#' @param qsm_path Character. Path to the `.qsm` bundle of harmonized
+#'   shapefiles (`CMA` column = StatCan geo_uid).
+#'
+#' @return The input `data.frame` with an added `GeoUID` column, or `NULL`
+#'   if no rows can be matched.
+cmhc_attach_nbhd_id <- function(df, year, geo_uid, qsm_path) {
+  if (missing(qsm_path) || is.null(qsm_path) || !nzchar(qsm_path)) {
+    stop("Argument `qsm_path` is required.")
+  }
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  
+  yr <- as.integer(year)
+  shp_year <- if (yr >= 2023) 2022L else yr
+  obj_name <- paste0("cmhc_nbhd_", shp_year)
+  
+  env <- new.env()
+  qs::qload(qsm_path, env = env)
+  if (!exists(obj_name, envir = env)) {
+    warning(sprintf("Shapefile %s not found in %s", obj_name, qsm_path))
+    return(NULL)
+  }
+  
+  shp <- get(obj_name, envir = env) |>
+    sf::st_drop_geometry() |>
+    dplyr::filter(CMA == as.character(geo_uid)) |>
+    dplyr::transmute(
+      Neighbourhoods = NBHDNAME_E,
+      GeoUID = paste0(CMA, NBHDCODE)
+    ) |>
+    dplyr::filter(!is.na(Neighbourhoods))
+  
+  if (nrow(shp) == 0) return(NULL)
+  
+  out <- dplyr::inner_join(df, shp, by = "Neighbourhoods")
+  if (nrow(out) == 0) return(NULL)
+  out
+}
+
+
+#' Retrieve Annual CMHC Data at the Neighbourhood Level
+#'
+#' Downloads, cleans, reshapes, and combines annual CMHC neighbourhood-level
+#' data for a set of CMAs across one or more years. The CMHC API does not
+#' support `breakdown = "Historical Time Periods"` for Neighbourhoods (it
+#' returns aggregated totals with no time dimension), so each task is one
+#' (CMA × request × year) combination — same pattern as
+#' [cmhc_get_ct_by_cma()] and [cmhc_get_annual_survey_zone()].
+#'
+#' For each task, the worker:
+#' \enumerate{
+#'   \item Fetches raw data via [cmhc_fetch_nbhd_data()].
+#'   \item Reconciles neighbourhood names via [cmhc_apply_nbhd_renames()]
+#'         using [cmhc_nbhd_matching].
+#'   \item Attaches a stable `GeoUID` (`paste0(CMA, NBHDCODE)`) via
+#'         [cmhc_attach_nbhd_id()].
+#'   \item Cleans and reshapes via [cmhc_clean_results()] /
+#'         [cmhc_reshape_results()].
+#'   \item Tags `geo_vintage = "2026"` (reference geography for
+#'         neighbourhoods, analogous to `"2021"` for CSD/CMA/CT levels).
+#' }
+#'
+#' @param requests A list of request objects. Each must include `survey`,
+#'   `series`, `dimension`, and `years` (numeric vector, e.g. `2010:2026`).
+#' @param cma_uids Character vector of CMA GeoUIDs (e.g. `"24462"`).
+#' @param qsm_path Character. Path to the `.qsm` bundle of harmonized
+#'   shapefiles.
+#' @param output_dir Optional. Directory (or S3 prefix) for caching per-task
+#'   `.qs` files.
+#'
+#' @return A named list `nbhd` containing reshaped data frames for each
+#'   variable. If `output_dir` is set, returns the path instead.
 #' @export
-cmhc_get_annual_survey_zone <- function(
-  requests,
-  survey_zones_ref,
-  output_dir = NULL
-) {
-  cma_uids <- cmhc_get_geo_uids("cma")
-  tasks <- cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
-
+cmhc_get_annual_nbhd <- function(requests, cma_uids, qsm_path,
+                                 output_dir = NULL) {
+  if (missing(qsm_path) || is.null(qsm_path) || !nzchar(qsm_path)) {
+    stop("Argument `qsm_path` is required.")
+  }
+  if (!file.exists(qsm_path)) {
+    stop(sprintf("Shapefile bundle not found at: %s", qsm_path))
+  }
+  
+  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
+  
   .worker <- function(geo_uid, req_idx, year) {
     req <- requests[[req_idx]]
-    raw <- cmhc_fetch_survey_zone_data(
-      req$survey,
-      req$series,
-      req$dimension,
-      geo_uid,
-      year
+    
+    raw <- cmhc_fetch_nbhd_data(
+      req$survey, req$series, req$dimension,
+      geo_uid = geo_uid, year = year
     )
-    if (is.null(raw) || nrow(raw) == 0) {
-      return(NULL)
-    }
-
-    raw <- cmhc_attach_zone_geouid(raw, survey_zones_ref)
-    if (is.null(raw) || !"GeoUID" %in% names(raw)) {
-      return(NULL)
-    }
-
-    cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
-    if (is.null(cleaned)) {
-      return(NULL)
-    }
-
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    raw <- cmhc_apply_nbhd_renames(raw)
+    raw <- cmhc_attach_nbhd_id(raw, year = year, geo_uid = geo_uid,
+                               qsm_path = qsm_path)
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+    if (is.null(cleaned)) return(NULL)
+    
     reshaped <- cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
-    if (length(reshaped) == 0) {
-      return(NULL)
-    }
-
-    # geo_vintage = "2021" — see methodological note in cmhc_get_annual_cma.
-    # We query with 2021 IDs; CMHC returns data on those same IDs for all years.
+    if (length(reshaped) == 0) return(NULL)
+    
     lapply(reshaped, \(df) {
-      df$geo_vintage <- "2021"
+      df$geo_vintage <- "2026"
       df
     })
   }
-
-  collected <- cmhc_run_and_collect(
-    tasks,
-    .worker,
+  
+  collected <- cc.data:::cmhc_run_and_collect(
+    tasks, .worker,
     par_env_objs = list(
       requests = requests,
-      survey_zones_ref = survey_zones_ref,
-      cmhc_with_retry = cmhc_with_retry,
-      cmhc_fetch_survey_zone_data = cmhc_fetch_survey_zone_data,
-      cmhc_attach_zone_geouid = cmhc_attach_zone_geouid,
-      cmhc_clean_results = cmhc_clean_results,
-      cmhc_reshape_results = cmhc_reshape_results,
-      cmhc_clean_names = cmhc_clean_names,
-      CMHC_PCT_SERIES = CMHC_PCT_SERIES
+      qsm_path = qsm_path,
+      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_fetch_nbhd_data = cmhc_fetch_nbhd_data,
+      cmhc_apply_nbhd_renames = cmhc_apply_nbhd_renames,
+      cmhc_attach_nbhd_id = cmhc_attach_nbhd_id,
+      cmhc_clean_results = cc.data:::cmhc_clean_results,
+      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
+      cmhc_clean_names = cc.data:::cmhc_clean_names,
+      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
     ),
     output_dir = output_dir,
-    label = "cmhc_get_annual_survey_zone"
+    label = "cmhc_get_annual_nbhd"
   )
-  if (is.character(collected)) {
-    return(collected)
-  }
-  list(survey_zone = cmhc_finalize_results(collected))
+  if (is.character(collected)) return(collected)
+  list(nbhd = cc.data:::cmhc_finalize_results(collected))
 }
 
-#' Retrieve Monthly CMHC Data for Survey Zones
-#'
-#' Downloads, cleans, reshapes, and merges monthly CMHC data for survey zones associated with selected parent CMAs.
-#' Runs in parallel over all parent CMA GeoUIDs and time combinations.
-#'
-#' @param requests A list of request objects. Each must include the following elements:
-#'   - `survey`: Character. The CMHC survey code (e.g., `"Scss"`).
-#'   - `series`: Character. The data series (e.g., `"Starts"`).
-#'   - `dimension`: Character. The breakdown dimension (e.g., `"Dwelling Type"`).
-#'   - `years`: Integer vector. Years to request (e.g., `2015:2024`).
-#'   - `months`: Character or integer vector of two-digit months (e.g., `sprintf("%02d", 1:12)`).
-#' @param survey_zones_ref A reference `data.frame` with columns `ZONE_NAME_EN` and `METZONE_UID`, used to match and attach GeoUIDs.
-#'
-#' @return A named list with element `survey_zone`, containing one cleaned `data.frame` per variable requested.
-#'         Each data.frame has one row per survey zone (`id`), and one column per month (e.g., `starts_dwelling_type_all_201501`).
-#' @export
-cmhc_get_monthly_survey_zone <- function(
-  requests,
-  survey_zones_ref,
-  output_dir = NULL
-) {
-  cma_uids <- cmhc_get_geo_uids("cma")
-  tasks <- cmhc_build_tasks(
-    cma_uids,
-    requests,
-    expand_years = TRUE,
-    expand_months = TRUE
-  )
 
+#' Retrieve Monthly CMHC Data at the Neighbourhood Level
+#'
+#' Like [cmhc_get_annual_nbhd()] but expands over both years AND months.
+#' Each task is one (CMA × request × year × month) combination, requiring
+#' significantly more API calls (~12x as many as annual). Use with
+#' `output_dir` for caching when running large month ranges.
+#'
+#' @param requests A list of request objects. Each must include `survey`,
+#'   `series`, `dimension`, `years` (numeric vector), and `months`
+#'   (character or integer vector, e.g. `sprintf("%02d", 1:12)`).
+#' @param cma_uids Character vector of CMA GeoUIDs.
+#' @param qsm_path Character. Path to the `.qsm` bundle of harmonized
+#'   shapefiles.
+#' @param output_dir Optional. Directory (or S3 prefix) for caching per-task
+#'   `.qs` files.
+#'
+#' @return A named list `nbhd` containing reshaped data frames for each
+#'   variable, with monthly `time` values (e.g. `"202210"`).
+#' @export
+cmhc_get_monthly_nbhd <- function(requests, cma_uids, qsm_path,
+                                  output_dir = NULL) {
+  if (missing(qsm_path) || is.null(qsm_path) || !nzchar(qsm_path)) {
+    stop("Argument `qsm_path` is required.")
+  }
+  if (!file.exists(qsm_path)) {
+    stop(sprintf("Shapefile bundle not found at: %s", qsm_path))
+  }
+  
+  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests,
+                            expand_years = TRUE, expand_months = TRUE)
+  
   .worker <- function(geo_uid, req_idx, year, month) {
     req <- requests[[req_idx]]
-    raw <- cmhc_fetch_survey_zone_data(
-      req$survey,
-      req$series,
-      req$dimension,
-      geo_uid,
-      year,
-      month
+    
+    raw <- cmhc_fetch_nbhd_data(
+      req$survey, req$series, req$dimension,
+      geo_uid = geo_uid, year = year, month = month
     )
-    if (is.null(raw) || nrow(raw) == 0) {
-      return(NULL)
-    }
-
-    raw <- cmhc_attach_zone_geouid(raw, survey_zones_ref)
-    if (is.null(raw) || !"GeoUID" %in% names(raw)) {
-      return(NULL)
-    }
-
-    cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
-    if (is.null(cleaned)) {
-      return(NULL)
-    }
-
-    reshaped <- cmhc_reshape_results(cleaned, req$dimension)
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    raw <- cmhc_apply_nbhd_renames(raw)
+    raw <- cmhc_attach_nbhd_id(raw, year = year, geo_uid = geo_uid,
+                               qsm_path = qsm_path)
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+    if (is.null(cleaned)) return(NULL)
+    
+    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
-    if (length(reshaped) == 0) {
-      return(NULL)
-    }
-
-    # geo_vintage = "2021" — see methodological note in cmhc_get_annual_cma.
-    # We query with 2021 IDs; CMHC returns data on those same IDs for all years.
+    if (length(reshaped) == 0) return(NULL)
+    
     lapply(reshaped, \(df) {
-      df$geo_vintage <- "2021"
+      df$geo_vintage <- "2026"
       df
     })
   }
-
-  collected <- cmhc_run_and_collect(
-    tasks,
-    .worker,
+  
+  collected <- cc.data:::cmhc_run_and_collect(
+    tasks, .worker,
     par_env_objs = list(
       requests = requests,
-      survey_zones_ref = survey_zones_ref,
-      cmhc_with_retry = cmhc_with_retry,
-      cmhc_fetch_survey_zone_data = cmhc_fetch_survey_zone_data,
-      cmhc_attach_zone_geouid = cmhc_attach_zone_geouid,
-      cmhc_clean_results = cmhc_clean_results,
-      cmhc_reshape_results = cmhc_reshape_results,
-      cmhc_clean_names = cmhc_clean_names,
-      CMHC_PCT_SERIES = CMHC_PCT_SERIES
+      qsm_path = qsm_path,
+      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_fetch_nbhd_data = cmhc_fetch_nbhd_data,
+      cmhc_apply_nbhd_renames = cmhc_apply_nbhd_renames,
+      cmhc_attach_nbhd_id = cmhc_attach_nbhd_id,
+      cmhc_clean_results = cc.data:::cmhc_clean_results,
+      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
+      cmhc_clean_names = cc.data:::cmhc_clean_names,
+      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
     ),
     output_dir = output_dir,
-    label = "cmhc_get_monthly_survey_zone"
+    label = "cmhc_get_monthly_nbhd"
   )
-  if (is.character(collected)) {
-    return(collected)
-  }
-  list(survey_zone = cmhc_finalize_results(collected))
+  if (is.character(collected)) return(collected)
+  list(nbhd = cc.data:::cmhc_finalize_results(collected))
 }

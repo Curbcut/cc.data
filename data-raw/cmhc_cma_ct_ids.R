@@ -7,3 +7,4 @@ cma_ct_ids <- cancensus::get_census(dataset='CA21', regions=list(C="01"),
 
 usethis::use_data(cma_ct_ids, overwrite = TRUE)
 
+
