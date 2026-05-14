@@ -2,16 +2,40 @@
 % Please edit documentation in R/foursquare_poi.R
 \name{foursquare_get_canada}
 \alias{foursquare_get_canada}
-\title{Get All Foursquare POIs in Canada}
+\title{Retrieve Foursquare POIs for Canada}
 \usage{
-foursquare_get_canada(conn)
+foursquare_get_canada(conn, categorize = FALSE, active_only = categorize)
 }
 \arguments{
-\item{conn}{A database connection object from \code{foursquare_connect}.}
+\item{conn}{A \code{DBI} connection from \code{\link[=foursquare_connect]{foursquare_connect()}}.}
+
+\item{categorize}{Logical. If TRUE, assigns each POI to a Curbcut category
+and drops uncategorized rows.}
+
+\item{active_only}{Logical. If TRUE, excludes POIs with a non-NULL
+\code{date_closed}. Defaults to TRUE when \code{categorize = TRUE} (matches the new
+destination-extraction workflow) and FALSE when \code{categorize = FALSE}
+(matches legacy evolution workflow, which needs closure dates).}
 }
 \value{
-A data frame containing POI attributes including id, name, category, coordinates, location, and dates.
+A data frame. Always includes \code{fsq_place_id}, \code{name}, \code{latitude},
+\code{longitude}, \code{locality}, \code{region}, \code{country}. When \code{categorize = FALSE},
+adds \code{fsq_category_labels}, \code{date_created}, \code{date_refreshed},
+\code{date_closed}. When \code{categorize = TRUE}, adds \code{address}, \code{postcode},
+\code{fsq_category_labels}, \code{curbcut_type}.
 }
 \description{
-Retrieves all Points of Interest (POIs) from the Foursquare open source database for Canada.
+Pulls all Points of Interest from \code{FSQ_OPEN_SOURCE_PLACES.FSQ_OS.PLACES}
+where \code{country = 'CA'}. Two modes:
+}
+\details{
+\itemize{
+\item \code{categorize = FALSE} (legacy mode): returns every Canadian POI
+with \code{date_created}, \code{date_refreshed}, \code{date_closed} — suitable for
+time-series counts via \code{\link[=poi_data]{poi_data()}}.
+\item \code{categorize = TRUE} (recommended): adds a \code{curbcut_type} column
+(one of the 12 Curbcut categories) using \code{\link[=foursquare_categorize_sql]{foursquare_categorize_sql()}},
+filters to POIs assigned a category, and excludes closed POIs.
+Suitable for per-category counts or static destination uploads.
+}
 }

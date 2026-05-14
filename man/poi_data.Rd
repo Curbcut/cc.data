@@ -2,19 +2,40 @@
 % Please edit documentation in R/foursquare_poi.R
 \name{poi_data}
 \alias{poi_data}
-\title{Process POI Evolution}
+\title{Compute yearly cumulative POI counts for one geography}
 \usage{
-poi_data(poi_df, geo_sf)
+poi_data(poi_df, geo_sf, categorize = FALSE)
 }
 \arguments{
-\item{poi_df}{A data frame of Foursquare POIs with geographic coordinates and creation/closure dates.}
+\item{poi_df}{A data frame of POIs (typically from
+\code{\link[=foursquare_get_canada]{foursquare_get_canada()}} in legacy mode).}
 
-\item{geo_sf}{An sf object containing geographic boundaries (must include \code{id}, \code{ID}, or \code{geouid}).}
+\item{geo_sf}{An \code{sf} polygon layer with \code{geouid}, \code{ID}, or \code{id}.}
+
+\item{categorize}{Logical. If TRUE and \code{poi_df} has a category
+column (\code{CURBCUT_TYPE} or \code{category}), counts are computed per
+category. Default FALSE.}
 }
 \value{
-A wide-format data frame of yearly POI totals by region, with \code{id}.
+A wide-format data frame: \code{id}, optionally \code{category},
+then one column per year named \code{point_of_interest_<year>}.
 }
 \description{
-Matches POI data to geographic boundaries using spatial index
-and calculates yearly cumulative POI counts.
+Spatially assigns each POI to a geographic unit, then computes a yearly
+cumulative count: \verb{poi_added − poi_closed}, accumulated over time.
+}
+\details{
+Two modes:
+\itemize{
+\item \strong{Total mode} (default): one column per year, named
+\code{point_of_interest_<year>}. Shape: \code{id × years}.
+\item \strong{Per-category mode} (when \code{poi_df} has a
+\code{CURBCUT_TYPE} or \code{category} column, and
+\code{categorize = TRUE}): an extra \code{category} column;
+one row per (id, category). Shape: \code{(id × category) × years}.
+}
+
+Required columns in \code{poi_df}: \code{LONGITUDE}, \code{LATITUDE},
+\code{DATE_CREATED}, \code{DATE_CLOSED}. Closure dates may be \code{NA}
+for still-active POIs.
 }

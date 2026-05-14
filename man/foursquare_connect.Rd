@@ -2,13 +2,32 @@
 % Please edit documentation in R/foursquare_poi.R
 \name{foursquare_connect}
 \alias{foursquare_connect}
-\title{Connect to Foursquare Database}
+\title{Connect to the Foursquare Snowflake database}
 \usage{
-foursquare_connect()
+foursquare_connect(passcode = NULL, warehouse = "COMPUTE_WH")
+}
+\arguments{
+\item{passcode}{Optional MFA passcode (character). If \code{NULL}, the connection
+is opened without an \code{Authenticator}/\code{PASSCODE} field — appropriate for
+accounts without MFA.}
+
+\item{warehouse}{Snowflake warehouse name. Defaults to \code{"COMPUTE_WH"}.}
 }
 \value{
-A database connection object.
+A \code{DBI} connection object.
 }
 \description{
-Establishes a connection to the Snowflake Foursquare database using environment variables.
+Opens an ODBC connection to the Foursquare Open Source Places dataset on
+Snowflake. Credentials are read from environment variables. The MFA passcode
+(if MFA is enabled on the account) can be supplied via \code{passcode}.
+}
+\details{
+Required environment variables:
+\itemize{
+\item \code{SNOWFLAKE_SERVER}
+\item \code{SNOWFLAKE_UID}
+\item \code{SNOWFLAKE_PWD}
+\item \code{SNOWFLAKE_DB}
+\item \code{SNOWFLAKE_SCHEMA}
+}
 }

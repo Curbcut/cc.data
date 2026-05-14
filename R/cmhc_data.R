@@ -2940,3 +2940,449 @@ cmhc_get_monthly_nbhd <- function(requests, cma_uids, qsm_path,
   if (is.character(collected)) return(collected)
   list(nbhd = cc.data:::cmhc_finalize_results(collected))
 }
+
+
+# ============================================================================
+# CMHC Survey Zone-level functions
+#
+# Pipeline mirrors cmhc_get_annual_nbhd() / cmhc_get_ct_by_cma():
+#   - One task = (CMA × request × year [× month])
+#   - Worker: fetch -> attach met_code -> match name to zone_id -> clean -> reshape
+#   - geo_vintage = "2026" (reference geo for survey zones)
+#   - GeoUID = survey_zone_geographic_layer_id (official CMHC ID, e.g. "106001")
+#
+# Geometry reconstruction follows David Wachsmuth's method (intersection
+# NBHD x reference zone with overlap >= 50%) and is performed offline
+# against the year-specific NBHD shapefile bundle. The output Zone
+# shapefile bundle is consumed downstream; this file only handles data.
+# ============================================================================
+
+
+#' Build CMA UID -> MET_CODE Mapping from CMHC ArcGIS Layer
+#'
+#' Queries CMHC's metropolitan layer (HMIP_CURRENT_CAWD MapServer/4) and
+#' constructs the cma_uid -> met_code mapping using
+#' \code{paste0(PRUID, sgc_cma_ca_cde)} as the StatCan-style CMA UID and
+#' \code{metropolitan_major_area_cde} as the CMHC MET_CODE.
+#'
+#' This is more complete than \code{cmhc::cmhc_cma_translation_data}
+#' (153 entries), capturing the full set of CMA/CAs (~221) including
+#' all CA-level mappings.
+#'
+#' @return A data.frame with columns \code{cma_uid} and \code{met_code}.
+#' @export
+cmhc_get_cma_to_met <- function() {
+  layer <- arcgislayers::arc_open(
+    paste0(
+      "https://geospatial.cmhc-schl.gc.ca/server/rest/services/",
+      "CMHC_APPS/HMIP_CURRENT_CAWD/MapServer/4"
+    )
+  )
+  raw <- arcgislayers::arc_select(layer, n_max = 99999) |>
+    sf::st_drop_geometry()
+  
+  data.frame(
+    cma_uid  = paste0(raw$PRUID, raw$sgc_cma_ca_cde),
+    met_code = raw$metropolitan_major_area_cde,
+    stringsAsFactors = FALSE
+  ) |>
+    dplyr::distinct()
+}
+
+
+#' Fetch CMHC Data at the Survey Zone Level
+#'
+#' Wraps \code{cmhc::get_cmhc(breakdown = "Survey Zones")} with retry
+#' logic and drops rows where \code{Survey Zones} is NA (CMA-total
+#' aggregate rows).
+#'
+#' @param survey Character. CMHC survey code (e.g., \code{"Rms"}).
+#' @param series Character. Data series (e.g., \code{"Vacancy Rate"}).
+#' @param dimension Character. Breakdown dimension (e.g., \code{"Bedroom Type"}).
+#' @param geo_uid Character. CMA GeoUID (e.g., \code{"24462"}).
+#' @param year Integer or character. Year of the data request.
+#' @param month Integer, character, or NULL. Optional month (1-12).
+#'
+#' @return A \code{data.frame} from the CMHC API, or \code{NULL} on
+#'   error or no data.
+cmhc_fetch_zone_data <- function(survey, series, dimension, geo_uid,
+                                 year, month = NULL) {
+  df <- cc.data:::cmhc_with_retry(
+    function() {
+      cmhc::get_cmhc(
+        survey    = survey,
+        series    = series,
+        dimension = dimension,
+        breakdown = "Survey Zones",
+        geo_uid   = geo_uid,
+        year      = year,
+        month     = if (!is.null(month)) sprintf("%02d", as.integer(month)) else NULL
+      )
+    },
+    label = sprintf("ZONE %s (%s-%s)", geo_uid, year, month %||% "--")
+  )
+  
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  df[!is.na(df$`Survey Zones`), ]
+}
+
+
+#' Normalize a Survey Zone Name for Matching
+#'
+#' Applies a sequence of transformations to a zone name so that variants
+#' from the CMHC API and the shapefile can be matched. Order matters:
+#' parens are stripped first, then "Remainder of X CMA" patterns are
+#' normalized (BEFORE suffix stripping removes the trailing CMA/CA),
+#' then StatCan SGC suffixes (V/T/MU/MD/etc.) are removed, accents are
+#' transliterated, and the result is lowercased.
+#'
+#' @param x Character vector of zone names.
+#' @param strip_parens Logical. Strip parenthesised content (default TRUE).
+#' @param strip_suffix Logical. Strip SGC suffixes (default TRUE).
+#'
+#' @return Character vector of normalized names.
+cmhc_normalize_zone_name <- function(x, strip_parens = TRUE,
+                                     strip_suffix = TRUE) {
+  x <- ifelse(is.na(x), "", x)
+  x <- stringi::stri_trans_nfc(x)
+  x <- stringi::stri_replace_all_regex(x, "[\u2010-\u2015\u2212]", "-")
+  x <- gsub("[\u2018\u2019\u02BC]", "'", x)
+  
+  if (strip_parens) {
+    x <- gsub("\\(([^)]+)\\)", "\\1", x, perl = TRUE)
+  }
+  
+  # Remainder normalization MUST come BEFORE suffix stripping
+  x <- sub("(?i)^remainder of .+ cma$", "Remainder of CMA", x, perl = TRUE)
+  x <- sub("(?i)^remainder of .+ ca$",  "Remainder of CA",  x, perl = TRUE)
+  x <- sub("(?i)^remainder of city of .+$", "Remainder of City", x, perl = TRUE)
+  
+  if (strip_suffix) {
+    x <- sub("\\s+(V|T|TP|CY|M|MÉ|ME|MU|MD|SM|RM|RGM|DM|SC|RDA)$", "", x)
+  }
+  
+  x <- gsub("\\s+", " ", x)
+  tolower(trimws(stringi::stri_trans_general(x, "Latin-ASCII")))
+}
+
+
+#' Match an API Survey Zone Name to a Shapefile zone_id
+#'
+#' Uses a 3-pass matching strategy against a normalized lookup of the
+#' CMHC reference shapefile:
+#' \enumerate{
+#'   \item Exact match (or first-part split on "/") within the same MET_CODE.
+#'   \item Exact match across all MET_CODEs -- prefers MET_CODEs with the
+#'         fewest zones (single-zone CMAs like Joliette, Drummondville).
+#'   \item Fuzzy match within same MET_CODE (Levenshtein <= 4 &
+#'         Jaro-Winkler >= 0.85).
+#' }
+#'
+#' @param zone_name Character. The API zone name to match.
+#' @param met_code Character. The CMA's MET_CODE (from CMHC translation).
+#' @param zones_lookup A data.frame with columns \code{zone_id},
+#'   \code{met_code}, \code{zone_name}, and pre-computed \code{n_norm}.
+#'
+#' @return A list with \code{zone_id}, \code{met_code}, and \code{method}.
+cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
+  zn <- cmhc_normalize_zone_name(zone_name)
+  parts <- trimws(strsplit(zone_name, "/", fixed = TRUE)[[1]])
+  zn_first <- cmhc_normalize_zone_name(parts[1])
+  
+  keys <- unique(c(zn, zn_first))
+  keys <- keys[nzchar(keys)]
+  
+  if (length(keys) == 0) {
+    return(list(zone_id = NA_character_, met_code = met_code,
+                method = NA_character_))
+  }
+  
+  # PASS 1: same MET
+  hit <- zones_lookup[
+    zones_lookup$met_code == met_code & zones_lookup$n_norm %in% keys, ,
+    drop = FALSE
+  ]
+  if (nrow(hit) > 0) {
+    return(list(zone_id = hit$zone_id[1], met_code = hit$met_code[1],
+                method = "pass1_same_met"))
+  }
+  
+  # PASS 2: any MET — prefer MET_CODE with fewest zones
+  hit2 <- zones_lookup[zones_lookup$n_norm %in% keys, , drop = FALSE]
+  if (nrow(hit2) > 0) {
+    met_zone_counts <- table(zones_lookup$met_code)
+    hit2$n_zones_in_met <- as.integer(met_zone_counts[hit2$met_code])
+    hit2 <- hit2[order(hit2$n_zones_in_met), , drop = FALSE]
+    return(list(zone_id = hit2$zone_id[1], met_code = hit2$met_code[1],
+                method = "pass2_any_met"))
+  }
+  
+  # PASS 3: fuzzy in same MET
+  cand <- zones_lookup[zones_lookup$met_code == met_code, , drop = FALSE]
+  if (nrow(cand) > 0 && nzchar(zn)) {
+    lv <- stringdist::stringdist(zn, cand$n_norm, method = "lv")
+    jw <- 1 - stringdist::stringdist(zn, cand$n_norm, method = "jw", p = 0.1)
+    ok <- which(lv <= 4 & jw >= 0.85)
+    if (length(ok) > 0) {
+      pick <- ok[order(lv[ok], -jw[ok])][1]
+      return(list(zone_id = cand$zone_id[pick],
+                  met_code = cand$met_code[pick],
+                  method = sprintf("pass3_fuzzy_lv%d", lv[pick])))
+    }
+  }
+  
+  list(zone_id = NA_character_, met_code = met_code, method = NA_character_)
+}
+
+
+#' Attach GeoUID to CMHC Survey Zone-level Data
+#'
+#' Matches the API zone name against the CMHC reference shapefile to get
+#' the official \code{survey_zone_geographic_layer_id} (used as GeoUID),
+#' then filters to rows that successfully matched.
+#'
+#' @param df A \code{data.frame} with a \code{Survey Zones} column and a
+#'   \code{met_code} column.
+#' @param zones_lookup A data.frame produced by \code{.cmhc_zone_lookup()}.
+#'
+#' @return The input \code{data.frame} with added \code{GeoUID} and
+#'   \code{match_method} columns, filtered to matched rows.
+cmhc_attach_zone_id <- function(df, zones_lookup) {
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  if (!"Survey Zones" %in% names(df)) return(NULL)
+  if (!"met_code" %in% names(df)) {
+    stop("`df` must have a `met_code` column (CMA -> MET_CODE).")
+  }
+  
+  matches <- lapply(seq_len(nrow(df)), function(i) {
+    cmhc_match_zone_name(
+      zone_name    = df$`Survey Zones`[i],
+      met_code     = df$met_code[i],
+      zones_lookup = zones_lookup
+    )
+  })
+  
+  df$GeoUID       <- vapply(matches, function(m) m$zone_id, character(1))
+  df$match_method <- vapply(matches, function(m) m$method %||% NA_character_,
+                            character(1))
+  
+  out <- df[!is.na(df$GeoUID), , drop = FALSE]
+  if (nrow(out) == 0) return(NULL)
+  out
+}
+
+
+#' Build the CMHC Zone Reference Lookup (Internal)
+#'
+#' Pulls the CMHC ArcGIS CURRENT Survey Zone layer (520 zones, most
+#' complete reference, more complete than
+#' \code{cmhc::get_cmhc_geography(level = "ZONE")}) and pre-computes the
+#' normalized name column used for matching.
+#'
+#' @return A \code{data.frame} (no geometry) with columns:
+#'   \code{zone_id}, \code{met_code}, \code{zone_code}, \code{zone_name},
+#'   \code{zone_name_fr}, \code{n_norm}.
+.cmhc_zone_lookup <- function() {
+  layer <- arcgislayers::arc_open(
+    paste0(
+      "https://geospatial.cmhc-schl.gc.ca/server/rest/services/",
+      "CMHC_APPS/HMIP_CURRENT_CAWD/MapServer/2"
+    )
+  )
+  zones <- arcgislayers::arc_select(layer, n_max = 99999)
+  
+  zones |>
+    sf::st_drop_geometry() |>
+    dplyr::transmute(
+      zone_id      = survey_zone_geographic_layer_id,
+      met_code     = metropolitan_major_area_cde,
+      zone_code    = survey_zone_cde,
+      zone_name    = survey_zone_current_nm_en,
+      zone_name_fr = survey_zone_current_nm_fr
+    ) |>
+    dplyr::mutate(n_norm = cmhc_normalize_zone_name(zone_name))
+}
+
+
+#' Retrieve Annual CMHC Data at the Survey Zone Level
+#'
+#' Downloads, matches, cleans, reshapes, and combines annual CMHC Survey
+#' Zone-level data for a set of CMAs across one or more years. The CMHC
+#' API does not support \code{breakdown = "Historical Time Periods"} for
+#' Survey Zones, so each task is one (CMA x request x year) combination
+#' -- same pattern as \code{\link{cmhc_get_annual_nbhd}} and
+#' \code{\link{cmhc_get_ct_by_cma}}.
+#'
+#' For each task, the worker:
+#' \enumerate{
+#'   \item Fetches raw data via \code{cmhc_fetch_zone_data()}.
+#'   \item Joins \code{cma_uid -> met_code} from the CMHC mapping.
+#'   \item Matches each zone name to its official
+#'         \code{survey_zone_geographic_layer_id} via
+#'         \code{cmhc_attach_zone_id()} (3-pass matcher).
+#'   \item Cleans and reshapes via \code{cmhc_clean_results()} /
+#'         \code{cmhc_reshape_results()}.
+#'   \item Tags \code{geo_vintage = "2026"}.
+#' }
+#'
+#' @param requests A list of request objects. Each must include
+#'   \code{survey}, \code{series}, \code{dimension}, and \code{years}
+#'   (numeric vector, e.g. \code{2010:2026}).
+#' @param cma_uids Character vector of CMA GeoUIDs. Defaults to
+#'   \code{cmhc_get_geo_uids("cma")} (from the Curbcut DB).
+#' @param cma_to_met A \code{data.frame} with columns \code{cma_uid} and
+#'   \code{met_code}. Defaults to \code{cmhc_get_cma_to_met()} (pulled
+#'   from the CMHC ArcGIS metropolitan layer).
+#' @param output_dir Optional. Directory (or S3 prefix) for caching
+#'   per-task \code{.qs} files.
+#'
+#' @return A named list \code{survey_zone} containing reshaped data
+#'   frames for each variable. If \code{output_dir} is set, returns the
+#'   path instead.
+#' @export
+cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
+                                 cma_to_met = NULL, output_dir = NULL) {
+  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
+  
+  zones_lookup <- .cmhc_zone_lookup()
+  
+  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
+  
+  .worker <- function(geo_uid, req_idx, year) {
+    req <- requests[[req_idx]]
+    
+    raw <- cmhc_fetch_zone_data(
+      req$survey, req$series, req$dimension,
+      geo_uid = geo_uid, year = year
+    )
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    # Attach met_code from CMA mapping
+    met_row <- cma_to_met[cma_to_met$cma_uid == geo_uid, , drop = FALSE]
+    if (nrow(met_row) == 0) return(NULL)
+    raw$met_code <- met_row$met_code[1]
+    
+    # Match zone names to official zone_ids
+    raw <- cmhc_attach_zone_id(raw, zones_lookup)
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+    if (is.null(cleaned)) return(NULL)
+    
+    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
+    reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
+    if (length(reshaped) == 0) return(NULL)
+    
+    lapply(reshaped, \(df) {
+      df$geo_vintage <- "2026"
+      df
+    })
+  }
+  
+  collected <- cc.data:::cmhc_run_and_collect(
+    tasks, .worker,
+    par_env_objs = list(
+      requests = requests,
+      cma_to_met = cma_to_met,
+      zones_lookup = zones_lookup,
+      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_fetch_zone_data = cmhc_fetch_zone_data,
+      cmhc_normalize_zone_name = cmhc_normalize_zone_name,
+      cmhc_match_zone_name = cmhc_match_zone_name,
+      cmhc_attach_zone_id = cmhc_attach_zone_id,
+      cmhc_clean_results = cc.data:::cmhc_clean_results,
+      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
+      cmhc_clean_names = cc.data:::cmhc_clean_names,
+      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
+    ),
+    output_dir = output_dir,
+    label = "cmhc_get_annual_zone"
+  )
+  if (is.character(collected)) return(collected)
+  list(survey_zone = cc.data:::cmhc_finalize_results(collected))
+}
+
+
+#' Retrieve Monthly CMHC Data at the Survey Zone Level
+#'
+#' Like \code{\link{cmhc_get_annual_zone}} but expands over both years
+#' AND months. Each task is one (CMA x request x year x month)
+#' combination.
+#'
+#' @param requests A list of request objects. Each must include
+#'   \code{survey}, \code{series}, \code{dimension}, \code{years}
+#'   (numeric vector), and \code{months} (character or integer vector,
+#'   e.g. \code{sprintf("\%02d", 1:12)}).
+#' @param cma_uids Character vector of CMA GeoUIDs. Defaults to
+#'   \code{cmhc_get_geo_uids("cma")}.
+#' @param cma_to_met A \code{data.frame} with \code{cma_uid} and
+#'   \code{met_code}. Defaults to \code{cmhc_get_cma_to_met()}.
+#' @param output_dir Optional. Directory (or S3 prefix) for caching.
+#'
+#' @return A named list \code{survey_zone} containing reshaped data
+#'   frames for each variable, with monthly \code{time} values
+#'   (e.g. \code{"202210"}).
+#' @export
+cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
+                                  cma_to_met = NULL, output_dir = NULL) {
+  if (is.null(cma_uids))   cma_uids   <- cmhc_get_geo_uids("cma")
+  if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
+  
+  zones_lookup <- .cmhc_zone_lookup()
+  
+  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests,
+                                      expand_years = TRUE,
+                                      expand_months = TRUE)
+  
+  .worker <- function(geo_uid, req_idx, year, month) {
+    req <- requests[[req_idx]]
+    
+    raw <- cmhc_fetch_zone_data(
+      req$survey, req$series, req$dimension,
+      geo_uid = geo_uid, year = year, month = month
+    )
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    met_row <- cma_to_met[cma_to_met$cma_uid == geo_uid, , drop = FALSE]
+    if (nrow(met_row) == 0) return(NULL)
+    raw$met_code <- met_row$met_code[1]
+    
+    raw <- cmhc_attach_zone_id(raw, zones_lookup)
+    if (is.null(raw) || nrow(raw) == 0) return(NULL)
+    
+    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+    if (is.null(cleaned)) return(NULL)
+    
+    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
+    reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
+    if (length(reshaped) == 0) return(NULL)
+    
+    lapply(reshaped, \(df) {
+      df$geo_vintage <- "2026"
+      df
+    })
+  }
+  
+  collected <- cc.data:::cmhc_run_and_collect(
+    tasks, .worker,
+    par_env_objs = list(
+      requests = requests,
+      cma_to_met = cma_to_met,
+      zones_lookup = zones_lookup,
+      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_fetch_zone_data = cmhc_fetch_zone_data,
+      cmhc_normalize_zone_name = cmhc_normalize_zone_name,
+      cmhc_match_zone_name = cmhc_match_zone_name,
+      cmhc_attach_zone_id = cmhc_attach_zone_id,
+      cmhc_clean_results = cc.data:::cmhc_clean_results,
+      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
+      cmhc_clean_names = cc.data:::cmhc_clean_names,
+      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
+    ),
+    output_dir = output_dir,
+    label = "cmhc_get_monthly_zone"
+  )
+  if (is.character(collected)) return(collected)
+  list(survey_zone = cc.data:::cmhc_finalize_results(collected))
+}

@@ -2,18 +2,23 @@
 % Please edit documentation in R/foursquare_poi.R
 \name{poi_run_evolution_local}
 \alias{poi_run_evolution_local}
-\title{Process Local POI Evolution for Multiple Geographies}
+\title{Compute POI evolution for multiple geographies (from a local file)}
 \usage{
-poi_run_evolution_local(geo_list, poi_rds_path)
+poi_run_evolution_local(geo_list, poi_path, categorize = FALSE)
 }
 \arguments{
-\item{geo_list}{A named list of \code{sf} objects (e.g., pr, cma, csd, etc.).}
+\item{geo_list}{A named list of \code{sf} polygon layers.}
 
-\item{poi_rds_path}{The full path to the local POI RDS file.}
+\item{poi_path}{Path to a local POI file. \code{.rds} is read via
+\code{\link[base:readRDS]{base::readRDS()}}; \code{.qs} is read via \code{qs::qread()}.}
+
+\item{categorize}{Logical. If TRUE, expects a category column in the
+loaded POI data.}
 }
 \value{
 A named list of data frames, one per geography.
 }
 \description{
-Loads POI data from a local RDS file and processes it by matching to geographic boundaries.
+Same as \code{\link[=poi_run_evolution]{poi_run_evolution()}} but reads POIs from a local \code{.rds} or \code{.qs}
+file rather than Snowflake. Useful for re-running with a frozen snapshot.
 }
