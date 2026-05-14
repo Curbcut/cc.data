@@ -2947,14 +2947,16 @@ cmhc_get_monthly_nbhd <- function(requests, cma_uids, qsm_path,
 #
 # Pipeline mirrors cmhc_get_annual_nbhd() / cmhc_get_ct_by_cma():
 #   - One task = (CMA × request × year [× month])
-#   - Worker: fetch -> attach met_code -> match name to zone_id -> clean -> reshape
+#   - Worker: fetch -> attach met_code -> match name to zone_id -> validate
+#     against year-specific zone shapefile -> clean -> reshape
 #   - geo_vintage = "2026" (reference geo for survey zones)
 #   - GeoUID = survey_zone_geographic_layer_id (official CMHC ID, e.g. "106001")
 #
-# Geometry reconstruction follows David Wachsmuth's method (intersection
-# NBHD x reference zone with overlap >= 50%) and is performed offline
-# against the year-specific NBHD shapefile bundle. The output Zone
-# shapefile bundle is consumed downstream; this file only handles data.
+# The zone shapefile bundle (one sf per year, cmhc_zone_<year>) is built
+# offline using David Wachsmuth's intersection method (NBHD × reference zone
+# with overlap >= 50%). It is consumed here for two purposes:
+#   1. Validation: drop API rows whose zone_id has no year-specific geometry
+#   2. Reference: provide the names lookup used by the 3-pass matcher
 # ============================================================================
 
 
@@ -3135,44 +3137,7 @@ cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
 }
 
 
-#' Attach GeoUID to CMHC Survey Zone-level Data
-#'
-#' Matches the API zone name against the CMHC reference shapefile to get
-#' the official \code{survey_zone_geographic_layer_id} (used as GeoUID),
-#' then filters to rows that successfully matched.
-#'
-#' @param df A \code{data.frame} with a \code{Survey Zones} column and a
-#'   \code{met_code} column.
-#' @param zones_lookup A data.frame produced by \code{.cmhc_zone_lookup()}.
-#'
-#' @return The input \code{data.frame} with added \code{GeoUID} and
-#'   \code{match_method} columns, filtered to matched rows.
-cmhc_attach_zone_id <- function(df, zones_lookup) {
-  if (is.null(df) || nrow(df) == 0) return(NULL)
-  if (!"Survey Zones" %in% names(df)) return(NULL)
-  if (!"met_code" %in% names(df)) {
-    stop("`df` must have a `met_code` column (CMA -> MET_CODE).")
-  }
-  
-  matches <- lapply(seq_len(nrow(df)), function(i) {
-    cmhc_match_zone_name(
-      zone_name    = df$`Survey Zones`[i],
-      met_code     = df$met_code[i],
-      zones_lookup = zones_lookup
-    )
-  })
-  
-  df$GeoUID       <- vapply(matches, function(m) m$zone_id, character(1))
-  df$match_method <- vapply(matches, function(m) m$method %||% NA_character_,
-                            character(1))
-  
-  out <- df[!is.na(df$GeoUID), , drop = FALSE]
-  if (nrow(out) == 0) return(NULL)
-  out
-}
-
-
-#' Build the CMHC Zone Reference Lookup (Internal)
+#' Build the CMHC Zone Reference Lookup
 #'
 #' Pulls the CMHC ArcGIS CURRENT Survey Zone layer (520 zones, most
 #' complete reference, more complete than
@@ -3182,7 +3147,7 @@ cmhc_attach_zone_id <- function(df, zones_lookup) {
 #' @return A \code{data.frame} (no geometry) with columns:
 #'   \code{zone_id}, \code{met_code}, \code{zone_code}, \code{zone_name},
 #'   \code{zone_name_fr}, \code{n_norm}.
-.cmhc_zone_lookup <- function() {
+cmhc_zone_lookup <- function() {
   layer <- arcgislayers::arc_open(
     paste0(
       "https://geospatial.cmhc-schl.gc.ca/server/rest/services/",
@@ -3204,22 +3169,100 @@ cmhc_attach_zone_id <- function(df, zones_lookup) {
 }
 
 
+#' Attach GeoUID to CMHC Survey Zone-level Data
+#'
+#' Matches the API zone name against the CMHC reference shapefile to get
+#' the official \code{survey_zone_geographic_layer_id} (used as GeoUID),
+#' then validates the matched zone against the year-specific shapefile
+#' bundle (drops rows whose zone_id has no geometry for the given year).
+#'
+#' Selecting the shapefile vintage: years 2010-2025 use the year-specific
+#' shp; years >= 2026 (or anything beyond the bundle) fall back to the
+#' most recent available vintage.
+#'
+#' @param df A \code{data.frame} with a \code{Survey Zones} column and a
+#'   \code{met_code} column.
+#' @param year Integer or character. Data year, used to pick the
+#'   year-specific zone shapefile for validation.
+#' @param zones_lookup A data.frame produced by \code{cmhc_zone_lookup()}.
+#' @param zone_qsm_path Character. Path to the \code{.qsm} bundle of
+#'   year-specific zone shapefiles (objects named \code{cmhc_zone_<year>}).
+#'
+#' @return The input \code{data.frame} with added \code{GeoUID} and
+#'   \code{match_method} columns, filtered to rows whose zone_id is
+#'   present in the year-specific shapefile. Returns \code{NULL} if no
+#'   rows survive.
+cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
+  if (missing(zone_qsm_path) || is.null(zone_qsm_path) || !nzchar(zone_qsm_path)) {
+    stop("Argument `zone_qsm_path` is required.")
+  }
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  if (!"Survey Zones" %in% names(df)) return(NULL)
+  if (!"met_code" %in% names(df)) {
+    stop("`df` must have a `met_code` column (CMA -> MET_CODE).")
+  }
+  
+  env <- new.env()
+  qs::qload(zone_qsm_path, env = env)
+  
+  obj_name <- paste0("cmhc_zone_", as.integer(year))
+  if (!exists(obj_name, envir = env)) {
+    available <- ls(envir = env)
+    available_years <- as.integer(gsub("cmhc_zone_", "", available))
+    available_years <- sort(available_years[!is.na(available_years)],
+                            decreasing = TRUE)
+    if (length(available_years) == 0) {
+      warning(sprintf("No zone shapefile found in %s", zone_qsm_path))
+      return(NULL)
+    }
+    obj_name <- paste0("cmhc_zone_", available_years[1])
+  }
+  
+  zone_y <- get(obj_name, envir = env) |> sf::st_drop_geometry()
+  
+  # FIX: detect id column (could be 'zone_id' or 'id')
+  id_col <- intersect(c("zone_id", "id"), names(zone_y))[1]
+  if (is.na(id_col)) {
+    stop(sprintf("Could not find 'zone_id' or 'id' column in %s", obj_name))
+  }
+  valid_ids <- unique(as.character(zone_y[[id_col]]))
+  
+  if (length(valid_ids) == 0) return(NULL)
+  
+  matches <- lapply(seq_len(nrow(df)), function(i) {
+    cmhc_match_zone_name(
+      zone_name    = df$`Survey Zones`[i],
+      met_code     = df$met_code[i],
+      zones_lookup = zones_lookup
+    )
+  })
+  
+  df$GeoUID       <- vapply(matches, function(m) m$zone_id, character(1))
+  df$match_method <- vapply(matches, function(m) m$method %||% NA_character_,
+                            character(1))
+  
+  out <- df[!is.na(df$GeoUID) & df$GeoUID %in% valid_ids, , drop = FALSE]
+  if (nrow(out) == 0) return(NULL)
+  out
+}
+
+
 #' Retrieve Annual CMHC Data at the Survey Zone Level
 #'
-#' Downloads, matches, cleans, reshapes, and combines annual CMHC Survey
-#' Zone-level data for a set of CMAs across one or more years. The CMHC
-#' API does not support \code{breakdown = "Historical Time Periods"} for
-#' Survey Zones, so each task is one (CMA x request x year) combination
-#' -- same pattern as \code{\link{cmhc_get_annual_nbhd}} and
-#' \code{\link{cmhc_get_ct_by_cma}}.
+#' Downloads, matches, validates, cleans, reshapes, and combines annual
+#' CMHC Survey Zone-level data for a set of CMAs across one or more years.
+#' The CMHC API does not support \code{breakdown = "Historical Time Periods"}
+#' for Survey Zones, so each task is one (CMA x request x year) combination
+#' -- same pattern as \code{\link{cmhc_get_annual_nbhd}}.
 #'
 #' For each task, the worker:
 #' \enumerate{
 #'   \item Fetches raw data via \code{cmhc_fetch_zone_data()}.
 #'   \item Joins \code{cma_uid -> met_code} from the CMHC mapping.
 #'   \item Matches each zone name to its official
-#'         \code{survey_zone_geographic_layer_id} via
-#'         \code{cmhc_attach_zone_id()} (3-pass matcher).
+#'         \code{survey_zone_geographic_layer_id} via the 3-pass matcher.
+#'   \item Validates the match against the year-specific zone shapefile
+#'         bundle, dropping rows with no corresponding geometry.
 #'   \item Cleans and reshapes via \code{cmhc_clean_results()} /
 #'         \code{cmhc_reshape_results()}.
 #'   \item Tags \code{geo_vintage = "2026"}.
@@ -3231,8 +3274,10 @@ cmhc_attach_zone_id <- function(df, zones_lookup) {
 #' @param cma_uids Character vector of CMA GeoUIDs. Defaults to
 #'   \code{cmhc_get_geo_uids("cma")} (from the Curbcut DB).
 #' @param cma_to_met A \code{data.frame} with columns \code{cma_uid} and
-#'   \code{met_code}. Defaults to \code{cmhc_get_cma_to_met()} (pulled
-#'   from the CMHC ArcGIS metropolitan layer).
+#'   \code{met_code}. Defaults to \code{cmhc_get_cma_to_met()}.
+#' @param zone_qsm_path Character. Path to the \code{.qsm} bundle of
+#'   year-specific zone shapefiles, built offline using David Wachsmuth's
+#'   intersection method.
 #' @param output_dir Optional. Directory (or S3 prefix) for caching
 #'   per-task \code{.qs} files.
 #'
@@ -3241,11 +3286,18 @@ cmhc_attach_zone_id <- function(df, zones_lookup) {
 #'   path instead.
 #' @export
 cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
-                                 cma_to_met = NULL, output_dir = NULL) {
+                                 cma_to_met = NULL, zone_qsm_path,
+                                 output_dir = NULL) {
+  if (missing(zone_qsm_path) || is.null(zone_qsm_path) || !nzchar(zone_qsm_path)) {
+    stop("Argument `zone_qsm_path` is required.")
+  }
+  if (!file.exists(zone_qsm_path)) {
+    stop(sprintf("Zone shapefile bundle not found at: %s", zone_qsm_path))
+  }
   if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
   if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
   
-  zones_lookup <- .cmhc_zone_lookup()
+  zones_lookup <- cmhc_zone_lookup()
   
   tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
   
@@ -3263,8 +3315,10 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
     if (nrow(met_row) == 0) return(NULL)
     raw$met_code <- met_row$met_code[1]
     
-    # Match zone names to official zone_ids
-    raw <- cmhc_attach_zone_id(raw, zones_lookup)
+    # Match zone names to official zone_ids + validate against year shp
+    raw <- cmhc_attach_zone_id(raw, year = year,
+                               zones_lookup = zones_lookup,
+                               zone_qsm_path = zone_qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
     
     cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
@@ -3286,6 +3340,7 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
       requests = requests,
       cma_to_met = cma_to_met,
       zones_lookup = zones_lookup,
+      zone_qsm_path = zone_qsm_path,
       cmhc_with_retry = cc.data:::cmhc_with_retry,
       cmhc_fetch_zone_data = cmhc_fetch_zone_data,
       cmhc_normalize_zone_name = cmhc_normalize_zone_name,
@@ -3307,29 +3362,34 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
 #' Retrieve Monthly CMHC Data at the Survey Zone Level
 #'
 #' Like \code{\link{cmhc_get_annual_zone}} but expands over both years
-#' AND months. Each task is one (CMA x request x year x month)
-#' combination.
+#' AND months. Each task is one (CMA x request x year x month) combination.
 #'
 #' @param requests A list of request objects. Each must include
 #'   \code{survey}, \code{series}, \code{dimension}, \code{years}
 #'   (numeric vector), and \code{months} (character or integer vector,
 #'   e.g. \code{sprintf("\%02d", 1:12)}).
-#' @param cma_uids Character vector of CMA GeoUIDs. Defaults to
-#'   \code{cmhc_get_geo_uids("cma")}.
+#' @param cma_uids Character vector of CMA GeoUIDs.
 #' @param cma_to_met A \code{data.frame} with \code{cma_uid} and
-#'   \code{met_code}. Defaults to \code{cmhc_get_cma_to_met()}.
+#'   \code{met_code}.
+#' @param zone_qsm_path Character. Path to the \code{.qsm} bundle.
 #' @param output_dir Optional. Directory (or S3 prefix) for caching.
 #'
 #' @return A named list \code{survey_zone} containing reshaped data
-#'   frames for each variable, with monthly \code{time} values
-#'   (e.g. \code{"202210"}).
+#'   frames for each variable, with monthly \code{time} values.
 #' @export
 cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
-                                  cma_to_met = NULL, output_dir = NULL) {
-  if (is.null(cma_uids))   cma_uids   <- cmhc_get_geo_uids("cma")
+                                  cma_to_met = NULL, zone_qsm_path,
+                                  output_dir = NULL) {
+  if (missing(zone_qsm_path) || is.null(zone_qsm_path) || !nzchar(zone_qsm_path)) {
+    stop("Argument `zone_qsm_path` is required.")
+  }
+  if (!file.exists(zone_qsm_path)) {
+    stop(sprintf("Zone shapefile bundle not found at: %s", zone_qsm_path))
+  }
+  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
   if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
   
-  zones_lookup <- .cmhc_zone_lookup()
+  zones_lookup <- cmhc_zone_lookup()
   
   tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests,
                                       expand_years = TRUE,
@@ -3348,7 +3408,9 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
     if (nrow(met_row) == 0) return(NULL)
     raw$met_code <- met_row$met_code[1]
     
-    raw <- cmhc_attach_zone_id(raw, zones_lookup)
+    raw <- cmhc_attach_zone_id(raw, year = year,
+                               zones_lookup = zones_lookup,
+                               zone_qsm_path = zone_qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
     
     cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
@@ -3370,6 +3432,7 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
       requests = requests,
       cma_to_met = cma_to_met,
       zones_lookup = zones_lookup,
+      zone_qsm_path = zone_qsm_path,
       cmhc_with_retry = cc.data:::cmhc_with_retry,
       cmhc_fetch_zone_data = cmhc_fetch_zone_data,
       cmhc_normalize_zone_name = cmhc_normalize_zone_name,
