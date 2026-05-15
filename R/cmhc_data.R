@@ -3256,13 +3256,11 @@ cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
   }
   
   zone_y <- get(obj_name, envir = env) |> sf::st_drop_geometry()
-  
-  # FIX: detect id column (could be 'zone_id' or 'id')
-  id_col <- intersect(c("zone_id", "id"), names(zone_y))[1]
-  if (is.na(id_col)) {
-    stop(sprintf("Could not find 'zone_id' or 'id' column in %s", obj_name))
+
+  if (!"id" %in% names(zone_y)) {
+  stop(sprintf("Column 'id' not found in %s", obj_name))
   }
-  valid_ids <- unique(as.character(zone_y[[id_col]]))
+  valid_ids <- unique(as.character(zone_y$id))
   
   if (length(valid_ids) == 0) return(NULL)
   
