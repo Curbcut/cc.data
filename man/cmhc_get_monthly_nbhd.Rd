@@ -4,14 +4,24 @@
 \alias{cmhc_get_monthly_nbhd}
 \title{Retrieve Monthly CMHC Data at the Neighbourhood Level}
 \usage{
-cmhc_get_monthly_nbhd(requests, cma_uids, qsm_path, output_dir = NULL)
+cmhc_get_monthly_nbhd(
+  requests,
+  cma_uids = NULL,
+  cma_to_met = NULL,
+  qsm_path,
+  output_dir = NULL
+)
 }
 \arguments{
 \item{requests}{A list of request objects. Each must include \code{survey},
 \code{series}, \code{dimension}, \code{years} (numeric vector), and \code{months}
 (character or integer vector, e.g. \code{sprintf("\%02d", 1:12)}).}
 
-\item{cma_uids}{Character vector of CMA GeoUIDs.}
+\item{cma_uids}{Character vector of CMA GeoUIDs. Defaults to all CMA
+GeoUIDs known to CMHC via \code{\link[=cmhc_get_geo_uids]{cmhc_get_geo_uids()}}.}
+
+\item{cma_to_met}{A \code{data.frame} mapping \code{cma_uid} to \code{met_code}. Defaults
+to \code{\link[=cmhc_get_cma_to_met]{cmhc_get_cma_to_met()}}.}
 
 \item{qsm_path}{Character. Path to the \code{.qsm} bundle of harmonized
 shapefiles.}

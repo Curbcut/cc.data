@@ -2626,8 +2626,12 @@ cmhc_get_monthly_csd <- function(
 #   - geo_vintage = "2026" (reference geo for nbhd, analogous to "2021"
 #     used for CSD/CMA/CT — downstream interpolation reconciles years)
 #
-# Required dataset: cc.data::cmhc_nbhd_matching (116 name reconciliation rules)
+# ID format: paste0(METCODE, NBHDCODE) (7 chars, CMHC-native)
+#   Stored as `id` column in the harmonized .qsm bundle.
+#
+# Required dataset: cmhc_nbhd_matching (116 name reconciliation rules)
 # Required external file: harmonized .qsm bundle (passed via qsm_path arg)
+#   Columns: id, METCODE, name, name_fr, geometry
 # ============================================================================
 
 
@@ -2647,7 +2651,7 @@ cmhc_get_monthly_csd <- function(
 #' @return A `data.frame` from the CMHC API, or `NULL` on error or no data.
 cmhc_fetch_nbhd_data <- function(survey, series, dimension, geo_uid,
                                  year, month = NULL) {
-  df <- cc.data:::cmhc_with_retry(
+  df <- cmhc_with_retry(
     function() {
       cmhc::get_cmhc(
         survey    = survey,
@@ -2661,7 +2665,7 @@ cmhc_fetch_nbhd_data <- function(survey, series, dimension, geo_uid,
     },
     label = sprintf("NBHD %s (%s-%s)", geo_uid, year, month %||% "--")
   )
-  
+
   if (is.null(df) || nrow(df) == 0) return(NULL)
   df[!is.na(df$Neighbourhoods), ]
 }
@@ -2669,7 +2673,7 @@ cmhc_fetch_nbhd_data <- function(survey, series, dimension, geo_uid,
 
 #' Reconcile CMHC Neighbourhood Names with Shapefile Names
 #'
-#' Applies the rules stored in `cc.data::cmhc_nbhd_matching` to translate
+#' Applies the rules stored in `cmhc_nbhd_matching` to translate
 #' API neighbourhood names to their shapefile equivalents. Rules are applied
 #' in three passes: exact match (vectorized), starts-with, and detect.
 #'
@@ -2682,9 +2686,9 @@ cmhc_fetch_nbhd_data <- function(survey, series, dimension, geo_uid,
 cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
   if (is.null(df) || nrow(df) == 0) return(df)
   if (!name_col %in% names(df)) return(df)
-  
-  rules <- cc.data::cmhc_nbhd_matching
-  
+
+  rules <- cmhc_nbhd_matching
+
   # Pass 1: exact match (vectorized)
   exact_rules <- rules[rules$match_type == "exact", c("name_api", "name_shp")]
   df <- df |>
@@ -2693,7 +2697,7 @@ cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
       !!name_col := dplyr::coalesce(name_shp, .data[[name_col]])
     ) |>
     dplyr::select(-name_shp)
-  
+
   # Pass 2: starts-with
   starts_rules <- rules[rules$match_type == "starts", ]
   for (i in seq_len(nrow(starts_rules))) {
@@ -2702,7 +2706,7 @@ cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
     idx[is.na(idx)] <- FALSE
     df[[name_col]][idx] <- starts_rules$name_shp[i]
   }
-  
+
   # Pass 3: detect (substring)
   detect_rules <- rules[rules$match_type == "detect", ]
   for (i in seq_len(nrow(detect_rules))) {
@@ -2711,17 +2715,18 @@ cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
     idx[is.na(idx)] <- FALSE
     df[[name_col]][idx] <- detect_rules$name_shp[i]
   }
-  
+
   df
 }
 
 
 #' Attach GeoUID to CMHC Neighbourhood-level Data
 #'
-#' Joins API neighbourhood data with the harmonized shapefile bundle to add a
-#' stable `GeoUID = paste0(CMA, NBHDCODE)`. Selects the shapefile vintage
-#' based on `year`: 2010-2022 use the year-specific shp, 2023+ fall back to
-#' the 2022 shp (empirically 100% match validated through 2026).
+#' Joins API neighbourhood data with the harmonized shapefile bundle to add
+#' the stable `GeoUID` (= shp `id`, already formatted as
+#' `paste0(METCODE, NBHDCODE)`). Selects the shapefile vintage based on
+#' `year`: 2010-2022 use the year-specific shp, 2023+ fall back to the 2022
+#' shp (empirically 100% match validated through 2026).
 #'
 #' Rows whose `Neighbourhoods` value cannot be matched after upstream renames
 #' are dropped silently.
@@ -2729,9 +2734,12 @@ cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
 #' @param df A `data.frame` with a `Neighbourhoods` column (typically the
 #'   output of `cmhc_apply_nbhd_renames()`).
 #' @param year Integer or character. Data year, used to pick the shapefile.
-#' @param geo_uid Character. CMA GeoUID used to filter the shapefile.
+#' @param geo_uid Character. CMA GeoUID used to resolve the METCODE for
+#'   filtering the shapefile.
+#' @param cma_to_met A `data.frame` with `cma_uid` and `met_code` columns.
 #' @param qsm_path Character. Path to the `.qsm` bundle of harmonized
-#'   shapefiles (`CMA` column = StatCan geo_uid).
+#'   shapefiles. Each year-specific object must have columns
+#'   `id, METCODE, name, name_fr, geometry`.
 #'
 #' @return The input `data.frame` with an added `GeoUID` column, or `NULL`
 #'   if no rows can be matched.
@@ -2743,16 +2751,16 @@ cmhc_attach_nbhd_id <- function(df, year, geo_uid, cma_to_met, qsm_path) {
     stop("Argument `cma_to_met` is required (cma_uid -> met_code mapping).")
   }
   if (is.null(df) || nrow(df) == 0) return(NULL)
-  
+
   # Resolve cma_uid -> met_code
   met_row <- cma_to_met[cma_to_met$cma_uid == as.character(geo_uid), , drop = FALSE]
   if (nrow(met_row) == 0) return(NULL)
   met_code <- met_row$met_code[1]
-  
+
   # Pick year-specific shp (fallback to most recent if year missing)
   yr <- as.integer(year)
   obj_name <- paste0("cmhc_nbhd_", yr)
-  
+
   env <- new.env()
   qs::qload(qsm_path, env = env)
   if (!exists(obj_name, envir = env)) {
@@ -2766,22 +2774,23 @@ cmhc_attach_nbhd_id <- function(df, year, geo_uid, cma_to_met, qsm_path) {
     }
     obj_name <- paste0("cmhc_nbhd_", available_years[1])
   }
-  
+
   shp <- get(obj_name, envir = env) |>
     sf::st_drop_geometry() |>
     dplyr::filter(METCODE == as.character(met_code)) |>
     dplyr::transmute(
-      Neighbourhoods = NBHDNAME_E,
-      GeoUID = paste0(METCODE, NBHDCODE)
+      Neighbourhoods = name,
+      GeoUID = id
     ) |>
     dplyr::filter(!is.na(Neighbourhoods))
-  
+
   if (nrow(shp) == 0) return(NULL)
-  
+
   out <- dplyr::inner_join(df, shp, by = "Neighbourhoods")
   if (nrow(out) == 0) return(NULL)
   out
 }
+
 
 #' Retrieve Annual CMHC Data at the Neighbourhood Level
 #'
@@ -2790,24 +2799,27 @@ cmhc_attach_nbhd_id <- function(df, year, geo_uid, cma_to_met, qsm_path) {
 #' support `breakdown = "Historical Time Periods"` for Neighbourhoods (it
 #' returns aggregated totals with no time dimension), so each task is one
 #' (CMA × request × year) combination — same pattern as
-#' [cmhc_get_ct_by_cma()] and [cmhc_get_annual_survey_zone()].
+#' [cmhc_get_ct_by_cma()].
 #'
 #' For each task, the worker:
 #' \enumerate{
 #'   \item Fetches raw data via [cmhc_fetch_nbhd_data()].
 #'   \item Reconciles neighbourhood names via [cmhc_apply_nbhd_renames()]
 #'         using [cmhc_nbhd_matching].
-#'   \item Attaches a stable `GeoUID` (`paste0(CMA, NBHDCODE)`) via
-#'         [cmhc_attach_nbhd_id()].
+#'   \item Attaches a stable `GeoUID` (= shp `id` = `paste0(METCODE, NBHDCODE)`)
+#'         via [cmhc_attach_nbhd_id()].
 #'   \item Cleans and reshapes via [cmhc_clean_results()] /
 #'         [cmhc_reshape_results()].
 #'   \item Tags `geo_vintage = "2026"` (reference geography for
-#'         neighbourhoods, analogous to `"2021"` for CSD/CMA/CT levels).
+#'         neighbourhoods).
 #' }
 #'
 #' @param requests A list of request objects. Each must include `survey`,
 #'   `series`, `dimension`, and `years` (numeric vector, e.g. `2010:2026`).
-#' @param cma_uids Character vector of CMA GeoUIDs (e.g. `"24462"`).
+#' @param cma_uids Character vector of CMA GeoUIDs (e.g. `"24462"`). Defaults
+#'   to all CMA GeoUIDs known to CMHC via [cmhc_get_geo_uids()].
+#' @param cma_to_met A `data.frame` mapping `cma_uid` to `met_code`. Defaults
+#'   to [cmhc_get_cma_to_met()].
 #' @param qsm_path Character. Path to the `.qsm` bundle of harmonized
 #'   shapefiles.
 #' @param output_dir Optional. Directory (or S3 prefix) for caching per-task
@@ -2824,59 +2836,59 @@ cmhc_get_annual_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
   if (!file.exists(qsm_path)) {
     stop(sprintf("Shapefile bundle not found at: %s", qsm_path))
   }
-  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_uids))   cma_uids   <- cmhc_get_geo_uids("cma")
   if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
-  
-  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
-  
+
+  tasks <- cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
+
   .worker <- function(geo_uid, req_idx, year) {
     req <- requests[[req_idx]]
-    
+
     raw <- cmhc_fetch_nbhd_data(
       req$survey, req$series, req$dimension,
       geo_uid = geo_uid, year = year
     )
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
-    
+
     raw <- cmhc_apply_nbhd_renames(raw)
     raw <- cmhc_attach_nbhd_id(raw, year = year, geo_uid = geo_uid,
                                cma_to_met = cma_to_met,
                                qsm_path = qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
-    
-    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+
+    cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
     if (is.null(cleaned)) return(NULL)
-    
-    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
+
+    reshaped <- cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
     if (length(reshaped) == 0) return(NULL)
-    
+
     lapply(reshaped, \(df) {
       df$geo_vintage <- "2026"
       df
     })
   }
-  
-  collected <- cc.data:::cmhc_run_and_collect(
+
+  collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
       requests = requests,
       cma_to_met = cma_to_met,
       qsm_path = qsm_path,
-      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_with_retry = cmhc_with_retry,
       cmhc_fetch_nbhd_data = cmhc_fetch_nbhd_data,
       cmhc_apply_nbhd_renames = cmhc_apply_nbhd_renames,
       cmhc_attach_nbhd_id = cmhc_attach_nbhd_id,
-      cmhc_clean_results = cc.data:::cmhc_clean_results,
-      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
-      cmhc_clean_names = cc.data:::cmhc_clean_names,
-      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
+      cmhc_clean_results = cmhc_clean_results,
+      cmhc_reshape_results = cmhc_reshape_results,
+      cmhc_clean_names = cmhc_clean_names,
+      CMHC_PCT_SERIES = CMHC_PCT_SERIES
     ),
     output_dir = output_dir,
     label = "cmhc_get_annual_nbhd"
   )
   if (is.character(collected)) return(collected)
-  list(nbhd = cc.data:::cmhc_finalize_results(collected))
+  list(nbhd = cmhc_finalize_results(collected))
 }
 
 
@@ -2890,7 +2902,10 @@ cmhc_get_annual_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
 #' @param requests A list of request objects. Each must include `survey`,
 #'   `series`, `dimension`, `years` (numeric vector), and `months`
 #'   (character or integer vector, e.g. `sprintf("%02d", 1:12)`).
-#' @param cma_uids Character vector of CMA GeoUIDs.
+#' @param cma_uids Character vector of CMA GeoUIDs. Defaults to all CMA
+#'   GeoUIDs known to CMHC via [cmhc_get_geo_uids()].
+#' @param cma_to_met A `data.frame` mapping `cma_uid` to `met_code`. Defaults
+#'   to [cmhc_get_cma_to_met()].
 #' @param qsm_path Character. Path to the `.qsm` bundle of harmonized
 #'   shapefiles.
 #' @param output_dir Optional. Directory (or S3 prefix) for caching per-task
@@ -2907,60 +2922,60 @@ cmhc_get_monthly_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
   if (!file.exists(qsm_path)) {
     stop(sprintf("Shapefile bundle not found at: %s", qsm_path))
   }
-  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_uids))   cma_uids   <- cmhc_get_geo_uids("cma")
   if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
-  
-  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests,
+
+  tasks <- cmhc_build_tasks(cma_uids, requests,
                             expand_years = TRUE, expand_months = TRUE)
-  
+
   .worker <- function(geo_uid, req_idx, year, month) {
     req <- requests[[req_idx]]
-    
+
     raw <- cmhc_fetch_nbhd_data(
       req$survey, req$series, req$dimension,
       geo_uid = geo_uid, year = year, month = month
     )
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
-    
+
     raw <- cmhc_apply_nbhd_renames(raw)
     raw <- cmhc_attach_nbhd_id(raw, year = year, geo_uid = geo_uid,
                                cma_to_met = cma_to_met,
                                qsm_path = qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
-    
-    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+
+    cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
     if (is.null(cleaned)) return(NULL)
-    
-    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
+
+    reshaped <- cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
     if (length(reshaped) == 0) return(NULL)
-    
+
     lapply(reshaped, \(df) {
       df$geo_vintage <- "2026"
       df
     })
   }
-  
-  collected <- cc.data:::cmhc_run_and_collect(
+
+  collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
       requests = requests,
       cma_to_met = cma_to_met,
       qsm_path = qsm_path,
-      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_with_retry = cmhc_with_retry,
       cmhc_fetch_nbhd_data = cmhc_fetch_nbhd_data,
       cmhc_apply_nbhd_renames = cmhc_apply_nbhd_renames,
       cmhc_attach_nbhd_id = cmhc_attach_nbhd_id,
-      cmhc_clean_results = cc.data:::cmhc_clean_results,
-      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
-      cmhc_clean_names = cc.data:::cmhc_clean_names,
-      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
+      cmhc_clean_results = cmhc_clean_results,
+      cmhc_reshape_results = cmhc_reshape_results,
+      cmhc_clean_names = cmhc_clean_names,
+      CMHC_PCT_SERIES = CMHC_PCT_SERIES
     ),
     output_dir = output_dir,
     label = "cmhc_get_monthly_nbhd"
   )
   if (is.character(collected)) return(collected)
-  list(nbhd = cc.data:::cmhc_finalize_results(collected))
+  list(nbhd = cmhc_finalize_results(collected))
 }
 
 
@@ -3031,7 +3046,7 @@ cmhc_get_cma_to_met <- function() {
 #'   error or no data.
 cmhc_fetch_zone_data <- function(survey, series, dimension, geo_uid,
                                  year, month = NULL) {
-  df <- cc.data:::cmhc_with_retry(
+  df <- cmhc_with_retry(
     function() {
       cmhc::get_cmhc(
         survey    = survey,
@@ -3316,12 +3331,12 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
   if (!file.exists(zone_qsm_path)) {
     stop(sprintf("Zone shapefile bundle not found at: %s", zone_qsm_path))
   }
-  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_uids))   cma_uids   <- cmhc_get_geo_uids("cma")
   if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
   
   zones_lookup <- cmhc_zone_lookup()
   
-  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
+  tasks <- cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
   
   .worker <- function(geo_uid, req_idx, year) {
     req <- requests[[req_idx]]
@@ -3343,10 +3358,10 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
                                zone_qsm_path = zone_qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
     
-    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+    cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
     if (is.null(cleaned)) return(NULL)
     
-    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
+    reshaped <- cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
     if (length(reshaped) == 0) return(NULL)
     
@@ -3356,28 +3371,28 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
     })
   }
   
-  collected <- cc.data:::cmhc_run_and_collect(
+  collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
       requests = requests,
       cma_to_met = cma_to_met,
       zones_lookup = zones_lookup,
       zone_qsm_path = zone_qsm_path,
-      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_with_retry = cmhc_with_retry,
       cmhc_fetch_zone_data = cmhc_fetch_zone_data,
       cmhc_normalize_zone_name = cmhc_normalize_zone_name,
       cmhc_match_zone_name = cmhc_match_zone_name,
       cmhc_attach_zone_id = cmhc_attach_zone_id,
-      cmhc_clean_results = cc.data:::cmhc_clean_results,
-      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
-      cmhc_clean_names = cc.data:::cmhc_clean_names,
-      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
+      cmhc_clean_results = cmhc_clean_results,
+      cmhc_reshape_results = cmhc_reshape_results,
+      cmhc_clean_names = cmhc_clean_names,
+      CMHC_PCT_SERIES = CMHC_PCT_SERIES
     ),
     output_dir = output_dir,
     label = "cmhc_get_annual_zone"
   )
   if (is.character(collected)) return(collected)
-  list(survey_zone = cc.data:::cmhc_finalize_results(collected))
+  list(survey_zone = cmhc_finalize_results(collected))
 }
 
 
@@ -3408,12 +3423,12 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
   if (!file.exists(zone_qsm_path)) {
     stop(sprintf("Zone shapefile bundle not found at: %s", zone_qsm_path))
   }
-  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_uids))   cma_uids   <- cmhc_get_geo_uids("cma")
   if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
   
   zones_lookup <- cmhc_zone_lookup()
   
-  tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests,
+  tasks <- cmhc_build_tasks(cma_uids, requests,
                                       expand_years = TRUE,
                                       expand_months = TRUE)
   
@@ -3435,10 +3450,10 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
                                zone_qsm_path = zone_qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
     
-    cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
+    cleaned <- cmhc_clean_results(raw, geo_uid = geo_uid)
     if (is.null(cleaned)) return(NULL)
     
-    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
+    reshaped <- cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
     if (length(reshaped) == 0) return(NULL)
     
@@ -3448,26 +3463,26 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
     })
   }
   
-  collected <- cc.data:::cmhc_run_and_collect(
+  collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
       requests = requests,
       cma_to_met = cma_to_met,
       zones_lookup = zones_lookup,
       zone_qsm_path = zone_qsm_path,
-      cmhc_with_retry = cc.data:::cmhc_with_retry,
+      cmhc_with_retry = cmhc_with_retry,
       cmhc_fetch_zone_data = cmhc_fetch_zone_data,
       cmhc_normalize_zone_name = cmhc_normalize_zone_name,
       cmhc_match_zone_name = cmhc_match_zone_name,
       cmhc_attach_zone_id = cmhc_attach_zone_id,
-      cmhc_clean_results = cc.data:::cmhc_clean_results,
-      cmhc_reshape_results = cc.data:::cmhc_reshape_results,
-      cmhc_clean_names = cc.data:::cmhc_clean_names,
-      CMHC_PCT_SERIES = cc.data:::CMHC_PCT_SERIES
+      cmhc_clean_results = cmhc_clean_results,
+      cmhc_reshape_results = cmhc_reshape_results,
+      cmhc_clean_names = cmhc_clean_names,
+      CMHC_PCT_SERIES = CMHC_PCT_SERIES
     ),
     output_dir = output_dir,
     label = "cmhc_get_monthly_zone"
   )
   if (is.character(collected)) return(collected)
-  list(survey_zone = cc.data:::cmhc_finalize_results(collected))
+  list(survey_zone = cmhc_finalize_results(collected))
 }

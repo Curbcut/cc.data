@@ -4,13 +4,23 @@
 \alias{cmhc_get_annual_nbhd}
 \title{Retrieve Annual CMHC Data at the Neighbourhood Level}
 \usage{
-cmhc_get_annual_nbhd(requests, cma_uids, qsm_path, output_dir = NULL)
+cmhc_get_annual_nbhd(
+  requests,
+  cma_uids = NULL,
+  cma_to_met = NULL,
+  qsm_path,
+  output_dir = NULL
+)
 }
 \arguments{
 \item{requests}{A list of request objects. Each must include \code{survey},
 \code{series}, \code{dimension}, and \code{years} (numeric vector, e.g. \code{2010:2026}).}
 
-\item{cma_uids}{Character vector of CMA GeoUIDs (e.g. \code{"24462"}).}
+\item{cma_uids}{Character vector of CMA GeoUIDs (e.g. \code{"24462"}). Defaults
+to all CMA GeoUIDs known to CMHC via \code{\link[=cmhc_get_geo_uids]{cmhc_get_geo_uids()}}.}
+
+\item{cma_to_met}{A \code{data.frame} mapping \code{cma_uid} to \code{met_code}. Defaults
+to \code{\link[=cmhc_get_cma_to_met]{cmhc_get_cma_to_met()}}.}
 
 \item{qsm_path}{Character. Path to the \code{.qsm} bundle of harmonized
 shapefiles.}
@@ -28,7 +38,7 @@ data for a set of CMAs across one or more years. The CMHC API does not
 support \code{breakdown = "Historical Time Periods"} for Neighbourhoods (it
 returns aggregated totals with no time dimension), so each task is one
 (CMA × request × year) combination — same pattern as
-\code{\link[=cmhc_get_ct_by_cma]{cmhc_get_ct_by_cma()}} and \code{\link[=cmhc_get_annual_survey_zone]{cmhc_get_annual_survey_zone()}}.
+\code{\link[=cmhc_get_ct_by_cma]{cmhc_get_ct_by_cma()}}.
 }
 \details{
 For each task, the worker:
@@ -36,11 +46,11 @@ For each task, the worker:
 \item Fetches raw data via \code{\link[=cmhc_fetch_nbhd_data]{cmhc_fetch_nbhd_data()}}.
 \item Reconciles neighbourhood names via \code{\link[=cmhc_apply_nbhd_renames]{cmhc_apply_nbhd_renames()}}
 using \link{cmhc_nbhd_matching}.
-\item Attaches a stable \code{GeoUID} (\code{paste0(CMA, NBHDCODE)}) via
-\code{\link[=cmhc_attach_nbhd_id]{cmhc_attach_nbhd_id()}}.
+\item Attaches a stable \code{GeoUID} (= shp \code{id} = \code{paste0(METCODE, NBHDCODE)})
+via \code{\link[=cmhc_attach_nbhd_id]{cmhc_attach_nbhd_id()}}.
 \item Cleans and reshapes via \code{\link[=cmhc_clean_results]{cmhc_clean_results()}} /
 \code{\link[=cmhc_reshape_results]{cmhc_reshape_results()}}.
 \item Tags \code{geo_vintage = "2026"} (reference geography for
-neighbourhoods, analogous to \code{"2021"} for CSD/CMA/CT levels).
+neighbourhoods).
 }
 }

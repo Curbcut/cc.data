@@ -17,7 +17,7 @@ The input \code{data.frame} with \code{name_col} values replaced by their
 matched shapefile equivalents.
 }
 \description{
-Applies the rules stored in \code{cc.data::cmhc_nbhd_matching} to translate
+Applies the rules stored in \code{cmhc_nbhd_matching} to translate
 API neighbourhood names to their shapefile equivalents. Rules are applied
 in three passes: exact match (vectorized), starts-with, and detect.
 }

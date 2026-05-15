@@ -4,7 +4,7 @@
 \alias{cmhc_attach_nbhd_id}
 \title{Attach GeoUID to CMHC Neighbourhood-level Data}
 \usage{
-cmhc_attach_nbhd_id(df, year, geo_uid, qsm_path)
+cmhc_attach_nbhd_id(df, year, geo_uid, cma_to_met, qsm_path)
 }
 \arguments{
 \item{df}{A \code{data.frame} with a \code{Neighbourhoods} column (typically the
@@ -12,20 +12,25 @@ output of \code{cmhc_apply_nbhd_renames()}).}
 
 \item{year}{Integer or character. Data year, used to pick the shapefile.}
 
-\item{geo_uid}{Character. CMA GeoUID used to filter the shapefile.}
+\item{geo_uid}{Character. CMA GeoUID used to resolve the METCODE for
+filtering the shapefile.}
+
+\item{cma_to_met}{A \code{data.frame} with \code{cma_uid} and \code{met_code} columns.}
 
 \item{qsm_path}{Character. Path to the \code{.qsm} bundle of harmonized
-shapefiles (\code{CMA} column = StatCan geo_uid).}
+shapefiles. Each year-specific object must have columns
+\verb{id, METCODE, name, name_fr, geometry}.}
 }
 \value{
 The input \code{data.frame} with an added \code{GeoUID} column, or \code{NULL}
 if no rows can be matched.
 }
 \description{
-Joins API neighbourhood data with the harmonized shapefile bundle to add a
-stable \code{GeoUID = paste0(CMA, NBHDCODE)}. Selects the shapefile vintage
-based on \code{year}: 2010-2022 use the year-specific shp, 2023+ fall back to
-the 2022 shp (empirically 100\% match validated through 2026).
+Joins API neighbourhood data with the harmonized shapefile bundle to add
+the stable \code{GeoUID} (= shp \code{id}, already formatted as
+\code{paste0(METCODE, NBHDCODE)}). Selects the shapefile vintage based on
+\code{year}: 2010-2022 use the year-specific shp, 2023+ fall back to the 2022
+shp (empirically 100\% match validated through 2026).
 }
 \details{
 Rows whose \code{Neighbourhoods} value cannot be matched after upstream renames
