@@ -3365,6 +3365,7 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
     
     lapply(reshaped, \(df) {
       df$geo_vintage <- "2026"
+      names(df)[names(df) == "GeoUID"] <- "id"
       df
     })
   }
