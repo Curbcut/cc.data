@@ -3274,7 +3274,7 @@ cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
 
   df$GeoUID       <- vapply(matches, function(m) m$zone_id, character(1))
   df$match_method <- vapply(matches, function(m) m$method %||% NA_character_,
-                            character(1))
+                          character(1))
 
   out <- df[!is.na(df$GeoUID) & df$GeoUID %in% valid_ids, , drop = FALSE]
   if (nrow(out) == 0) return(NULL)
@@ -3365,7 +3365,6 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
     
     lapply(reshaped, \(df) {
       df$geo_vintage <- "2026"
-      names(df)[names(df) == "GeoUID"] <- "id"
       df
     })
   }
