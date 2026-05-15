@@ -3176,7 +3176,7 @@ cmhc_zone_lookup <- function() {
 #' then validates the matched zone against the year-specific shapefile
 #' bundle (drops rows whose zone_id has no geometry for the given year).
 #'
-#' Selecting the shapefile vintage: years 2010-2025 use the year-specific
+#' Selecting the shapefile vintage: years 2010-2026 use the year-specific
 #' shp; years >= 2026 (or anything beyond the bundle) fall back to the
 #' most recent available vintage.
 #'
