@@ -2735,29 +2735,44 @@ cmhc_apply_nbhd_renames <- function(df, name_col = "Neighbourhoods") {
 #'
 #' @return The input `data.frame` with an added `GeoUID` column, or `NULL`
 #'   if no rows can be matched.
-cmhc_attach_nbhd_id <- function(df, year, geo_uid, qsm_path) {
+cmhc_attach_nbhd_id <- function(df, year, geo_uid, cma_to_met, qsm_path) {
   if (missing(qsm_path) || is.null(qsm_path) || !nzchar(qsm_path)) {
     stop("Argument `qsm_path` is required.")
   }
+  if (missing(cma_to_met) || is.null(cma_to_met)) {
+    stop("Argument `cma_to_met` is required (cma_uid -> met_code mapping).")
+  }
   if (is.null(df) || nrow(df) == 0) return(NULL)
   
+  # Resolve cma_uid -> met_code
+  met_row <- cma_to_met[cma_to_met$cma_uid == as.character(geo_uid), , drop = FALSE]
+  if (nrow(met_row) == 0) return(NULL)
+  met_code <- met_row$met_code[1]
+  
+  # Pick year-specific shp (fallback to most recent if year missing)
   yr <- as.integer(year)
-  shp_year <- if (yr >= 2023) 2022L else yr
-  obj_name <- paste0("cmhc_nbhd_", shp_year)
+  obj_name <- paste0("cmhc_nbhd_", yr)
   
   env <- new.env()
   qs::qload(qsm_path, env = env)
   if (!exists(obj_name, envir = env)) {
-    warning(sprintf("Shapefile %s not found in %s", obj_name, qsm_path))
-    return(NULL)
+    available <- ls(envir = env)
+    available_years <- as.integer(gsub("cmhc_nbhd_", "", available))
+    available_years <- sort(available_years[!is.na(available_years)],
+                            decreasing = TRUE)
+    if (length(available_years) == 0) {
+      warning(sprintf("No NBHD shapefile found in %s", qsm_path))
+      return(NULL)
+    }
+    obj_name <- paste0("cmhc_nbhd_", available_years[1])
   }
   
   shp <- get(obj_name, envir = env) |>
     sf::st_drop_geometry() |>
-    dplyr::filter(CMA == as.character(geo_uid)) |>
+    dplyr::filter(METCODE == as.character(met_code)) |>
     dplyr::transmute(
       Neighbourhoods = NBHDNAME_E,
-      GeoUID = paste0(CMA, NBHDCODE)
+      GeoUID = paste0(METCODE, NBHDCODE)
     ) |>
     dplyr::filter(!is.na(Neighbourhoods))
   
@@ -2767,7 +2782,6 @@ cmhc_attach_nbhd_id <- function(df, year, geo_uid, qsm_path) {
   if (nrow(out) == 0) return(NULL)
   out
 }
-
 
 #' Retrieve Annual CMHC Data at the Neighbourhood Level
 #'
@@ -2802,14 +2816,16 @@ cmhc_attach_nbhd_id <- function(df, year, geo_uid, qsm_path) {
 #' @return A named list `nbhd` containing reshaped data frames for each
 #'   variable. If `output_dir` is set, returns the path instead.
 #' @export
-cmhc_get_annual_nbhd <- function(requests, cma_uids, qsm_path,
-                                 output_dir = NULL) {
+cmhc_get_annual_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
+                                 qsm_path, output_dir = NULL) {
   if (missing(qsm_path) || is.null(qsm_path) || !nzchar(qsm_path)) {
     stop("Argument `qsm_path` is required.")
   }
   if (!file.exists(qsm_path)) {
     stop(sprintf("Shapefile bundle not found at: %s", qsm_path))
   }
+  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
   
   tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
   
@@ -2824,13 +2840,14 @@ cmhc_get_annual_nbhd <- function(requests, cma_uids, qsm_path,
     
     raw <- cmhc_apply_nbhd_renames(raw)
     raw <- cmhc_attach_nbhd_id(raw, year = year, geo_uid = geo_uid,
+                               cma_to_met = cma_to_met,
                                qsm_path = qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
     
     cleaned <- cc.data:::cmhc_clean_results(raw, geo_uid = geo_uid)
     if (is.null(cleaned)) return(NULL)
     
-    reshaped <- cmhc_reshape_results(cleaned, req$dimension)
+    reshaped <- cc.data:::cmhc_reshape_results(cleaned, req$dimension)
     reshaped <- Filter(function(df) !is.null(df) && nrow(df) > 0, reshaped)
     if (length(reshaped) == 0) return(NULL)
     
@@ -2844,6 +2861,7 @@ cmhc_get_annual_nbhd <- function(requests, cma_uids, qsm_path,
     tasks, .worker,
     par_env_objs = list(
       requests = requests,
+      cma_to_met = cma_to_met,
       qsm_path = qsm_path,
       cmhc_with_retry = cc.data:::cmhc_with_retry,
       cmhc_fetch_nbhd_data = cmhc_fetch_nbhd_data,
@@ -2881,14 +2899,16 @@ cmhc_get_annual_nbhd <- function(requests, cma_uids, qsm_path,
 #' @return A named list `nbhd` containing reshaped data frames for each
 #'   variable, with monthly `time` values (e.g. `"202210"`).
 #' @export
-cmhc_get_monthly_nbhd <- function(requests, cma_uids, qsm_path,
-                                  output_dir = NULL) {
+cmhc_get_monthly_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
+                                  qsm_path, output_dir = NULL) {
   if (missing(qsm_path) || is.null(qsm_path) || !nzchar(qsm_path)) {
     stop("Argument `qsm_path` is required.")
   }
   if (!file.exists(qsm_path)) {
     stop(sprintf("Shapefile bundle not found at: %s", qsm_path))
   }
+  if (is.null(cma_uids))   cma_uids   <- cc.data::cmhc_get_geo_uids("cma")
+  if (is.null(cma_to_met)) cma_to_met <- cmhc_get_cma_to_met()
   
   tasks <- cc.data:::cmhc_build_tasks(cma_uids, requests,
                             expand_years = TRUE, expand_months = TRUE)
@@ -2904,6 +2924,7 @@ cmhc_get_monthly_nbhd <- function(requests, cma_uids, qsm_path,
     
     raw <- cmhc_apply_nbhd_renames(raw)
     raw <- cmhc_attach_nbhd_id(raw, year = year, geo_uid = geo_uid,
+                               cma_to_met = cma_to_met,
                                qsm_path = qsm_path)
     if (is.null(raw) || nrow(raw) == 0) return(NULL)
     
@@ -2924,6 +2945,7 @@ cmhc_get_monthly_nbhd <- function(requests, cma_uids, qsm_path,
     tasks, .worker,
     par_env_objs = list(
       requests = requests,
+      cma_to_met = cma_to_met,
       qsm_path = qsm_path,
       cmhc_with_retry = cc.data:::cmhc_with_retry,
       cmhc_fetch_nbhd_data = cmhc_fetch_nbhd_data,
