@@ -3238,10 +3238,10 @@ cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
   if (!"met_code" %in% names(df)) {
     stop("`df` must have a `met_code` column (CMA -> MET_CODE).")
   }
-  
+
   env <- new.env()
   qs::qload(zone_qsm_path, env = env)
-  
+
   obj_name <- paste0("cmhc_zone_", as.integer(year))
   if (!exists(obj_name, envir = env)) {
     available <- ls(envir = env)
@@ -3254,16 +3254,16 @@ cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
     }
     obj_name <- paste0("cmhc_zone_", available_years[1])
   }
-  
+
   zone_y <- get(obj_name, envir = env) |> sf::st_drop_geometry()
 
   if (!"id" %in% names(zone_y)) {
-  stop(sprintf("Column 'id' not found in %s", obj_name))
+    stop(sprintf("Column 'id' not found in %s", obj_name))
   }
   valid_ids <- unique(as.character(zone_y$id))
-  
+
   if (length(valid_ids) == 0) return(NULL)
-  
+
   matches <- lapply(seq_len(nrow(df)), function(i) {
     cmhc_match_zone_name(
       zone_name    = df$`Survey Zones`[i],
@@ -3271,11 +3271,11 @@ cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
       zones_lookup = zones_lookup
     )
   })
-  
+
   df$GeoUID       <- vapply(matches, function(m) m$zone_id, character(1))
   df$match_method <- vapply(matches, function(m) m$method %||% NA_character_,
                             character(1))
-  
+
   out <- df[!is.na(df$GeoUID) & df$GeoUID %in% valid_ids, , drop = FALSE]
   if (nrow(out) == 0) return(NULL)
   out
