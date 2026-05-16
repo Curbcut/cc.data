@@ -3127,15 +3127,15 @@ cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
   zn <- cmhc_normalize_zone_name(zone_name)
   parts <- trimws(strsplit(zone_name, "/", fixed = TRUE)[[1]])
   zn_first <- cmhc_normalize_zone_name(parts[1])
-  
+
   keys <- unique(c(zn, zn_first))
   keys <- keys[nzchar(keys)]
-  
+
   if (length(keys) == 0) {
     return(list(zone_id = NA_character_, met_code = met_code,
                 method = NA_character_))
   }
-  
+
   # PASS 1: same MET
   hit <- zones_lookup[
     zones_lookup$met_code == met_code & zones_lookup$n_norm %in% keys, ,
@@ -3145,17 +3145,10 @@ cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
     return(list(zone_id = hit$zone_id[1], met_code = hit$met_code[1],
                 method = "pass1_same_met"))
   }
-  
-  # PASS 2: any MET — prefer MET_CODE with fewest zones
-  hit2 <- zones_lookup[zones_lookup$n_norm %in% keys, , drop = FALSE]
-  if (nrow(hit2) > 0) {
-    met_zone_counts <- table(zones_lookup$met_code)
-    hit2$n_zones_in_met <- as.integer(met_zone_counts[hit2$met_code])
-    hit2 <- hit2[order(hit2$n_zones_in_met), , drop = FALSE]
-    return(list(zone_id = hit2$zone_id[1], met_code = hit2$met_code[1],
-                method = "pass2_any_met"))
-  }
-  
+
+  # PASS 2 REMOVED — caused false matches across CMAs for generic names
+  # like "Remainder of CMA", "Downtown", "East", "West"
+
   # PASS 3: fuzzy in same MET
   cand <- zones_lookup[zones_lookup$met_code == met_code, , drop = FALSE]
   if (nrow(cand) > 0 && nzchar(zn)) {
@@ -3169,10 +3162,9 @@ cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
                   method = sprintf("pass3_fuzzy_lv%d", lv[pick])))
     }
   }
-  
+
   list(zone_id = NA_character_, met_code = met_code, method = NA_character_)
 }
-
 
 #' Build the CMHC Zone Reference Lookup
 #'
