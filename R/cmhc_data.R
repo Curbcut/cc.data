@@ -3187,6 +3187,36 @@ cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
   list(zone_id = NA_character_, met_code = met_code, method = NA_character_)
 }
 
+#' Build the CMHC Zone Reference Lookup
+#'
+#' Pulls the CMHC ArcGIS CURRENT Survey Zone layer (520 zones, most
+#' complete reference, more complete than
+#' \code{cmhc::get_cmhc_geography(level = "ZONE")}) and pre-computes the
+#' normalized name column used for matching.
+#'
+#' @return A \code{data.frame} (no geometry) with columns:
+#'   \code{zone_id}, \code{met_code}, \code{zone_code}, \code{zone_name},
+#'   \code{zone_name_fr}, \code{n_norm}.
+cmhc_zone_lookup <- function() {
+  layer <- arcgislayers::arc_open(
+    paste0(
+      "https://geospatial.cmhc-schl.gc.ca/server/rest/services/",
+      "CMHC_APPS/HMIP_CURRENT_CAWD/MapServer/2"
+    )
+  )
+  zones <- arcgislayers::arc_select(layer, n_max = 99999)
+  
+  zones |>
+    sf::st_drop_geometry() |>
+    dplyr::transmute(
+      zone_id      = survey_zone_geographic_layer_id,
+      met_code     = metropolitan_major_area_cde,
+      zone_code    = survey_zone_cde,
+      zone_name    = survey_zone_current_nm_en,
+      zone_name_fr = survey_zone_current_nm_fr
+    ) |>
+    dplyr::mutate(n_norm = cmhc_normalize_zone_name(zone_name))
+}
 
 #' Attach GeoUID to CMHC Survey Zone-level Data
 #'
