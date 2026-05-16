@@ -3124,37 +3124,58 @@ cmhc_normalize_zone_name <- function(x, strip_parens = TRUE,
 #'
 #' @return A list with \code{zone_id}, \code{met_code}, and \code{method}.
 cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
-  zn <- cmhc_normalize_zone_name(zone_name)
+  # Compute BOTH normalized versions: with and without suffix stripping
+  zn_nostrip <- cmhc_normalize_zone_name(zone_name, strip_suffix = FALSE)
+  zn_strip   <- cmhc_normalize_zone_name(zone_name, strip_suffix = TRUE)
   parts <- trimws(strsplit(zone_name, "/", fixed = TRUE)[[1]])
-  zn_first <- cmhc_normalize_zone_name(parts[1])
+  zn_first_nostrip <- cmhc_normalize_zone_name(parts[1], strip_suffix = FALSE)
+  zn_first_strip   <- cmhc_normalize_zone_name(parts[1], strip_suffix = TRUE)
 
-  keys <- unique(c(zn, zn_first))
-  keys <- keys[nzchar(keys)]
-
-  if (length(keys) == 0) {
-    return(list(zone_id = NA_character_, met_code = met_code,
-                method = NA_character_))
+  # ALSO compute shp lookup column without strip — needs to be available
+  # The existing n_norm is with strip; we need n_norm_nostrip too.
+  # Assume zones_lookup has been pre-computed with both. If not, compute here:
+  if (!"n_norm_nostrip" %in% names(zones_lookup)) {
+    zones_lookup$n_norm_nostrip <- cmhc_normalize_zone_name(
+      zones_lookup$zone_name, strip_suffix = FALSE
+    )
   }
 
-  # PASS 1: same MET
-  hit <- zones_lookup[
-    zones_lookup$met_code == met_code & zones_lookup$n_norm %in% keys, ,
-    drop = FALSE
-  ]
-  if (nrow(hit) > 0) {
-    return(list(zone_id = hit$zone_id[1], met_code = hit$met_code[1],
-                method = "pass1_same_met"))
+  # PASS 1a: same MET, NO suffix strip (strict)
+  keys_nostrip <- unique(c(zn_nostrip, zn_first_nostrip))
+  keys_nostrip <- keys_nostrip[nzchar(keys_nostrip)]
+  if (length(keys_nostrip) > 0) {
+    hit <- zones_lookup[
+      zones_lookup$met_code == met_code &
+        zones_lookup$n_norm_nostrip %in% keys_nostrip, ,
+      drop = FALSE
+    ]
+    if (nrow(hit) > 0) {
+      return(list(zone_id = hit$zone_id[1], met_code = hit$met_code[1],
+                  method = "pass1a_same_met_nostrip"))
+    }
   }
 
-  # PASS 2 REMOVED — caused false matches across CMAs for generic names
-  # like "Remainder of CMA", "Downtown", "East", "West"
+  # PASS 1b: same MET, WITH suffix strip (lenient)
+  keys_strip <- unique(c(zn_strip, zn_first_strip))
+  keys_strip <- keys_strip[nzchar(keys_strip)]
+  if (length(keys_strip) > 0) {
+    hit <- zones_lookup[
+      zones_lookup$met_code == met_code &
+        zones_lookup$n_norm %in% keys_strip, ,
+      drop = FALSE
+    ]
+    if (nrow(hit) > 0) {
+      return(list(zone_id = hit$zone_id[1], met_code = hit$met_code[1],
+                  method = "pass1b_same_met_strip"))
+    }
+  }
 
-  # PASS 3: fuzzy in same MET
+  # PASS 3: fuzzy in same MET — TIGHTER threshold (lv<=1 only)
   cand <- zones_lookup[zones_lookup$met_code == met_code, , drop = FALSE]
-  if (nrow(cand) > 0 && nzchar(zn)) {
-    lv <- stringdist::stringdist(zn, cand$n_norm, method = "lv")
-    jw <- 1 - stringdist::stringdist(zn, cand$n_norm, method = "jw", p = 0.1)
-    ok <- which(lv <= 4 & jw >= 0.85)
+  if (nrow(cand) > 0 && nzchar(zn_strip)) {
+    lv <- stringdist::stringdist(zn_strip, cand$n_norm, method = "lv")
+    jw <- 1 - stringdist::stringdist(zn_strip, cand$n_norm, method = "jw", p = 0.1)
+    ok <- which(lv <= 1 & jw >= 0.92)
     if (length(ok) > 0) {
       pick <- ok[order(lv[ok], -jw[ok])][1]
       return(list(zone_id = cand$zone_id[pick],
@@ -3164,37 +3185,6 @@ cmhc_match_zone_name <- function(zone_name, met_code, zones_lookup) {
   }
 
   list(zone_id = NA_character_, met_code = met_code, method = NA_character_)
-}
-
-#' Build the CMHC Zone Reference Lookup
-#'
-#' Pulls the CMHC ArcGIS CURRENT Survey Zone layer (520 zones, most
-#' complete reference, more complete than
-#' \code{cmhc::get_cmhc_geography(level = "ZONE")}) and pre-computes the
-#' normalized name column used for matching.
-#'
-#' @return A \code{data.frame} (no geometry) with columns:
-#'   \code{zone_id}, \code{met_code}, \code{zone_code}, \code{zone_name},
-#'   \code{zone_name_fr}, \code{n_norm}.
-cmhc_zone_lookup <- function() {
-  layer <- arcgislayers::arc_open(
-    paste0(
-      "https://geospatial.cmhc-schl.gc.ca/server/rest/services/",
-      "CMHC_APPS/HMIP_CURRENT_CAWD/MapServer/2"
-    )
-  )
-  zones <- arcgislayers::arc_select(layer, n_max = 99999)
-  
-  zones |>
-    sf::st_drop_geometry() |>
-    dplyr::transmute(
-      zone_id      = survey_zone_geographic_layer_id,
-      met_code     = metropolitan_major_area_cde,
-      zone_code    = survey_zone_cde,
-      zone_name    = survey_zone_current_nm_en,
-      zone_name_fr = survey_zone_current_nm_fr
-    ) |>
-    dplyr::mutate(n_norm = cmhc_normalize_zone_name(zone_name))
 }
 
 
