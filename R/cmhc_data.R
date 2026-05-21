@@ -3070,12 +3070,10 @@ cmhc_fetch_zone_data <- function(survey, series, dimension, geo_uid,
 #'
 #' Applies a sequence of transformations to a zone name so that variants
 #' from the CMHC API and the shapefile can be matched. Order matters:
-#' whitespace is collapsed first (so trailing/internal extra spaces from
-#' the CMHC ArcGIS layer don't break end-anchored regexes), parens are
-#' stripped, then "Remainder of X CMA" patterns are normalized (BEFORE
-#' suffix stripping removes the trailing CMA/CA), then StatCan SGC suffixes
-#' (V/T/MU/MD/etc.) are removed, accents are transliterated, and the
-#' result is lowercased.
+#' parens are stripped first, then "Remainder of X CMA" patterns are
+#' normalized (BEFORE suffix stripping removes the trailing CMA/CA),
+#' then StatCan SGC suffixes (V/T/MU/MD/etc.) are removed, accents are
+#' transliterated, and the result is lowercased.
 #'
 #' @param x Character vector of zone names.
 #' @param strip_parens Logical. Strip parenthesised content (default TRUE).
@@ -3088,25 +3086,20 @@ cmhc_normalize_zone_name <- function(x, strip_parens = TRUE,
   x <- stringi::stri_trans_nfc(x)
   x <- stringi::stri_replace_all_regex(x, "[\u2010-\u2015\u2212]", "-")
   x <- gsub("[\u2018\u2019\u02BC]", "'", x)
-
-  # Collapse + trim whitespace EARLY so trailing spaces in upstream sources
-  # (e.g. lookup zone_name "Remainder of Halifax CMA ") don't break the
-  # end-anchored Remainder regexes below.
-  x <- trimws(gsub("\\s+", " ", x))
-
+  
   if (strip_parens) {
     x <- gsub("\\(([^)]+)\\)", "\\1", x, perl = TRUE)
   }
-
+  
   # Remainder normalization MUST come BEFORE suffix stripping
   x <- sub("(?i)^remainder of .+ cma$", "Remainder of CMA", x, perl = TRUE)
   x <- sub("(?i)^remainder of .+ ca$",  "Remainder of CA",  x, perl = TRUE)
   x <- sub("(?i)^remainder of city of .+$", "Remainder of City", x, perl = TRUE)
-
+  
   if (strip_suffix) {
     x <- sub("\\s+(V|T|TP|CY|M|MÉ|ME|MU|MD|SM|RM|RGM|DM|SC|RDA)$", "", x)
   }
-
+  
   x <- gsub("\\s+", " ", x)
   tolower(trimws(stringi::stri_trans_general(x, "Latin-ASCII")))
 }
@@ -3863,14 +3856,18 @@ cmhc_get_non_market_starts <- function(xlsx_path, time) {
 
   zones_wide <- zones_raw |> dplyr::filter(!is.na(zone_id))
 
-  # ---- Reshape: 5 tibbles per level, columns id|time|geo_vintage|value ----
-  make_long <- function(wide_df, id_col, scope_ids) {
+ # ---- Reshape: 5 tibbles per level, columns id|time|geo_vintage|value ----
+  # geo_vintage by level (matches geography.* tables):
+  #   - CMA  : "2021" — IDs come from cancensus CA21, geography.cma uses 2021
+  #   - ZONE : "2026" — IDs come from CMHC layer, geography.cmhc_zone uses 2026
+  # Same convention as cmhc_get_annual_cma() / cmhc_get_annual_zone().
+  make_long <- function(wide_df, id_col, scope_ids, geo_vintage) {
     stats::setNames(
       lapply(value_cols, function(v) {
         df <- tibble::tibble(
           id          = as.character(wide_df[[id_col]]),
           time        = time,
-          geo_vintage = "2026",
+          geo_vintage = geo_vintage,
           value       = wide_df[[v]]
         )
         cmhc_fill_missing_ids(df, scope_ids)
@@ -3880,7 +3877,7 @@ cmhc_get_non_market_starts <- function(xlsx_path, time) {
   }
 
   list(
-    cma   = make_long(cma_wide,   "cma_id",  scope_cma_ids),
-    zones = make_long(zones_wide, "zone_id", scope_zone_ids)
+    cma   = make_long(cma_wide,   "cma_id",  scope_cma_ids,  geo_vintage = "2021"),
+    zones = make_long(zones_wide, "zone_id", scope_zone_ids, geo_vintage = "2026")
   )
 }
