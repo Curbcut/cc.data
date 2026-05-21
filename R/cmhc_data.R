@@ -3510,17 +3510,21 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
 # Series:    Non-Market Housing Starts (Q1 2026+, quarterly)
 # Source:    Excel file from the CMHC website. NOT available via the HMIP
 #            API — distributed as a standalone xlsx download.
-# Geo:       CMA-aggregate + CMHC survey zones. 18 CMAs / 19 xlsx sheets are
-#            actually populated (Ottawa and Gatineau are split into two
-#            sheets matching the cmasplit provincial-part UIDs from
-#            cancensus: Ottawa = "35505" (Ontario part), Gatineau = "4505"
-#            (Quebec part)).
-# Scope:     Output covers the FULL universe — every CMA in cancensus (CA21)
-#            and every zone in cmhc_zone_lookup(). IDs absent from the xlsx
-#            (because the publication only covers 18 CMAs) are filled with
-#            NA_real_ to maintain scope across variables.
-# Vintage:   geo_vintage = "2026" (consistent with cmhc_get_annual_zone /
-#            cmhc_get_annual_nbhd).
+#            https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-
+#              and-research/housing-data/data-tables/housing-market-data/
+#              non-market-housing-starts
+# Geo:       CMA-aggregate + CMHC survey zones. 18 CMAs / 19 xlsx sheets
+#            (Ottawa and Gatineau split into two sheets matching cmasplit
+#            provincial-part UIDs: Ottawa = "35505" Ontario part,
+#            Gatineau = "4505" Quebec part).
+# Scope:     Output contains ONLY IDs present in the xlsx (no NA-filling).
+#            19 CMAs and ~253 zones. Cells marked "-" in the xlsx
+#            (= "no starts activity for this period") are kept as 0L per
+#            the publication's own footer convention.
+# Vintage:   CMA   -> geo_vintage = "2021" (cancensus IDs, matches
+#                    geography.cma)
+#            ZONES -> geo_vintage = "2026" (CMHC layer IDs, matches
+#                    geography.cmhc_zone)
 #
 # Output: list(cma = list of 5 tibbles, zones = list of 5 tibbles).
 #         Each tibble: id | time | geo_vintage | value.
@@ -3710,36 +3714,6 @@ cmhc_resolve_non_market_zone_ids <- function(df, zones_lookup,
 }
 
 
-#' Fill Missing IDs With NA to Maintain Global Scope
-#'
-#' For every id in \code{ids} that doesn't already appear in \code{df},
-#' append a row with \code{value = NA_real_} (and identical
-#' \code{time} / \code{geo_vintage} as the existing rows). Identical pattern
-#' to the \code{fill_missing_ids} closure used in the CMA / CSD pipelines.
-#'
-#' @param df A tibble with columns \code{id}, \code{time}, \code{geo_vintage},
-#'   \code{value}.
-#' @param ids Character vector of IDs that must be present in the output.
-#'
-#' @return A tibble with the same columns as \code{df}, extended with one
-#'   NA row per missing id and per existing (\code{time}, \code{geo_vintage})
-#'   combination.
-cmhc_fill_missing_ids <- function(df, ids) {
-  if (is.null(df) || nrow(df) == 0 || length(ids) == 0) return(df)
-  missing <- setdiff(ids, unique(df$id))
-  if (length(missing) == 0) return(df)
-  time_cols <- intersect(c("time", "geo_vintage"), names(df))
-  grid <- unique(df[, time_cols, drop = FALSE])
-  na_rows <- do.call(rbind, lapply(missing, function(id) {
-    r <- grid
-    r$id <- id
-    r$value <- NA_real_
-    r[c("id", time_cols, "value")]
-  }))
-  rbind(df, na_rows)
-}
-
-
 #' Parse the CMHC Non-Market Housing Starts Excel Publication
 #'
 #' Reads a quarterly Non-Market Housing Starts xlsx from CMHC (Excel
@@ -3763,12 +3737,11 @@ cmhc_fill_missing_ids <- function(df, ids) {
 #' cancensus region names. All other CMAs match directly by normalized
 #' name.
 #'
-#' \strong{Scope coverage:} the output spans the full universe — every CMA
-#' in \code{cancensus::get_census(level = "CMA")} and every zone in
-#' \code{cmhc_zone_lookup()}. IDs not covered by the publication (the
-#' xlsx only reports on 18 CMAs) are filled with \code{NA_real_}. Cells
-#' marked "-" in the xlsx (= "no starts activity for this period") are
-#' kept as \code{0L} per the publication's own footer convention.
+#' \strong{Scope coverage:} the output contains only IDs present in the
+#' xlsx (19 CMAs / ~253 zones — the 18 CMAs covered by the publication,
+#' with Ottawa and Gatineau as separate cmasplit IDs). No NA-filling.
+#' Cells marked "-" in the xlsx (= "no starts activity for this period")
+#' are kept as \code{0L} per the publication's own footer convention.
 #'
 #' Zone IDs are resolved via \code{cmhc_zone_lookup()} +
 #' \code{cmhc_match_zone_name()} (same 3-pass matcher as
@@ -3782,10 +3755,10 @@ cmhc_fill_missing_ids <- function(df, ids) {
 #' @return A named list:
 #'   \describe{
 #'     \item{\code{cma}}{Named list of 5 tibbles. Each: \code{id}
-#'       (cma_id), \code{time}, \code{geo_vintage}, \code{value}.}
+#'       (cma_id), \code{time}, \code{geo_vintage = "2021"}, \code{value}.}
 #'     \item{\code{zones}}{Named list of 5 tibbles. Each: \code{id}
 #'       (survey_zone_geographic_layer_id), \code{time},
-#'       \code{geo_vintage}, \code{value}.}
+#'       \code{geo_vintage = "2026"}, \code{value}.}
 #'   }
 #' @export
 cmhc_get_non_market_starts <- function(xlsx_path, time) {
@@ -3805,10 +3778,6 @@ cmhc_get_non_market_starts <- function(xlsx_path, time) {
   cma_ref      <- cmhc_build_cancensus_cma_ref()
   zones_lookup <- cmhc_zone_lookup()
   cma_to_met   <- cmhc_get_cma_to_met()
-
-  # Full-universe scopes
-  scope_cma_ids  <- unique(cma_ref$cma_id)
-  scope_zone_ids <- unique(zones_lookup$zone_id)
 
   # ---- CMA Total sheet -----------------------------------------------------
   cma_raw <- cmhc_parse_non_market_sheet(
@@ -3863,28 +3832,26 @@ cmhc_get_non_market_starts <- function(xlsx_path, time) {
 
   zones_wide <- zones_raw |> dplyr::filter(!is.na(zone_id))
 
- # ---- Reshape: 5 tibbles per level, columns id|time|geo_vintage|value ----
+  # ---- Reshape: 5 tibbles per level, columns id|time|geo_vintage|value ----
   # geo_vintage by level (matches geography.* tables):
   #   - CMA  : "2021" — IDs come from cancensus CA21, geography.cma uses 2021
   #   - ZONE : "2026" — IDs come from CMHC layer, geography.cmhc_zone uses 2026
-  # Same convention as cmhc_get_annual_cma() / cmhc_get_annual_zone().
-  make_long <- function(wide_df, id_col, scope_ids, geo_vintage) {
+  make_long <- function(wide_df, id_col, geo_vintage) {
     stats::setNames(
       lapply(value_cols, function(v) {
-        df <- tibble::tibble(
+        tibble::tibble(
           id          = as.character(wide_df[[id_col]]),
           time        = time,
           geo_vintage = geo_vintage,
           value       = wide_df[[v]]
         )
-        cmhc_fill_missing_ids(df, scope_ids)
       }),
       value_cols
     )
   }
 
   list(
-    cma   = make_long(cma_wide,   "cma_id",  scope_cma_ids,  geo_vintage = "2021"),
-    zones = make_long(zones_wide, "zone_id", scope_zone_ids, geo_vintage = "2026")
+    cma   = make_long(cma_wide,   "cma_id",  geo_vintage = "2021"),
+    zones = make_long(zones_wide, "zone_id", geo_vintage = "2026")
   )
 }
