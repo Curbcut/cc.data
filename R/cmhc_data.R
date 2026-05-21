@@ -3496,3 +3496,384 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
   if (is.character(collected)) return(collected)
   list(survey_zone = cmhc_finalize_results(collected))
 }
+
+# ============================================================================
+# CMHC Non-Market Housing Starts — Excel publication parser
+#
+# Series:    Non-Market Housing Starts (Q1 2026+, quarterly)
+# Source:    Excel file from the CMHC website. NOT available via the HMIP
+#            API — distributed as a standalone xlsx download.
+# Geo:       CMA-aggregate + CMHC survey zones. 18 CMAs / 19 xlsx sheets are
+#            actually populated (Ottawa and Gatineau are split into two
+#            sheets matching the cmasplit provincial-part UIDs from
+#            cancensus: Ottawa = "35505" (Ontario part), Gatineau = "4505"
+#            (Quebec part)).
+# Scope:     Output covers the FULL universe — every CMA in cancensus (CA21)
+#            and every zone in cmhc_zone_lookup(). IDs absent from the xlsx
+#            (because the publication only covers 18 CMAs) are filled with
+#            NA_real_ to maintain scope across variables.
+# Vintage:   geo_vintage = "2026" (consistent with cmhc_get_annual_zone /
+#            cmhc_get_annual_nbhd).
+#
+# Output: list(cma = list of 5 tibbles, zones = list of 5 tibbles).
+#         Each tibble: id | time | geo_vintage | value.
+# ============================================================================
+
+
+#' Normalize a CMA Name for Matching
+#'
+#' Strips parenthesised content (e.g. \code{"(B)"},
+#' \code{"(partie du Quebec / Quebec part)"}), transliterates accents,
+#' collapses whitespace, and lowercases.
+#'
+#' @param x Character vector of CMA names.
+#' @return Character vector of normalized names.
+cmhc_normalize_cma_name <- function(x) {
+  x <- ifelse(is.na(x), "", as.character(x))
+  x <- stringi::stri_trans_general(x, "Latin-ASCII")
+  x <- gsub("\\s*\\([^)]*\\)", "", x, perl = TRUE)
+  x <- gsub("\\s+", " ", x)
+  tolower(trimws(x))
+}
+
+
+#' Build a CMA Reference Table from cancensus
+#'
+#' Pulls the 2021 CMA list from cancensus and produces a lookup table
+#' \code{cma_id <-> match_name}. Provincial-part CMAs are handled by
+#' detecting "Ontario part" / "Quebec part" qualifiers in the raw region
+#' name (before parens are stripped) and substituting the appropriate half
+#' of the dash-separated combined name. This lets the Ottawa / Gatineau
+#' xlsx sheets match their respective provincial-part UIDs directly by
+#' name (Ottawa -> 35505, Gatineau -> 4505) without any hardcoded id
+#' mapping.
+#'
+#' @return A tibble with columns \code{cma_id} and \code{match_name}
+#'   (already normalized for direct join).
+cmhc_build_cancensus_cma_ref <- function() {
+  raw <- cancensus::get_census(
+    dataset   = "CA21",
+    regions   = list(C = "01"),
+    level     = "CMA",
+    use_cache = TRUE,
+    quiet     = TRUE
+  ) |>
+    sf::st_drop_geometry()
+
+  region_name <- as.character(raw$`Region Name`)
+
+  is_on_part <- stringr::str_detect(
+    region_name, "(?i)ontario part|partie de l'ontario"
+  )
+  is_qc_part <- stringr::str_detect(
+    region_name, "(?i)quebec part|partie du qu"
+  )
+
+  base_name  <- cmhc_normalize_cma_name(region_name)
+  match_name <- base_name
+
+  parts_list <- strsplit(base_name, " - ", fixed = TRUE)
+  for (i in seq_along(base_name)) {
+    p <- parts_list[[i]]
+    if (length(p) >= 2) {
+      if (is_on_part[i]) match_name[i] <- p[1]
+      if (is_qc_part[i]) match_name[i] <- p[2]
+    }
+  }
+
+  tibble::tibble(
+    cma_id     = as.character(raw$GeoUID),
+    match_name = match_name
+  )
+}
+
+
+#' Parse a Single Sheet of the Non-Market Housing Starts xlsx
+#'
+#' Reads one sheet (either the "CMA Total" summary or a CMA-specific zone
+#' breakdown), drops footer/methodology rows and the per-sheet total row,
+#' coerces "-" placeholders to 0L (per the xlsx footer: "no corresponding
+#' housing starts activity for this period"), and keeps only the 5
+#' "Total(All Tenure Types)" marginal columns (renamed to
+#' \code{non_market_*} suffixes).
+#'
+#' @param xlsx_path Character. Path to the xlsx file.
+#' @param sheet Character. Sheet name to read.
+#' @param first_col Character. Name of the first column as it appears in
+#'   the sheet (\code{"Census Metropolitan Area"} for the \code{"CMA Total"}
+#'   sheet, \code{"Zone"} for CMA-specific sheets).
+#'
+#' @return A tibble with columns: \code{geo_name}, \code{non_market_single},
+#'   \code{non_market_semi_detached}, \code{non_market_row},
+#'   \code{non_market_apartment}, \code{non_market_total}.
+cmhc_parse_non_market_sheet <- function(xlsx_path, sheet, first_col) {
+  value_cols <- c(
+    non_market_single        = "Total(All Tenure Types) Single",
+    non_market_semi_detached = "Total(All Tenure Types) Semi-detached",
+    non_market_row           = "Total(All Tenure Types) Row",
+    non_market_apartment     = "Total(All Tenure Types) Apartment",
+    non_market_total         = "Total(All Tenure Types) Dwelling Types"
+  )
+
+  readxl::read_excel(xlsx_path, sheet = sheet, skip = 4) |>
+    dplyr::rename(geo_name = !!first_col) |>
+    dplyr::filter(
+      !is.na(geo_name),
+      !stringr::str_detect(geo_name, "^[*\u2013\u00a9]"),
+      !stringr::str_detect(geo_name, "^(Source|Non[\u2011-]market|This includes)"),
+      !stringr::str_detect(geo_name, "CMA Total$")
+    ) |>
+    dplyr::select(geo_name, !!!value_cols) |>
+    dplyr::mutate(
+      dplyr::across(
+        -geo_name,
+        ~ dplyr::coalesce(
+          suppressWarnings(as.integer(dplyr::na_if(.x, "-"))),
+          0L
+        )
+      )
+    )
+}
+
+
+#' Resolve Sheet/CMA Names to cma_id
+#'
+#' Joins each xlsx sheet name (or CMA name from the "CMA Total" sheet)
+#' against the cancensus reference table by normalized name. One name fix
+#' is applied before normalization to undo Excel's 31-character sheet-name
+#' truncation: \code{"Kitchener - Cambridge - Waterlo"} ->
+#' \code{"Kitchener - Cambridge - Waterloo"}.
+#'
+#' @param sheet_names Character vector of unique sheet/CMA names.
+#' @param cma_ref A tibble from \code{cmhc_build_cancensus_cma_ref()}.
+#' @return A tibble with columns \code{cma_sheet}, \code{cma_id}.
+cmhc_sheet_to_cma_id <- function(sheet_names, cma_ref) {
+  sheet_name_fixes <- c(
+    "Kitchener - Cambridge - Waterlo" = "Kitchener - Cambridge - Waterloo"
+  )
+
+  tibble::tibble(cma_sheet = sheet_names) |>
+    dplyr::mutate(
+      .lookup = dplyr::coalesce(sheet_name_fixes[cma_sheet], cma_sheet),
+      .n_norm = cmhc_normalize_cma_name(.lookup)
+    ) |>
+    dplyr::left_join(
+      cma_ref,
+      by = c(".n_norm" = "match_name")
+    ) |>
+    dplyr::select(cma_sheet, cma_id)
+}
+
+
+#' Attach zone_id to Parsed Zone-Level Data
+#'
+#' Resolves each zone to its official
+#' \code{survey_zone_geographic_layer_id} using the 3-pass matcher
+#' \code{cmhc_match_zone_name()}. The \code{met_code} required by the
+#' matcher comes from joining each row's parent \code{cma_id} (resolved
+#' from \code{cma_sheet}) against \code{cma_to_met}.
+#'
+#' @param df A tibble with columns \code{geo_name} (zone name) and
+#'   \code{cma_sheet} (the xlsx sheet the zone came from).
+#' @param zones_lookup A data.frame from \code{cmhc_zone_lookup()}.
+#' @param cma_to_met A data.frame with \code{cma_uid} and \code{met_code}
+#'   (from \code{cmhc_get_cma_to_met()}).
+#' @param cma_ref A tibble from \code{cmhc_build_cancensus_cma_ref()}.
+#'
+#' @return The input \code{df} with an added \code{zone_id} column (NA for
+#'   unmatched zones).
+cmhc_resolve_non_market_zone_ids <- function(df, zones_lookup,
+                                             cma_to_met, cma_ref) {
+  sheet_to_met <- cmhc_sheet_to_cma_id(unique(df$cma_sheet), cma_ref) |>
+    dplyr::left_join(cma_to_met, by = c("cma_id" = "cma_uid")) |>
+    dplyr::select(cma_sheet, met_code)
+
+  df <- df |> dplyr::left_join(sheet_to_met, by = "cma_sheet")
+
+  matches <- lapply(seq_len(nrow(df)), function(i) {
+    cmhc_match_zone_name(
+      zone_name    = df$geo_name[i],
+      met_code     = df$met_code[i],
+      zones_lookup = zones_lookup
+    )
+  })
+
+  df$zone_id <- vapply(matches, function(m) m$zone_id, character(1))
+  df
+}
+
+
+#' Fill Missing IDs With NA to Maintain Global Scope
+#'
+#' For every id in \code{ids} that doesn't already appear in \code{df},
+#' append a row with \code{value = NA_real_} (and identical
+#' \code{time} / \code{geo_vintage} as the existing rows). Identical pattern
+#' to the \code{fill_missing_ids} closure used in the CMA / CSD pipelines.
+#'
+#' @param df A tibble with columns \code{id}, \code{time}, \code{geo_vintage},
+#'   \code{value}.
+#' @param ids Character vector of IDs that must be present in the output.
+#'
+#' @return A tibble with the same columns as \code{df}, extended with one
+#'   NA row per missing id and per existing (\code{time}, \code{geo_vintage})
+#'   combination.
+cmhc_fill_missing_ids <- function(df, ids) {
+  if (is.null(df) || nrow(df) == 0 || length(ids) == 0) return(df)
+  missing <- setdiff(ids, unique(df$id))
+  if (length(missing) == 0) return(df)
+  time_cols <- intersect(c("time", "geo_vintage"), names(df))
+  grid <- unique(df[, time_cols, drop = FALSE])
+  na_rows <- do.call(rbind, lapply(missing, function(id) {
+    r <- grid
+    r$id <- id
+    r$value <- NA_real_
+    r[c("id", time_cols, "value")]
+  }))
+  rbind(df, na_rows)
+}
+
+
+#' Parse the CMHC Non-Market Housing Starts Excel Publication
+#'
+#' Reads a quarterly Non-Market Housing Starts xlsx from CMHC (Excel
+#' publication, NOT the HMIP API) and returns long-format data ready for
+#' upload at two geographic levels: CMA aggregate and CMHC survey zone.
+#'
+#' Five variables are produced per level, from the 5 "Total(All Tenure
+#' Types)" marginal columns:
+#' \itemize{
+#'   \item \code{non_market_single}
+#'   \item \code{non_market_semi_detached}
+#'   \item \code{non_market_row}
+#'   \item \code{non_market_apartment}
+#'   \item \code{non_market_total}
+#' }
+#'
+#' Each sheet in the xlsx maps to exactly one row at the CMA level — no
+#' fusion. Ottawa and Gatineau are kept distinct and resolved to their
+#' respective provincial-part UIDs (Ottawa -> 35505, Gatineau -> 4505) by
+#' detecting the "Ontario part" / "Quebec part" qualifiers in the
+#' cancensus region names. All other CMAs match directly by normalized
+#' name.
+#'
+#' \strong{Scope coverage:} the output spans the full universe — every CMA
+#' in \code{cancensus::get_census(level = "CMA")} and every zone in
+#' \code{cmhc_zone_lookup()}. IDs not covered by the publication (the
+#' xlsx only reports on 18 CMAs) are filled with \code{NA_real_}. Cells
+#' marked "-" in the xlsx (= "no starts activity for this period") are
+#' kept as \code{0L} per the publication's own footer convention.
+#'
+#' Zone IDs are resolved via \code{cmhc_zone_lookup()} +
+#' \code{cmhc_match_zone_name()} (same 3-pass matcher as
+#' \code{cmhc_get_annual_zone()}).
+#'
+#' @param xlsx_path Character. Path to the downloaded xlsx file (e.g.
+#'   \code{"non-market-housing-starts-q1-2026-en.xlsx"}).
+#' @param time Character. Period tag (e.g. \code{"2026q1"}), written to
+#'   the \code{time} column in the output.
+#'
+#' @return A named list:
+#'   \describe{
+#'     \item{\code{cma}}{Named list of 5 tibbles. Each: \code{id}
+#'       (cma_id), \code{time}, \code{geo_vintage}, \code{value}.}
+#'     \item{\code{zones}}{Named list of 5 tibbles. Each: \code{id}
+#'       (survey_zone_geographic_layer_id), \code{time},
+#'       \code{geo_vintage}, \code{value}.}
+#'   }
+#' @export
+cmhc_get_non_market_starts <- function(xlsx_path, time) {
+  if (!file.exists(xlsx_path)) {
+    stop(sprintf("xlsx not found at: %s", xlsx_path))
+  }
+
+  value_cols <- c(
+    "non_market_single",
+    "non_market_semi_detached",
+    "non_market_row",
+    "non_market_apartment",
+    "non_market_total"
+  )
+
+  # ---- References ----------------------------------------------------------
+  cma_ref      <- cmhc_build_cancensus_cma_ref()
+  zones_lookup <- cmhc_zone_lookup()
+  cma_to_met   <- cmhc_get_cma_to_met()
+
+  # Full-universe scopes
+  scope_cma_ids  <- unique(cma_ref$cma_id)
+  scope_zone_ids <- unique(zones_lookup$zone_id)
+
+  # ---- CMA Total sheet -----------------------------------------------------
+  cma_raw <- cmhc_parse_non_market_sheet(
+    xlsx_path,
+    sheet     = "CMA Total",
+    first_col = "Census Metropolitan Area"
+  )
+
+  cma_wide <- cma_raw |>
+    dplyr::left_join(
+      cmhc_sheet_to_cma_id(cma_raw$geo_name, cma_ref),
+      by = c("geo_name" = "cma_sheet")
+    )
+
+  unmatched_cma <- cma_wide$geo_name[is.na(cma_wide$cma_id)]
+  if (length(unmatched_cma) > 0) {
+    warning(sprintf(
+      "Unmatched CMA(s) in 'CMA Total' sheet: %s",
+      paste(unmatched_cma, collapse = ", ")
+    ), call. = FALSE)
+  }
+
+  cma_wide <- cma_wide |> dplyr::filter(!is.na(cma_id))
+
+  # ---- Per-CMA zone sheets -------------------------------------------------
+  sheets <- readxl::excel_sheets(xlsx_path)
+  cma_sheet_names <- setdiff(sheets, "CMA Total")
+
+  zones_raw <- purrr::map_dfr(cma_sheet_names, function(sheet) {
+    cmhc_parse_non_market_sheet(
+      xlsx_path,
+      sheet     = sheet,
+      first_col = "Zone"
+    ) |>
+      dplyr::mutate(cma_sheet = sheet)
+  }) |>
+    cmhc_resolve_non_market_zone_ids(zones_lookup, cma_to_met, cma_ref)
+
+  unmatched_zones <- zones_raw |> dplyr::filter(is.na(zone_id))
+  if (nrow(unmatched_zones) > 0) {
+    warning(sprintf(
+      "Unmatched zone(s): %d\n%s",
+      nrow(unmatched_zones),
+      paste(
+        sprintf("  [%s] %s",
+                unmatched_zones$cma_sheet,
+                unmatched_zones$geo_name),
+        collapse = "\n"
+      )
+    ), call. = FALSE)
+  }
+
+  zones_wide <- zones_raw |> dplyr::filter(!is.na(zone_id))
+
+  # ---- Reshape: 5 tibbles per level, columns id|time|geo_vintage|value ----
+  make_long <- function(wide_df, id_col, scope_ids) {
+    stats::setNames(
+      lapply(value_cols, function(v) {
+        df <- tibble::tibble(
+          id          = as.character(wide_df[[id_col]]),
+          time        = time,
+          geo_vintage = "2026",
+          value       = wide_df[[v]]
+        )
+        cmhc_fill_missing_ids(df, scope_ids)
+      }),
+      value_cols
+    )
+  }
+
+  list(
+    cma   = make_long(cma_wide,   "cma_id",  scope_cma_ids),
+    zones = make_long(zones_wide, "zone_id", scope_zone_ids)
+  )
+}
