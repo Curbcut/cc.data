@@ -3070,10 +3070,12 @@ cmhc_fetch_zone_data <- function(survey, series, dimension, geo_uid,
 #'
 #' Applies a sequence of transformations to a zone name so that variants
 #' from the CMHC API and the shapefile can be matched. Order matters:
-#' parens are stripped first, then "Remainder of X CMA" patterns are
-#' normalized (BEFORE suffix stripping removes the trailing CMA/CA),
-#' then StatCan SGC suffixes (V/T/MU/MD/etc.) are removed, accents are
-#' transliterated, and the result is lowercased.
+#' whitespace is collapsed first (so trailing/internal extra spaces from
+#' the CMHC ArcGIS layer don't break end-anchored regexes), parens are
+#' stripped, then "Remainder of X CMA" patterns are normalized (BEFORE
+#' suffix stripping removes the trailing CMA/CA), then StatCan SGC suffixes
+#' (V/T/MU/MD/etc.) are removed, accents are transliterated, and the
+#' result is lowercased.
 #'
 #' @param x Character vector of zone names.
 #' @param strip_parens Logical. Strip parenthesised content (default TRUE).
@@ -3086,20 +3088,25 @@ cmhc_normalize_zone_name <- function(x, strip_parens = TRUE,
   x <- stringi::stri_trans_nfc(x)
   x <- stringi::stri_replace_all_regex(x, "[\u2010-\u2015\u2212]", "-")
   x <- gsub("[\u2018\u2019\u02BC]", "'", x)
-  
+
+  # Collapse + trim whitespace EARLY so trailing spaces in upstream sources
+  # (e.g. lookup zone_name "Remainder of Halifax CMA ") don't break the
+  # end-anchored Remainder regexes below.
+  x <- trimws(gsub("\\s+", " ", x))
+
   if (strip_parens) {
     x <- gsub("\\(([^)]+)\\)", "\\1", x, perl = TRUE)
   }
-  
+
   # Remainder normalization MUST come BEFORE suffix stripping
   x <- sub("(?i)^remainder of .+ cma$", "Remainder of CMA", x, perl = TRUE)
   x <- sub("(?i)^remainder of .+ ca$",  "Remainder of CA",  x, perl = TRUE)
   x <- sub("(?i)^remainder of city of .+$", "Remainder of City", x, perl = TRUE)
-  
+
   if (strip_suffix) {
     x <- sub("\\s+(V|T|TP|CY|M|MÉ|ME|MU|MD|SM|RM|RGM|DM|SC|RDA)$", "", x)
   }
-  
+
   x <- gsub("\\s+", " ", x)
   tolower(trimws(stringi::stri_trans_general(x, "Latin-ASCII")))
 }
