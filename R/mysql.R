@@ -547,7 +547,7 @@ db_write_ttm <- function(mode, zip_file_path, overwrite) {
       on.exit(unlink(tmp), add = TRUE)
 
       utils::unzip(zipfile = zip_file_path, files = file_name, exdir = tmp)
-      dat <- qs::qread(file.path(tmp, file_name))
+      dat <- qs2::qs_read(file.path(tmp, file_name))
       if (nrow(dat) == 0) next
 
       # Assuming 'from' is at dat[2] and 'to' is at dat[1]

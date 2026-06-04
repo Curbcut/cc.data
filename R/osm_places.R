@@ -294,7 +294,7 @@ osm_extract_province <- function(province,
     result  <- osm_to_centroid(deduped)
     result$category <- cat$type_id
     result$province <- province
-    qs::qsave(result, file.path(out_dir, sprintf("%s_%s.qs", cat$type_id, slug)))
+    qs2::qs_save(result, file.path(out_dir, sprintf("%s_%s.qs", cat$type_id, slug)))
     totals[cat$type_id] <- nrow(result)
   }
   totals
@@ -424,7 +424,7 @@ osm_combine_provinces <- function(osm_dir,
                   length(files), length(unique(categories))))
 
   normalize_one <- function(file_path) {
-    df <- qs::qread(file_path)
+    df <- qs2::qs_read(file_path)
 
     if (!"name" %in% names(df)) {
       alt <- intersect(c("osm_name", "Name", "NAME"), names(df))
@@ -449,7 +449,7 @@ osm_combine_provinces <- function(osm_dir,
     combined <- do.call(rbind, parts)
 
     out_path <- file.path(out_dir, paste0(cat, ".qs"))
-    qs::qsave(combined, out_path)
+    qs2::qs_save(combined, out_path)
 
     counts[cat] <- nrow(combined)
     message(sprintf("  Saved %s (%s POIs)",

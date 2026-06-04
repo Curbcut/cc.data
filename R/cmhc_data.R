@@ -1601,7 +1601,7 @@ cmhc_validate_ct_uids <- function(ct_df, refresh = FALSE) {
   # Cache to S3
   if (use_s3 && nrow(result) > 0) {
     creds <- .cmhc_s3_creds()
-    raw <- qs::qserialize(result, preset = "fast")
+    raw <- qs2::qs_serialize(result, compress_level = 1)
     aws.s3::put_object(
       what = raw,
       object = cache_key,
@@ -1862,7 +1862,7 @@ cmhc_read_variable <- function(
     }
     acc <- NULL
     for (f in files) {
-      x <- qs::qread(f)
+      x <- qs2::qs_read(f)
       if (is.null(x)) {
         next
       }
@@ -2010,7 +2010,7 @@ cmhc_list_variables <- function(dir, n_sample = 20) {
     }
     keys <- character(0)
     for (f in files) {
-      x <- qs::qread(f)
+      x <- qs2::qs_read(f)
       if (!is.null(x)) keys <- union(keys, setdiff(names(x), ".debug"))
     }
   }
@@ -2074,7 +2074,7 @@ cmhc_list_variables <- function(dir, n_sample = 20) {
     overwrite = TRUE
   ) |>
     suppressMessages()
-  qs::qread(tmp)
+  qs2::qs_read(tmp)
 }
 
 #' List .qs cache files (local or S3)
@@ -2179,7 +2179,7 @@ cmhc_run_and_collect <- function(
         # S3 writer: references .s3_bucket etc. from par_env after
         # cmhc_make_par_env() re-binds all function environments.
         par_env_objs$qs_qsave <- function(x, key) {
-          raw <- qs::qserialize(x, preset = "fast")
+          raw <- qs2::qs_serialize(x, compress_level = 1)
           aws.s3::put_object(
             what = raw,
             object = key,
@@ -2194,7 +2194,7 @@ cmhc_run_and_collect <- function(
         par_env_objs$.s3_key <- s3_creds$key
         par_env_objs$.s3_secret <- s3_creds$secret
       } else {
-        par_env_objs$qs_qsave <- function(x, file) qs::qsave(x, file)
+        par_env_objs$qs_qsave <- function(x, file) qs2::qs_save(x, file)
       }
       par_env <- do.call(cmhc_make_par_env, par_env_objs)
 
@@ -2419,7 +2419,7 @@ cmhc_run_and_collect <- function(
         # Save result (or empty sentinel for nodata so we skip on re-run)
         out <- if (!is.null(result)) result else data.frame()
         if (use_s3) {
-          raw <- qs::qserialize(out, preset = "fast")
+          raw <- qs2::qs_serialize(out, compress_level = 1)
           aws.s3::put_object(
             what = raw,
             object = s3_key,
@@ -2429,7 +2429,7 @@ cmhc_run_and_collect <- function(
             secret = s3_creds$secret
           )
         } else {
-          qs::qsave(out, s3_key)
+          qs2::qs_save(out, s3_key)
         }
       }
     }
@@ -2762,7 +2762,7 @@ cmhc_attach_nbhd_id <- function(df, year, geo_uid, cma_to_met, qsm_path) {
   obj_name <- paste0("cmhc_nbhd_", yr)
 
   env <- new.env()
-  qs::qload(qsm_path, env = env)
+  qs2::qs_readm(qsm_path, env = env)
   if (!exists(obj_name, envir = env)) {
     available <- ls(envir = env)
     available_years <- as.integer(gsub("cmhc_nbhd_", "", available))
@@ -3259,7 +3259,7 @@ cmhc_attach_zone_id <- function(df, year, zones_lookup, zone_qsm_path) {
   }
 
   env <- new.env()
-  qs::qload(zone_qsm_path, env = env)
+  qs2::qs_readm(zone_qsm_path, env = env)
 
   obj_name <- paste0("cmhc_zone_", as.integer(year))
   if (!exists(obj_name, envir = env)) {

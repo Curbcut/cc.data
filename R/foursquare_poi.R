@@ -191,8 +191,8 @@ poi_run_evolution_local <- function(geo_list, poi_path, categorize = FALSE) {
   poi_df <- switch(ext,
     "rds" = readRDS(poi_path),
     "qs"  = {
-      if (!requireNamespace("qs", quietly = TRUE)) stop("Package 'qs' required.")
-      qs::qread(poi_path)
+      if (!requireNamespace("qs2", quietly = TRUE)) stop("Package 'qs2' required.")
+      qs2::qs_read(poi_path)
     },
     stop("Unsupported file extension: ", ext, ". Expected .rds or .qs.")
   )

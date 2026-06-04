@@ -183,7 +183,7 @@ build_alp <- function(
     DB_sf,
     SIMPLIFY = FALSE
   )
-  qs::qsave(
+  qs2::qs_save(
     dwellings_sf,
     file = paste0(
       Sys.getenv("CURBCUT_DATA_SHARING_PATH"),

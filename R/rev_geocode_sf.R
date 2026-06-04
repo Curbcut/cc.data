@@ -55,7 +55,7 @@ rev_geocode_building <- function(prov_folder, nb_batches = 100, nb_sf_process = 
 
           # Get sfs centroid --------------------------------------------------------
 
-          sf_df <- qs::qread(paste0(prov_folder, "/",
+          sf_df <- qs2::qs_read(paste0(prov_folder, "/",
                                     cc.data::buildings_osm_ms_keys$ms_code[table_n],
                                     ".qs"))
 
@@ -93,7 +93,7 @@ rev_geocode_building <- function(prov_folder, nb_batches = 100, nb_sf_process = 
 
           # Download qs -------------------------------------------------------------
 
-          out <- qs::qread(paste0(prov_folder, "/",
+          out <- qs2::qs_read(paste0(prov_folder, "/",
                                   cc.data::buildings_osm_ms_keys$ms_code[table_n],
                                   ".qs"))
 
@@ -136,7 +136,7 @@ rev_geocode_building <- function(prov_folder, nb_batches = 100, nb_sf_process = 
   rm(provs)
   # Save national geometries for later. Only keep centroids on memory
   tmp_nat <- tempfile(fileext = "qs")
-  qs::qsave(nat, tmp_nat)
+  qs2::qs_save(nat, tmp_nat)
   rm(nat)
 
   pb <- progressr::progressor(steps = length(nat_missing_centroids))
@@ -168,7 +168,7 @@ rev_geocode_building <- function(prov_folder, nb_batches = 100, nb_sf_process = 
 
   # Get back the temp file and merge the names ------------------------------
 
-  nat <- qs::qread(tmp_nat)
+  nat <- qs2::qs_read(tmp_nat)
 
   new_names <- merge(rev_geocoded, nat[, c("ID", "geometry")], by = "ID",
                      all.x = TRUE, all.y = FALSE)

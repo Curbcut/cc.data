@@ -64,7 +64,7 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
       file = bucket_hash
     ) |>
       suppressMessages()
-    bucket_hash <- qs::qread(bucket_hash)
+    bucket_hash <- qs2::qs_read(bucket_hash)
     names(bucket_hash)[2] <- "hash_bucket"
 
     # Are the files that are present in the bucket, and not locally? If so,
@@ -190,7 +190,7 @@ bucket_write_folder <- function(folder, bucket, prune = "ask") {
   )
 
   hash_temp <- tempfile(fileext = ".qs")
-  qs::qsave(hash_file, hash_temp)
+  qs2::qs_save(hash_file, hash_temp)
 
   aws.s3::put_object(
     region = Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION"),
@@ -276,7 +276,7 @@ bucket_get_folder <- function(
       file = bucket_hash
     ) |>
       suppressMessages()
-    bucket_hash <- qs::qread(bucket_hash)
+    bucket_hash <- qs2::qs_read(bucket_hash)
     names(bucket_hash)[2] <- "hash_bucket"
 
     # Create a hash file of existing files

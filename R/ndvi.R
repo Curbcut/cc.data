@@ -209,7 +209,7 @@ ndvi_get_features <- function(years = ndvi_years(),
     # Get all the items
     retrievals <- ndvi_get_items_hls(year = year, zone_bbox = zone_bbox)
 
-    qs::qsave(retrievals, sprintf("%sretrievals_%s.qs", output_path, year))
+    qs2::qs_save(retrievals, sprintf("%sretrievals_%s.qs", output_path, year))
     return(NULL)
   })
 
@@ -607,7 +607,7 @@ ndvi_import <- function(years = ndvi_years(),
 
   lapply(rev(years), \(year) {
 
-    retrievals <- qs::qread(sprintf("%sretrievals_%s.qs", output_path, year))
+    retrievals <- qs2::qs_read(sprintf("%sretrievals_%s.qs", output_path, year))
 
     # Get the features only
     retrievals_features <- lapply(retrievals, `[[`, "features")
@@ -675,7 +675,7 @@ ndvi_import <- function(years = ndvi_years(),
 
         # Save to disk
         file_path <- sprintf("%s%s.qs", temp_folder, bbox)
-        qs::qsave(ndvi_points, file = file_path)
+        qs2::qs_save(ndvi_points, file = file_path)
 
         aws.s3::put_object(bucket = "curbcut.rawdata",
                            object = sprintf("ndvi/%s/%s.qs", year, bbox),
@@ -928,7 +928,7 @@ ndvi_import_from_masterpolygon <- function(master_polygon, years = ndvi_years(),
     #   }
 
     # Save
-    qs::qsave(tb, output_file)
+    qs2::qs_save(tb, output_file)
   })
 
 

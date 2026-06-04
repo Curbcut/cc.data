@@ -182,7 +182,7 @@ tt_build_manifest <- function(
       mode,
       manifest_path
     ))
-    return(invisible(qs::qread(manifest_path)))
+    return(invisible(qs2::qs_read(manifest_path)))
   }
 
   src_prefix <- paste0(source_prefix, "/", mode, "/")
@@ -212,7 +212,7 @@ tt_build_manifest <- function(
       objs$Size[i] / 1e9
     ))
     aws.s3::save_object(object = objs$Key[i], bucket = source_bucket, file = tmp_qs)
-    batch <- qs::qread(tmp_qs)
+    batch <- qs2::qs_read(tmp_qs)
     manifest_list[[i]] <- data.table::data.table(
       origin_db = names(batch),
       n_rows = vapply(batch, nrow, integer(1L)),
@@ -238,7 +238,7 @@ tt_build_manifest <- function(
     n_parts
   ))
 
-  qs::qsave(manifest, manifest_path)
+  qs2::qs_save(manifest, manifest_path)
   message(sprintf("  Manifest saved to %s", manifest_path))
   invisible(manifest)
 }
@@ -292,7 +292,7 @@ tt_shred_to_s3 <- function(
 
   manifest_path <- file.path(manifest_dir, paste0("manifest_", mode, ".qs"))
   stopifnot(file.exists(manifest_path))
-  manifest <- qs::qread(manifest_path)
+  manifest <- qs2::qs_read(manifest_path)
 
   origin_to_part <- manifest$part_num
   names(origin_to_part) <- manifest$origin_db
@@ -355,7 +355,7 @@ tt_shred_to_s3 <- function(
     ))
 
     aws.s3::save_object(object = s3_key, bucket = source_bucket, file = tmp_qs)
-    batch <- qs::qread(tmp_qs)
+    batch <- qs2::qs_read(tmp_qs)
 
     flat <- data.table::rbindlist(lapply(names(batch), function(orig) {
       dt <- batch[[orig]]
@@ -981,7 +981,7 @@ tt_build_index <- function(
   # --- .qs for R consumers ---
   tmp_qs <- tempfile(fileext = ".qs")
   on.exit(unlink(tmp_qs), add = TRUE)
-  qs::qsave(index, tmp_qs)
+  qs2::qs_save(index, tmp_qs)
   put_object_retry(file = tmp_qs, object = index_key, bucket = dest_bucket)
   message(sprintf("R index saved to   s3://%s/%s", dest_bucket, index_key))
 
@@ -1130,7 +1130,7 @@ tt_connect_s3 <- function(
   tmp <- tempfile(fileext = ".qs")
   on.exit(unlink(tmp), add = TRUE)
   aws.s3::save_object(object = index_key, bucket = dest_bucket, file = tmp)
-  index <- qs::qread(tmp)
+  index <- qs2::qs_read(tmp)
 
   attr(con, "ttm_index") <- index
   attr(con, "ttm_bucket") <- dest_bucket
