@@ -354,7 +354,7 @@ tt_prepare_dispatch <- function(
 #'    `{server}table/v1/{profile}/{coords}?sources=0&annotations=distance,duration`
 #'    where coords are semicolon-separated `lon,lat` pairs (origin first).
 #'
-#' 6. **Atomic save**: Request metadata saved to disk via `qs::qsave()` for
+#' 6. **Atomic save**: Request metadata saved to disk via `qs2::qs_save()` for
 #'    later batch fetching.
 #'
 #' ## Output file format
@@ -412,7 +412,7 @@ build_origin_requests <- function(
       isolated = TRUE
     ))
 
-    qs::qsave(requests, output_file, preset = "fast")
+    qs2::qs_save(requests, output_file)
 
     return(list(
       origin_id = origin_id,
@@ -466,7 +466,7 @@ build_origin_requests <- function(
   })
 
   # Save to disk
-  qs::qsave(requests, output_file, preset = "fast")
+  qs2::qs_save(requests, output_file)
 
   return(list(
     origin_id = origin_id,
@@ -584,7 +584,7 @@ tt_fetch_routes <- function(
   request_files <- NULL
 
   if (file.exists(manifest_path)) {
-    prev_manifest <- tryCatch(qs::qread(manifest_path), error = function(e) {
+    prev_manifest <- tryCatch(qs2::qs_read(manifest_path), error = function(e) {
       NULL
     })
 
@@ -636,7 +636,7 @@ tt_fetch_routes <- function(
       length(batch_files)
     ))
 
-    batch_requests <- unlist(lapply(batch_files, qs::qread), recursive = FALSE)
+    batch_requests <- unlist(lapply(batch_files, qs2::qs_read), recursive = FALSE)
 
     message(sprintf(
       "  Batch %d/%d: Fetching %d requests...",
@@ -656,7 +656,7 @@ tt_fetch_routes <- function(
 
     if (!is.null(bucket)) {
       # Serialize in memory — no local write for batch files
-      raw_data <- qs::qserialize(batch_results, preset = "fast")
+      raw_data <- qs2::qs_serialize(batch_results)
       aws.s3::put_object(
         what = raw_data,
         object = batch_filename,
@@ -672,7 +672,7 @@ tt_fetch_routes <- function(
       # Atomic local write
       final_path <- file.path(output_dir, batch_filename)
       tmp_path <- paste0(final_path, ".tmp")
-      qs::qsave(batch_results, tmp_path, preset = "fast")
+      qs2::qs_save(batch_results, tmp_path)
       file.rename(tmp_path, final_path)
     }
 
@@ -692,7 +692,7 @@ tt_fetch_routes <- function(
     attr(manifest, "request_files") <- request_files
 
     manifest_tmp <- paste0(manifest_path, ".tmp")
-    qs::qsave(manifest, manifest_tmp)
+    qs2::qs_save(manifest, manifest_tmp)
     file.rename(manifest_tmp, manifest_path)
 
     message(sprintf(
