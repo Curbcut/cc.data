@@ -6,6 +6,10 @@
 #' @param dest_folder <`character`> Directory for data.
 #' @param threads <`integer`> OSRM routing threads (default: all cores - 1).
 #' @param max_table_size <`integer`> Max coordinates per /table request.
+#' @param walking_speed <`numeric`> Walking speed in km/h for `mode = "foot"`.
+#'   When supplied, a custom `foot.lua` profile is generated with this
+#'   `walking_speed` (the stock OSRM profile defaults to 5 km/h). Ignored for
+#'   other modes. Default `NULL` uses the bundled profile unchanged.
 #'
 #' @return <`character`> (invisibly) the dest_folder.
 #' @export
@@ -15,10 +19,20 @@ tt_local_osrm <- function(
   osm_pbf = "north-america/canada-latest.osm.pbf",
   dest_folder = tempdir(),
   threads = parallel::detectCores() - 4L,
-  max_table_size = 10000L
+  max_table_size = 10000L,
+  walking_speed = NULL
 ) {
   if (!mode %in% c("bicycle", "car", "foot")) {
     stop("Only available modes are bicycle, car or foot.")
+  }
+  if (!is.null(walking_speed)) {
+    if (mode != "foot") {
+      stop("`walking_speed` is only applicable to `mode = \"foot\"`.")
+    }
+    if (!is.numeric(walking_speed) || length(walking_speed) != 1L ||
+      walking_speed <= 0) {
+      stop("`walking_speed` must be a single positive number (km/h).")
+    }
   }
   # if (!Sys.info()["sysname"] %in% c("Windows", "Darwin")) {
   #   stop("As of now, this function is only adapted for Windows and macOS.")
@@ -51,6 +65,33 @@ tt_local_osrm <- function(
   cont_name <- paste0("osrm_", mode, "_", gsub("/|\\.|-", "_", osm_pbf))
   cont_name <- sub("_osm_pbf$", "", cont_name)
 
+  # Routing profile. Default: the profile bundled in the OSRM image at
+  # /opt/<mode>.lua. With a custom walking_speed, dump the stock foot.lua out of
+  # the image, patch walking_speed, and write it into dest_folder so it is
+  # reachable at /data/foot_custom.lua inside the container.
+  profile_arg <- paste0("/opt/", mode, ".lua")
+  if (!is.null(walking_speed)) {
+    lua <- system(
+      "docker run --rm ghcr.io/project-osrm/osrm-backend cat /opt/foot.lua",
+      intern = TRUE,
+      ignore.stderr = TRUE
+    )
+    if (length(lua) == 0) {
+      stop("Could not read /opt/foot.lua from the OSRM image.", call. = FALSE)
+    }
+    patched <- sub(
+      "walking_speed\\s*=\\s*[0-9.]+",
+      sprintf("walking_speed = %s", walking_speed),
+      lua
+    )
+    if (identical(lua, patched)) {
+      stop("Could not find `walking_speed` to patch in foot.lua.", call. = FALSE)
+    }
+    writeLines(patched, paste0(dest_folder, "/foot_custom.lua"))
+    profile_arg <- "/data/foot_custom.lua"
+    message(sprintf("Using custom foot profile with walking_speed = %s km/h.", walking_speed))
+  }
+
   # Clean up existing container
   existing <- system(
     paste0("docker ps -aq -f name=^", cont_name, "$"),
@@ -80,9 +121,9 @@ tt_local_osrm <- function(
       dest_folder,
       "\n",
       'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-extract -p /opt/",
-      mode,
-      ".lua /data/geofabrik_canada.osm.pbf\n",
+      "osrm-extract -p ",
+      profile_arg,
+      " /data/geofabrik_canada.osm.pbf\n",
       'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
       "osrm-partition /data/geofabrik_canada.osrm\n",
       'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
@@ -108,9 +149,9 @@ tt_local_osrm <- function(
       dest_folder,
       "\n",
       'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-extract -p /opt/",
-      mode,
-      ".lua /data/geofabrik_canada.osm.pbf\n",
+      "osrm-extract -p ",
+      profile_arg,
+      " /data/geofabrik_canada.osm.pbf\n",
       'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
       "osrm-partition /data/geofabrik_canada.osrm\n",
       'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',

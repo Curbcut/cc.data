@@ -10,7 +10,8 @@ tt_local_osrm(
   osm_pbf = "north-america/canada-latest.osm.pbf",
   dest_folder = tempdir(),
   threads = parallel::detectCores() - 4L,
-  max_table_size = 10000L
+  max_table_size = 10000L,
+  walking_speed = NULL
 )
 }
 \arguments{
@@ -25,6 +26,11 @@ tt_local_osrm(
 \item{threads}{<\code{integer}> OSRM routing threads (default: all cores - 1).}
 
 \item{max_table_size}{<\code{integer}> Max coordinates per /table request.}
+
+\item{walking_speed}{<\code{numeric}> Walking speed in km/h for \code{mode = "foot"}.
+When supplied, a custom \code{foot.lua} profile is generated with this
+\code{walking_speed} (the stock OSRM profile defaults to 5 km/h). Ignored for
+other modes. Default \code{NULL} uses the bundled profile unchanged.}
 }
 \value{
 <\code{character}> (invisibly) the dest_folder.
