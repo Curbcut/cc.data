@@ -922,12 +922,42 @@ fetch_batch_async <- function(
   }
 
   # --- Async GET requests with retry ---
+  # Responses are parsed in the `done` callback as they arrive, rather than
+  # stashed raw and parsed in a second pass. Because curl fires these callbacks
+  # on the main R thread *between* poll cycles, the (single-threaded) JSON
+  # parse + data.table build overlaps with the network wait for the other
+  # in-flight requests — collapsing what used to be a long silent post-fetch
+  # block. A successfully parsed request lands in `parsed[[key]]`; anything
+  # missing from `parsed` (HTTP error, parse error, non-"Ok" body) is treated
+  # as a failure and picked up by the retry loop below. We never keep the raw
+  # response bytes past the callback, which also caps peak memory per batch.
   pool <- curl::new_pool(total_con = n_concurrent, host_con = n_concurrent)
-  responses <- new.env(parent = emptyenv())
+  parsed <- new.env(parent = emptyenv())
   state <- new.env(parent = emptyenv())
   state$completed <- 0L
   total_requests <- length(to_fetch)
   max_retries <- 3L
+
+  parse_response <- function(resp, origin_id, dest_ids) {
+    if (is.null(resp$status_code) || resp$status_code != 200) {
+      return(NULL)
+    }
+    tryCatch(
+      {
+        content <- RcppSimdJson::fparse(rawToChar(resp$content))
+        if (is.null(content) || !isTRUE(content$code == "Ok")) {
+          NULL
+        } else {
+          data.table::data.table(
+            id = c(origin_id, dest_ids),
+            time = as.numeric(content$durations[1, ]),
+            distance = as.numeric(content$distances[1, ])
+          )
+        }
+      },
+      error = function(e) NULL
+    )
+  }
 
   queue_request <- function(meta, pool) {
     request_key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
@@ -939,18 +969,19 @@ fetch_batch_async <- function(
       handle = h,
       done = local({
         key <- request_key
+        oid <- meta$origin_id
+        dids <- meta$dest_ids
         function(resp) {
-          responses[[key]] <- resp
           state$completed <- state$completed + 1L
+          dt <- parse_response(resp, oid, dids)
+          if (!is.null(dt)) {
+            parsed[[key]] <- dt
+          }
         }
       }),
-      fail = local({
-        key <- request_key
-        function(msg) {
-          responses[[key]] <- list(status_code = 0, error = msg)
-          state$completed <- state$completed + 1L
-        }
-      }),
+      fail = function(msg) {
+        state$completed <- state$completed + 1L
+      },
       pool = pool
     )
   }
@@ -987,12 +1018,12 @@ fetch_batch_async <- function(
   })
 
   # --- Retry failed requests ---
+  # A request "failed" iff it never produced a parsed result.
   for (attempt in seq_len(max_retries)) {
     failed_metas <- Filter(
       function(meta) {
         key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
-        resp <- responses[[key]]
-        is.null(resp) || resp$status_code != 200
+        is.null(parsed[[key]])
       },
       to_fetch
     )
@@ -1042,48 +1073,39 @@ fetch_batch_async <- function(
   }
 
   # --- Log remaining failures ---
-  failed_keys <- Filter(
-    function(k) responses[[k]]$status_code != 200,
-    ls(responses)
+  failed_metas_final <- Filter(
+    function(meta) {
+      key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
+      is.null(parsed[[key]])
+    },
+    to_fetch
   )
-  if (length(failed_keys) > 0) {
+  if (length(failed_metas_final) > 0) {
     warning(sprintf(
       "Failed requests after %d retries: %d / %d",
       max_retries,
-      length(failed_keys),
+      length(failed_metas_final),
       total_requests
     ))
-    for (key in head(failed_keys, 3)) {
-      resp <- responses[[key]]
-      cat(key, ": status=", resp$status_code %||% "NA", "\n")
-      if (!is.null(resp$error)) cat("  error:", resp$error, "\n")
+    for (meta in head(failed_metas_final, 3)) {
+      cat(
+        paste0(meta$origin_id, "_chunk", meta$chunk_index),
+        ": no parsed result\n"
+      )
     }
   }
-  # --- Parse responses and group by origin ---
+
+  # --- Group already-parsed chunks by origin ---
+  # Parsing happened in the `done` callbacks above; here we only assemble.
   origin_chunks <- list()
 
   for (meta in to_fetch) {
     request_key <- paste0(meta$origin_id, "_chunk", meta$chunk_index)
-    resp <- responses[[request_key]]
+    dt <- parsed[[request_key]]
 
-    if (is.null(resp) || resp$status_code != 200) {
+    if (is.null(dt)) {
       next
     }
-
-    content <- tryCatch(
-      RcppSimdJson::fparse(rawToChar(resp$content)),
-      error = function(e) NULL
-    )
-
-    if (is.null(content) || content$code != "Ok") {
-      next
-    }
-
-    dt <- data.table::data.table(
-      id = c(meta$origin_id, meta$dest_ids),
-      time = as.numeric(content$durations[1, ]),
-      distance = as.numeric(content$distances[1, ])
-    )
 
     oid <- meta$origin_id
     if (is.null(origin_chunks[[oid]])) {
