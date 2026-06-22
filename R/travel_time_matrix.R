@@ -10,6 +10,14 @@
 #'   When supplied, a custom `foot.lua` profile is generated with this
 #'   `walking_speed` (the stock OSRM profile defaults to 5 km/h). Ignored for
 #'   other modes. Default `NULL` uses the bundled profile unchanged.
+#' @param algorithm <`character`> OSRM routing algorithm: `"mld"`
+#'   (Multi-Level Dijkstra, the default) or `"ch"` (Contraction Hierarchies).
+#'   `"mld"` builds via `osrm-partition` + `osrm-customize` and supports cheap
+#'   live weight updates; `"ch"` builds via a single `osrm-contract` step and
+#'   gives faster `/table` queries. OSRM itself recommends MLD in general but
+#'   **CH for very large distance-matrix jobs** — which is exactly the
+#'   `tt_prepare_dispatch()` / `tt_fetch_routes()` workload, so prefer `"ch"`
+#'   when building a server dedicated to matrix extraction.
 #'
 #' @return <`character`> (invisibly) the dest_folder.
 #' @export
@@ -20,8 +28,10 @@ tt_local_osrm <- function(
   dest_folder = tempdir(),
   threads = parallel::detectCores() - 4L,
   max_table_size = 10000L,
-  walking_speed = NULL
+  walking_speed = NULL,
+  algorithm = c("mld", "ch")
 ) {
+  algorithm <- match.arg(algorithm)
   if (!mode %in% c("bicycle", "car", "foot")) {
     stop("Only available modes are bicycle, car or foot.")
   }
@@ -102,32 +112,45 @@ tt_local_osrm <- function(
     system(paste0("docker rm --force ", cont_name), ignore.stdout = TRUE)
   }
 
-  # OSRM routing command with threads and table size
+  # OSRM routing command with threads and table size. The --algorithm flag must
+  # match how the graph was preprocessed below (contract -> ch, partition +
+  # customize -> mld).
   osrm_routed_cmd <- sprintf(
-    "osrm-routed --algorithm mld --threads %d --max-table-size %d /data/geofabrik_canada.osrm",
+    "osrm-routed --algorithm %s --threads %d --max-table-size %d /data/geofabrik_canada.osrm",
+    algorithm,
     threads,
     max_table_size
   )
 
+  # Preprocessing steps after osrm-extract differ by algorithm: CH replaces the
+  # MLD partition + customize pair with a single (heavier) contract step.
+  prep_subcmds <- if (algorithm == "ch") {
+    "osrm-contract /data/geofabrik_canada.osrm"
+  } else {
+    c(
+      "osrm-partition /data/geofabrik_canada.osrm",
+      "osrm-customize /data/geofabrik_canada.osrm"
+    )
+  }
+
   message(sprintf(
-    "Starting OSRM with %d threads, max-table-size %d (can't do URLs that long anyway)...",
+    "Starting OSRM (%s) with %d threads, max-table-size %d (can't do URLs that long anyway)...",
+    toupper(algorithm),
     threads,
     max_table_size
   ))
 
   if (Sys.info()["sysname"] == "Windows") {
+    run_prefix <- 'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend '
+    build_subcmds <- c(
+      paste0("osrm-extract -p ", profile_arg, " /data/geofabrik_canada.osm.pbf"),
+      prep_subcmds
+    )
     local_osrm <- paste0(
       "cd ",
       dest_folder,
       "\n",
-      'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-extract -p ",
-      profile_arg,
-      " /data/geofabrik_canada.osm.pbf\n",
-      'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-partition /data/geofabrik_canada.osrm\n",
-      'docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-customize /data/geofabrik_canada.osrm\n",
+      paste0(run_prefix, build_subcmds, "\n", collapse = ""),
       "docker run -d -p ",
       port,
       ":5000 --name ",
@@ -144,18 +167,16 @@ tt_local_osrm <- function(
       gsub("\\\\", "/", tmp)
     ))
   } else {
+    run_prefix <- 'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend '
+    build_subcmds <- c(
+      paste0("osrm-extract -p ", profile_arg, " /data/geofabrik_canada.osm.pbf"),
+      prep_subcmds
+    )
     local_osrm <- paste0(
       "cd ",
       dest_folder,
       "\n",
-      'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-extract -p ",
-      profile_arg,
-      " /data/geofabrik_canada.osm.pbf\n",
-      'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-partition /data/geofabrik_canada.osrm\n",
-      'docker run -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
-      "osrm-customize /data/geofabrik_canada.osrm\n",
+      paste0(run_prefix, build_subcmds, "\n", collapse = ""),
       "docker run -d -p ",
       port,
       ":5000 --name ",

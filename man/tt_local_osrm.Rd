@@ -11,7 +11,8 @@ tt_local_osrm(
   dest_folder = tempdir(),
   threads = parallel::detectCores() - 4L,
   max_table_size = 10000L,
-  walking_speed = NULL
+  walking_speed = NULL,
+  algorithm = c("mld", "ch")
 )
 }
 \arguments{
@@ -31,6 +32,15 @@ tt_local_osrm(
 When supplied, a custom \code{foot.lua} profile is generated with this
 \code{walking_speed} (the stock OSRM profile defaults to 5 km/h). Ignored for
 other modes. Default \code{NULL} uses the bundled profile unchanged.}
+
+\item{algorithm}{<\code{character}> OSRM routing algorithm: \code{"mld"}
+(Multi-Level Dijkstra, the default) or \code{"ch"} (Contraction Hierarchies).
+\code{"mld"} builds via \code{osrm-partition} + \code{osrm-customize} and supports cheap
+live weight updates; \code{"ch"} builds via a single \code{osrm-contract} step and
+gives faster \code{/table} queries. OSRM itself recommends MLD in general but
+\strong{CH for very large distance-matrix jobs} -- which is exactly the
+\code{tt_prepare_dispatch()} / \code{tt_fetch_routes()} workload, so prefer \code{"ch"}
+when building a server dedicated to matrix extraction.}
 }
 \value{
 <\code{character}> (invisibly) the dest_folder.
