@@ -18,6 +18,14 @@
 #'   **CH for very large distance-matrix jobs** — which is exactly the
 #'   `tt_prepare_dispatch()` / `tt_fetch_routes()` workload, so prefer `"ch"`
 #'   when building a server dedicated to matrix extraction.
+#' @param network_host <`logical`> When `TRUE` (Linux only), run the
+#'   `osrm-routed` server with `--network host` instead of a `-p` port mapping.
+#'   This bypasses Docker's userland `docker-proxy` and the bridge NAT hop,
+#'   which lowers per-request latency and removes the proxy as a throughput
+#'   cap under the many-small-requests load of matrix extraction. The server
+#'   binds `port` directly on the host (via `osrm-routed -p <port>`). Ignored
+#'   with a warning on Windows/macOS (host networking is not equivalent on
+#'   Docker Desktop). Default `FALSE`.
 #'
 #' @return <`character`> (invisibly) the dest_folder.
 #' @export
@@ -29,11 +37,20 @@ tt_local_osrm <- function(
   threads = parallel::detectCores() - 4L,
   max_table_size = 10000L,
   walking_speed = NULL,
-  algorithm = c("mld", "ch")
+  algorithm = c("mld", "ch"),
+  network_host = FALSE
 ) {
   algorithm <- match.arg(algorithm)
   if (!mode %in% c("bicycle", "car", "foot")) {
     stop("Only available modes are bicycle, car or foot.")
+  }
+  if (isTRUE(network_host) && Sys.info()["sysname"] != "Linux") {
+    warning(
+      "`network_host = TRUE` is only supported on Linux; falling back to ",
+      "bridge networking with a -p port mapping.",
+      call. = FALSE
+    )
+    network_host <- FALSE
   }
   if (!is.null(walking_speed)) {
     if (mode != "foot") {
@@ -114,13 +131,26 @@ tt_local_osrm <- function(
 
   # OSRM routing command with threads and table size. The --algorithm flag must
   # match how the graph was preprocessed below (contract -> ch, partition +
-  # customize -> mld).
+  # customize -> mld). Under host networking there is no -p port mapping, so the
+  # server itself must bind the requested host port via `osrm-routed -p`; under
+  # bridge networking it listens on the in-container default (5000) and Docker
+  # maps `port`:5000.
+  routed_port_flag <- if (network_host) sprintf("-p %d ", port) else ""
   osrm_routed_cmd <- sprintf(
-    "osrm-routed --algorithm %s --threads %d --max-table-size %d /data/geofabrik_canada.osrm",
+    "osrm-routed --algorithm %s --threads %d --max-table-size %d %s/data/geofabrik_canada.osrm",
     algorithm,
     threads,
-    max_table_size
+    max_table_size,
+    routed_port_flag
   )
+
+  # Networking for the long-lived osrm-routed daemon only (the short-lived
+  # build steps need no ports). Host networking skips docker-proxy + NAT.
+  daemon_net <- if (network_host) {
+    "--network host"
+  } else {
+    sprintf("-p %d:5000", port)
+  }
 
   # Preprocessing steps after osrm-extract differ by algorithm: CH replaces the
   # MLD partition + customize pair with a single (heavier) contract step.
@@ -151,9 +181,9 @@ tt_local_osrm <- function(
       dest_folder,
       "\n",
       paste0(run_prefix, build_subcmds, "\n", collapse = ""),
-      "docker run -d -p ",
-      port,
-      ":5000 --name ",
+      "docker run -d ",
+      daemon_net,
+      " --name ",
       cont_name,
       ' -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend ',
       osrm_routed_cmd,
@@ -177,9 +207,9 @@ tt_local_osrm <- function(
       dest_folder,
       "\n",
       paste0(run_prefix, build_subcmds, "\n", collapse = ""),
-      "docker run -d -p ",
-      port,
-      ":5000 --name ",
+      "docker run -d ",
+      daemon_net,
+      " --name ",
       cont_name,
       ' -v "$(pwd):/data" ghcr.io/project-osrm/osrm-backend ',
       osrm_routed_cmd,

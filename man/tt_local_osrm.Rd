@@ -12,7 +12,8 @@ tt_local_osrm(
   threads = parallel::detectCores() - 4L,
   max_table_size = 10000L,
   walking_speed = NULL,
-  algorithm = c("mld", "ch")
+  algorithm = c("mld", "ch"),
+  network_host = FALSE
 )
 }
 \arguments{
@@ -41,6 +42,15 @@ gives faster \code{/table} queries. OSRM itself recommends MLD in general but
 \strong{CH for very large distance-matrix jobs} -- which is exactly the
 \code{tt_prepare_dispatch()} / \code{tt_fetch_routes()} workload, so prefer \code{"ch"}
 when building a server dedicated to matrix extraction.}
+
+\item{network_host}{<\code{logical}> When \code{TRUE} (Linux only), run the
+\code{osrm-routed} server with \code{--network host} instead of a \code{-p} port mapping.
+This bypasses Docker's userland \code{docker-proxy} and the bridge NAT hop,
+which lowers per-request latency and removes the proxy as a throughput
+cap under the many-small-requests load of matrix extraction. The server
+binds \code{port} directly on the host (via \code{osrm-routed -p <port>}). Ignored
+with a warning on Windows/macOS (host networking is not equivalent on
+Docker Desktop). Default \code{FALSE}.}
 }
 \value{
 <\code{character}> (invisibly) the dest_folder.
