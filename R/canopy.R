@@ -165,7 +165,7 @@ canopy_load_tiles <- function(
   }
   
   # 4) Mosaic all tiles into a single SpatRaster --------------------------
-  canopy <- do.call(terra::mosaic, tiles)
+  canopy <- if (length(tiles) == 1L) tiles[[1]] else do.call(terra::mosaic, tiles)
   
   # 5) Optionally write mosaic to disk ------------------------------------
   if (!is.null(out_raster)) {

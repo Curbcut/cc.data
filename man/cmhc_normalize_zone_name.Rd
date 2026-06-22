@@ -19,8 +19,10 @@ Character vector of normalized names.
 \description{
 Applies a sequence of transformations to a zone name so that variants
 from the CMHC API and the shapefile can be matched. Order matters:
-parens are stripped first, then "Remainder of X CMA" patterns are
-normalized (BEFORE suffix stripping removes the trailing CMA/CA),
-then StatCan SGC suffixes (V/T/MU/MD/etc.) are removed, accents are
-transliterated, and the result is lowercased.
+whitespace is collapsed first (so trailing/internal extra spaces from
+the CMHC ArcGIS layer don't break end-anchored regexes), parens are
+stripped, then "Remainder of X CMA" patterns are normalized (BEFORE
+suffix stripping removes the trailing CMA/CA), then StatCan SGC suffixes
+(V/T/MU/MD/etc.) are removed, accents are transliterated, and the
+result is lowercased.
 }

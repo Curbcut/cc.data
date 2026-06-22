@@ -268,7 +268,7 @@ census_vectors_housing <-
     theme = "Housing",
     vec_2021 = list("v_CA21_4290"),
     vec_2016 = list("v_CA16_4888"),
-    vec_2011 = list(NA),
+    vec_2011 = list("v_CA11N_2279"),
     vec_2006 = list(NA),
     vec_2001 = list(NA),
     vec_1996 = list(NA),
@@ -418,22 +418,22 @@ census_vectors_housing <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "One-year housing mobility - Male",
-      fr = "Mobilité du logement sur un an - Homme"
+      en = "One-year housing mobility - man",
+      fr = "Mobilité du logement sur un an - homme"
     )),
     var_short = list(list(
       en = "1-year mob. M",
       fr = "Mob. 1 an H"
     )),
     description = list(list(
-      en = "The number of males who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
+      en = "The number of man who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
       fr = "Le nombre d'hommes ayant déménagé au cours de l'année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
     parent_vec = "mobility_status_1_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "housing_mobility_one_f",
+    var_code = "housing_mobility_one_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -447,18 +447,18 @@ census_vectors_housing <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "One-year housing mobility - Female",
-      fr = "Mobilité du logement sur un an - Femmes"
+      en = "One-year housing mobility - women",
+      fr = "Mobilité du logement sur un an - femmes"
     )),
     var_short = list(list(
-      en = "1-year mob. F",
-      fr = "Mob. 1 an F"
+      en = "1-year mob. W",
+      fr = "Mob. 1 an W"
     )),
     description = list(list(
-      en = "The number of females who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
+      en = "The number of women who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
       fr = "Le nombre de femmes ayant déménagé au cours de l'année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
-    parent_vec = "mobility_status_1_f",
+    parent_vec = "mobility_status_1_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -520,7 +520,7 @@ census_vectors_housing <-
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "housing_mobility_five_f",
+    var_code = "housing_mobility_five_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -545,7 +545,7 @@ census_vectors_housing <-
       en = "The number of persons who moved in the past 5 years, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
       fr = "Le nombre de personnes ayant déménagé au cours des 5 dernières années, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
-    parent_vec = "mobility_status_5_f",
+    parent_vec = "mobility_status_5_w",
     parent = FALSE
   )
 
@@ -685,22 +685,22 @@ census_vectors_housing_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Residents - Male (1 year prior)",
-      fr = "Résidents - Hommes (1 an auparavant)"
+      en = "Residents - man (1 year prior)",
+      fr = "Résidents - hommes (1 an auparavant)"
     )),
     var_short = list(list(
       en = "Residents M 1yr",
       fr = "Rés. H 1 an"
     )),
     description = list(list(
-      en = "The total number of male residents one year prior",
+      en = "The total number of man residents one year prior",
       fr = "Le nombre total de résidents hommes un an auparavant"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "mobility_status_1_f",
+    var_code = "mobility_status_1_w",
     type = list(
       (list(
         unit = "count",
@@ -716,15 +716,15 @@ census_vectors_housing_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Residents - Female (1 year prior)",
-      fr = "Résidents - Femmes (1 an auparavant)"
+      en = "Residents - women (1 year prior)",
+      fr = "Résidents - femmes (1 an auparavant)"
     )),
     var_short = list(list(
       en = "Residents F 1yr",
       fr = "Rés. F 1 an"
     )),
     description = list(list(
-      en = "The total number of female residents one year prior",
+      en = "The total number of women residents one year prior",
       fr = "Le nombre total de résidents femmes un an auparavant"
     )),
     parent_vec = NA,
@@ -778,22 +778,22 @@ census_vectors_housing_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Residents - Male (5 years prior)",
-      fr = "Résidents - Hommes (5 ans auparavant)"
+      en = "Residents - man (5 years prior)",
+      fr = "Résidents - hommes (5 ans auparavant)"
     )),
     var_short = list(list(
       en = "Residents M 5yr",
       fr = "Rés. H 5 ans"
     )),
     description = list(list(
-      en = "The total number of male residents five years prior",
+      en = "The total number of man residents five years prior",
       fr = "Le nombre total de résidents hommes cinq ans auparavant"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "mobility_status_5_f",
+    var_code = "mobility_status_5_w",
     type = list(
       (list(
         unit = "count",
@@ -809,15 +809,15 @@ census_vectors_housing_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Residents - Female (5 years prior)",
-      fr = "Résidents - Femmes (5 ans auparavant)"
+      en = "Residents - women (5 years prior)",
+      fr = "Résidents - femmes (5 ans auparavant)"
     )),
     var_short = list(list(
       en = "Residents F 5yr",
       fr = "Rés. F 5 ans"
     )),
     description = list(list(
-      en = "The total number of female residents five years prior",
+      en = "The total number of women residents five years prior",
       fr = "Le nombre total de résidents femmes cinq ans auparavant"
     )),
     parent_vec = NA,
@@ -1557,22 +1557,22 @@ census_vectors_householdsize <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "One-person - Male",
-      fr = "Une personne - Homme"
+      en = "One-person - man",
+      fr = "Une personne - homme"
     )),
     var_short = list(list(
       en = "One M",
       fr = "Un. H"
     )),
     description = list(list(
-      en = "The number of private households consisting of one male person",
+      en = "The number of private households consisting of one man person",
       fr = "Le nombre de ménages privés composés d'un seul homme"
     )),
     parent_vec = "private_households",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "household_size_1_f",
+    var_code = "household_size_1_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -1586,15 +1586,15 @@ census_vectors_householdsize <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "One-person - Female",
-      fr = "Une personne - Femme"
+      en = "One-person - women",
+      fr = "Une personne - femme"
     )),
     var_short = list(list(
-      en = "One F",
-      fr = "Un. F"
+      en = "One W",
+      fr = "Un. W"
     )),
     description = list(list(
-      en = "The number of private households consisting of one female person",
+      en = "The number of private households consisting of one women person",
       fr = "Le nombre de ménages privés composés d'une seule femme"
     )),
     parent_vec = "private_households",
@@ -1746,8 +1746,8 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1634"),
     vec_1996 = list("v_CA1996_1627"),
     var_title = list(list(
-      en = "Median household income",
-      fr = "Revenu médian des ménages"
+      en = "Households: median income",
+      fr = "Ménages : revenu médian"
     )),
     var_short = list(list(
       en = "Med. inc.",
@@ -1775,8 +1775,8 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1633"),
     vec_1996 = list("v_CA1996_1626"),
     var_title = list(list(
-      en = "Average household income",
-      fr = "Revenu moyen des ménages"
+      en = "Households: average income",
+      fr = "Ménages : revenu moyen"
     )),
     var_short = list(list(
       en = "Avg. inc.",
@@ -1815,8 +1815,8 @@ census_vectors_income <-
     vec_2001 = list(paste0("v_CA01_16", 22:26)),
     vec_1996 = list(paste0("v_CA1996_16", 15:19)),
     var_title = list(list(
-      en = "Income under $50k",
-      fr = "Revenu inférieur à 50 000 $"
+      en = "Households: income under $50k",
+      fr = "Ménages : revenu inférieur à 50 000 $"
     )),
     var_short = list(list(
       en = "Inc. <$50k",
@@ -1844,8 +1844,8 @@ census_vectors_income <-
     vec_2001 = list(paste0("v_CA01_16", 27:31)),
     vec_1996 = list(paste0("v_CA1996_16", 20:24)),
     var_title = list(list(
-      en = "Income between $50k-$100k",
-      fr = "Revenu compris entre 50 000 et 100 000 dollars"
+      en = "Households: income between $50k-$100k",
+      fr = "Ménages : revenu entre 50 000 et 100 000 $"
     )),
     var_short = list(list(
       en = "Inc. $50-100k",
@@ -1873,8 +1873,8 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1632"),
     vec_1996 = list("v_CA1996_1625"),
     var_title = list(list(
-      en = "Income above $100k",
-      fr = "Revenu supérieur à 100 000 $"
+      en = "Households: income above $100k",
+      fr = "Ménages : revenu supérieur à 100 000 $"
     )),
     var_short = list(list(
       en = "Inc. >$100k",
@@ -1931,22 +1931,22 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Prevalence of low income (after-tax) - Male",
-      fr = "Prévalence des faibles revenus (après impôts) - Homme"
+      en = "Prevalence of low income (after-tax) - man",
+      fr = "Prévalence des faibles revenus (après impôts) - homme"
     )),
     var_short = list(list(
       en = "Low income M",
       fr = "Faible rev. H"
     )),
     description = list(list(
-      en = "The number of males in low income based on the Low-income measure, after-tax (LIM-AT)",
+      en = "The number of man in low income based on the Low-income measure, after-tax (LIM-AT)",
       fr = "Le nombre d'hommes à faible revenu selon la mesure de faible revenu après impôt (MFR-AT)"
     )),
     parent_vec = "income_status_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "inc_limat_f",
+    var_code = "inc_limat_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -1960,18 +1960,18 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Prevalence of low income (after-tax) - Female",
-      fr = "Prévalence des faibles revenus (après impôts) - Femme"
+      en = "Prevalence of low income (after-tax) - women",
+      fr = "Prévalence des faibles revenus (après impôts) - femme"
     )),
     var_short = list(list(
-      en = "Low income F",
-      fr = "Faible rev. F"
+      en = "Low income W",
+      fr = "Faible rev. W"
     )),
     description = list(list(
-      en = "The number of females in low income based on the Low-income measure, after-tax (LIM-AT)",
+      en = "The number of women in low income based on the Low-income measure, after-tax (LIM-AT)",
       fr = "Le nombre de femmes à faible revenu selon la mesure de faible revenu après impôt (MFR-AT)"
     )),
-    parent_vec = "income_status_f",
+    parent_vec = "income_status_w",
     parent = FALSE
   ) |>
   # Individual (persons with income) ----
@@ -1990,8 +1990,8 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1449"),
     vec_1996 = list("v_CA1996_1454"),
     var_title = list(list(
-      en = "Median individual income",
-      fr = "Revenu médian individuel"
+      en = "Individuals: median income",
+      fr = "Personnes : revenu médian"
     )),
     var_short = list(list(
       en = "Med. inc.",
@@ -2019,22 +2019,22 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1471"),
     vec_1996 = list("v_CA1996_1476"),
     var_title = list(list(
-      en = "Median individual income - Male",
-      fr = "Revenu médian individuel - Homme"
+      en = "Individuals: median income - man",
+      fr = "Personnes : revenu médian - homme"
     )),
     var_short = list(list(
       en = "Med. inc. M",
       fr = "Rev. Méd. H"
     )),
     description = list(list(
-      en = "The median total income of male individuals before tax",
+      en = "The median total income of man individuals before tax",
       fr = "Le revenu total médian des hommes avant impôt"
     )),
     parent_vec = "with_income_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "median_income_individual_f",
+    var_code = "median_income_individual_w",
     type = list(list(
       unit = "dollar",
       aggregation_field = "med",
@@ -2048,18 +2048,18 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1493"),
     vec_1996 = list("v_CA1996_1498"),
     var_title = list(list(
-      en = "Median individual income - Female",
-      fr = "Revenu médian individuel - Femme"
+      en = "Individuals: median income - women",
+      fr = "Personnes : revenu médian - femme"
     )),
     var_short = list(list(
-      en = "Med. inc. F",
-      fr = "Rev. Méd. F"
+      en = "Med. inc. W",
+      fr = "Rev. Méd. W"
     )),
     description = list(list(
-      en = "The median total income of female individuals before tax",
+      en = "The median total income of women individuals before tax",
       fr = "Le revenu total médian des femmes avant impôt"
     )),
-    parent_vec = "with_income_f",
+    parent_vec = "with_income_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -2077,8 +2077,8 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1448"),
     vec_1996 = list("v_CA1996_1453"),
     var_title = list(list(
-      en = "Average individual income",
-      fr = "Revenu moyen individuel"
+      en = "Individuals: average income",
+      fr = "Personnes : revenu moyen"
     )),
     var_short = list(list(
       en = "Avg. inc.",
@@ -2106,22 +2106,22 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1470"),
     vec_1996 = list("v_CA1996_1475"),
     var_title = list(list(
-      en = "Average individual income - Male",
-      fr = "Revenu moyen individuel - Homme"
+      en = "Individuals: average income - man",
+      fr = "Personnes : revenu moyen - homme"
     )),
     var_short = list(list(
       en = "Avg. inc. M",
       fr = "Rev. moy. H"
     )),
     description = list(list(
-      en = "The average total income of male individuals before tax",
+      en = "The average total income of man individuals before tax",
       fr = "Le revenu total moyen des hommes avant impôt"
     )),
     parent_vec = "with_income_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "average_income_individual_f",
+    var_code = "average_income_individual_w",
     type = list(list(
       unit = "dollar",
       aggregation_field = "avg",
@@ -2135,18 +2135,18 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1492"),
     vec_1996 = list("v_CA1996_1497"),
     var_title = list(list(
-      en = "Average individual income - Female",
-      fr = "Revenu moyen individuel - Femme"
+      en = "Individuals: average income - women",
+      fr = "Personnes : revenu moyen - femme"
     )),
     var_short = list(list(
-      en = "Avg. inc. F",
-      fr = "Rev. moy. F"
+      en = "Avg. inc. W",
+      fr = "Rev. moy. W"
     )),
     description = list(list(
-      en = "The average total income of female individuals before tax",
+      en = "The average total income of women individuals before tax",
       fr = "Le revenu total moyen des femmes avant impôt"
     )),
-    parent_vec = "with_income_f",
+    parent_vec = "with_income_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -2184,8 +2184,8 @@ census_vectors_income <-
     vec_2001 = list(paste0("v_CA01_14", 32:45)),
     vec_1996 = list(paste0("v_CA1996_14", 37:50)),
     var_title = list(list(
-      en = "Income under $50k",
-      fr = "Revenu inférieur à 50 000 $"
+      en = "Individuals: income under $50k",
+      fr = "Personnes : revenu inférieur à 50 000 $"
     )),
     var_short = list(list(
       en = "Inc. <$50k",
@@ -2233,22 +2233,22 @@ census_vectors_income <-
     vec_2001 = list(paste0("v_CA01_", 1454:1467)),
     vec_1996 = list(paste0("v_CA1996_", 1459:1472)),
     var_title = list(list(
-      en = "Income under $50k - Male",
-      fr = "Revenu inférieur à 50 000 $ - Homme"
+      en = "Individuals: income under $50k - man",
+      fr = "Personnes : revenu inférieur à 50 000 $ - homme"
     )),
     var_short = list(list(
       en = "Inc. <$50k M",
       fr = "Rev. <$50k H"
     )),
     description = list(list(
-      en = "The number of males whose total income is under $50,000",
+      en = "The number of man whose total income is under $50,000",
       fr = "Le nombre d'hommes dont le revenu total est inférieur à 50 000 $"
     )),
     parent_vec = "with_income_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "inc_individual_50_f",
+    var_code = "inc_individual_50_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2282,18 +2282,18 @@ census_vectors_income <-
     vec_2001 = list(paste0("v_CA01_", 1476:1489)),
     vec_1996 = list(paste0("v_CA1996_", 1481:1494)),
     var_title = list(list(
-      en = "Income under $50k - Female",
-      fr = "Revenu inférieur à 50 000 $ - Femme"
+      en = "Individuals: income under $50k - women",
+      fr = "Personnes : revenu inférieur à 50 000 $ - femme"
     )),
     var_short = list(list(
-      en = "Inc. <$50k F",
-      fr = "Rev. <$50k F"
+      en = "Inc. <$50k W",
+      fr = "Rev. <$50k W"
     )),
     description = list(list(
-      en = "The number of females whose total income is under $50,000",
+      en = "The number of women whose total income is under $50,000",
       fr = "Le nombre de femmes dont le revenu total est inférieur à 50 000 $"
     )),
-    parent_vec = "with_income_f",
+    parent_vec = "with_income_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -2327,8 +2327,8 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Income between $50k-$100k",
-      fr = "Revenu compris entre 50 000 et 100 000 dollars"
+      en = "Individuals: income between $50k-$100k",
+      fr = "Personnes : revenu entre 50 000 et 100 000 $"
     )),
     var_short = list(list(
       en = "Inc. $50-100k",
@@ -2372,22 +2372,22 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Income between $50k-$100k - Male",
-      fr = "Revenu compris entre 50 000 et 100 000 dollars - Homme"
+      en = "Individuals: income between $50k-$100k - man",
+      fr = "Personnes : revenu entre 50 000 et 100 000 $ - homme"
     )),
     var_short = list(list(
       en = "Inc. $50-100k M",
       fr = "Rev. $50-100k H"
     )),
     description = list(list(
-      en = "The number of males whose total income is between $50,000 and $99,999",
+      en = "The number of man whose total income is between $50,000 and $99,999",
       fr = "Le nombre d'hommes dont le revenu total se situe entre 50 000 $ et 99 999 $"
     )),
     parent_vec = "with_income_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "inc_individual_100_f",
+    var_code = "inc_individual_100_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2417,18 +2417,18 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Income between $50k-$100k - Female",
-      fr = "Revenu compris entre 50 000 et 100 000 dollars - Femme"
+      en = "Individuals: income between $50k-$100k - women",
+      fr = "Personnes : revenu entre 50 000 et 100 000 $ - femme"
     )),
     var_short = list(list(
-      en = "Inc. $50-100k F",
-      fr = "Rev. $50-100k F"
+      en = "Inc. $50-100k W",
+      fr = "Rev. $50-100k W"
     )),
     description = list(list(
-      en = "The number of females whose total income is between $50,000 and $99,999",
+      en = "The number of women whose total income is between $50,000 and $99,999",
       fr = "Le nombre de femmes dont le revenu total se situe entre 50 000 $ et 99 999 $"
     )),
-    parent_vec = "with_income_f",
+    parent_vec = "with_income_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -2446,8 +2446,8 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Income above $100k",
-      fr = "Revenu supérieur à 100 000 $"
+      en = "Individuals: income above $100k",
+      fr = "Personnes : revenu supérieur à 100 000 $"
     )),
     var_short = list(list(
       en = "Inc. >$100k",
@@ -2475,22 +2475,22 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Income above $100k - Male",
-      fr = "Revenu supérieur à 100 000 $ - Homme"
+      en = "Individuals: income above $100k - man",
+      fr = "Personnes : revenu supérieur à 100 000 $ - homme"
     )),
     var_short = list(list(
       en = "Inc. >$100k M",
       fr = "Rev. >$100k H"
     )),
     description = list(list(
-      en = "The number of males whose total income is $100,000 or more",
+      en = "The number of man whose total income is $100,000 or more",
       fr = "Le nombre d'hommes dont le revenu total est de 100 000 $ ou plus"
     )),
     parent_vec = "with_income_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "inc_individual_high_f",
+    var_code = "inc_individual_high_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2504,18 +2504,18 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Income above $100k - Female",
-      fr = "Revenu supérieur à 100 000 $ - Femme"
+      en = "Individuals: income above $100k - women",
+      fr = "Personnes : revenu supérieur à 100 000 $ - femme"
     )),
     var_short = list(list(
-      en = "Inc. >$100k F",
-      fr = "Rev. >$100k F"
+      en = "Inc. >$100k W",
+      fr = "Rev. >$100k W"
     )),
     description = list(list(
-      en = "The number of females whose total income is $100,000 or more",
+      en = "The number of women whose total income is $100,000 or more",
       fr = "Le nombre de femmes dont le revenu total est de 100 000 $ ou plus"
     )),
-    parent_vec = "with_income_f",
+    parent_vec = "with_income_w",
     parent = FALSE
   )
 
@@ -2565,22 +2565,22 @@ census_vectors_income_parent <-
     vec_2001 = list("v_CA01_1453"),
     vec_1996 = list("v_CA1996_1458"),
     var_title = list(list(
-      en = "Individuals with income - Male",
-      fr = "Personnes avec revenu - Homme"
+      en = "Individuals with income - man",
+      fr = "Personnes avec revenu - homme"
     )),
     var_short = list(list(
       en = "With income M",
       fr = "Avec revenu H"
     )),
     description = list(list(
-      en = "The total male population aged 15 years and over with an income",
+      en = "The total man population aged 15 years and over with an income",
       fr = "La population masculine totale âgée de 15 ans et plus disposant d'un revenu"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "with_income_f",
+    var_code = "with_income_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2594,15 +2594,15 @@ census_vectors_income_parent <-
     vec_2001 = list("v_CA01_1475"),
     vec_1996 = list("v_CA1996_1480"),
     var_title = list(list(
-      en = "Individuals with income - Female",
-      fr = "Personnes avec revenu - Femme"
+      en = "Individuals with income - women",
+      fr = "Personnes avec revenu - femme"
     )),
     var_short = list(list(
-      en = "With income F",
-      fr = "Avec revenu F"
+      en = "With income W",
+      fr = "Avec revenu W"
     )),
     description = list(list(
-      en = "The total female population aged 15 years and over with an income",
+      en = "The total women population aged 15 years and over with an income",
       fr = "La population féminine totale âgée de 15 ans et plus disposant d'un revenu"
     )),
     parent_vec = NA,
@@ -2653,22 +2653,22 @@ census_vectors_income_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Population in private households (LIM-AT applicable) - Male",
-      fr = "Population en ménages privés (MFR-AT applicable) - Homme"
+      en = "Population in private households (LIM-AT applicable) - man",
+      fr = "Population en ménages privés (MFR-AT applicable) - homme"
     )),
     var_short = list(list(
       en = "Households M",
       fr = "Ménages H"
     )),
     description = list(list(
-      en = "The total male population in private households to whom low-income concepts are applicable",
+      en = "The total man population in private households to whom low-income concepts are applicable",
       fr = "La population masculine totale des ménages privés à laquelle s'appliquent les concepts de bas revenus"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "income_status_f",
+    var_code = "income_status_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2682,15 +2682,15 @@ census_vectors_income_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Population in private households (LIM-AT applicable) - Female",
-      fr = "Population en ménages privés (MFR-AT applicable) - Femme"
+      en = "Population in private households (LIM-AT applicable) - women",
+      fr = "Population en ménages privés (MFR-AT applicable) - femme"
     )),
     var_short = list(list(
-      en = "Households F",
-      fr = "Ménages F"
+      en = "Households W",
+      fr = "Ménages W"
     )),
     description = list(list(
-      en = "The total female population in private households to whom low-income concepts are applicable",
+      en = "The total women population in private households to whom low-income concepts are applicable",
       fr = "La population féminine totale des ménages privés à laquelle s'appliquent les concepts de bas revenus"
     )),
     parent_vec = NA,
@@ -2762,22 +2762,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Canadian citizens - Male",
-      fr = "Citoyens canadiens - Homme"
+      en = "Canadian citizens - man",
+      fr = "Citoyens canadiens - homme"
     )),
     var_short = list(list(
       en = "Citizens M",
       fr = "Citoyens H"
     )),
     description = list(list(
-      en = "The number of males who hold Canadian citizenship",
+      en = "The number of man who hold Canadian citizenship",
       fr = "Le nombre d'hommes qui possèdent la citoyenneté canadienne"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "citizenship_cit_f",
+    var_code = "citizenship_cit_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2791,18 +2791,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Canadian citizens - Female",
-      fr = "Citoyens canadiens - Femme"
+      en = "Canadian citizens - women",
+      fr = "Citoyens canadiens - femme"
     )),
     var_short = list(list(
-      en = "Citizens F",
-      fr = "Citoyens F"
+      en = "Citizens W",
+      fr = "Citoyens W"
     )),
     description = list(list(
-      en = "The number of females who hold Canadian citizenship",
+      en = "The number of women who hold Canadian citizenship",
       fr = "Le nombre de femmes qui possèdent la citoyenneté canadienne"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -2849,22 +2849,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Non-immigrants - Male",
-      fr = "Non-immigrants - Homme"
+      en = "Non-immigrants - man",
+      fr = "Non-immigrants - homme"
     )),
     var_short = list(list(
       en = "Non-imm. M",
       fr = "Non-imm. H"
     )),
     description = list(list(
-      en = "The number of males who are Canadian citizens by birth and have never been landed immigrants",
+      en = "The number of man who are Canadian citizens by birth and have never been landed immigrants",
       fr = "Le nombre d'hommes qui sont des citoyens canadiens de naissance et qui n'ont jamais été des immigrants reçus"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "citizenship_nonimm_f",
+    var_code = "citizenship_nonimm_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2878,18 +2878,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Non-immigrants - Female",
-      fr = "Non-immigrants - Femme"
+      en = "Non-immigrants - women",
+      fr = "Non-immigrants - femme"
     )),
     var_short = list(list(
-      en = "Non-imm. F",
-      fr = "Non-imm. F"
+      en = "Non-imm. W",
+      fr = "Non-imm. W"
     )),
     description = list(list(
-      en = "The number of females who are Canadian citizens by birth and have never been landed immigrants",
+      en = "The number of women who are Canadian citizens by birth and have never been landed immigrants",
       fr = "Le nombre de femmes qui sont des citoyens canadiens de naissance et qui n'ont jamais été des immigrants reçus"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -2936,22 +2936,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Immigrants - Male",
-      fr = "Immigrants - Homme"
+      en = "Immigrants - man",
+      fr = "Immigrants - homme"
     )),
     var_short = list(list(
       en = "Immigrants M",
       fr = "Immigrants H"
     )),
     description = list(list(
-      en = "The number of males who are, or have ever been, landed immigrants or permanent residents of Canada",
+      en = "The number of man who are, or have ever been, landed immigrants or permanent residents of Canada",
       fr = "Le nombre d'hommes qui sont ou ont déjà été des immigrants reçus ou des résidents permanents du Canada"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "citizenship_imm_f",
+    var_code = "citizenship_imm_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -2965,18 +2965,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Immigrants - Female",
-      fr = "Immigrants - Femme"
+      en = "Immigrants - women",
+      fr = "Immigrants - femme"
     )),
     var_short = list(list(
-      en = "Immigrants F",
-      fr = "Immigrants F"
+      en = "Immigrants W",
+      fr = "Immigrants W"
     )),
     description = list(list(
-      en = "The number of females who are, or have ever been, landed immigrants or permanent residents of Canada",
+      en = "The number of women who are, or have ever been, landed immigrants or permanent residents of Canada",
       fr = "Le nombre de femmes qui sont ou ont déjà été des immigrants reçus ou des résidents permanents du Canada"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3023,22 +3023,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "New immigrants - Male",
-      fr = "Nouveaux immigrants - Homme"
+      en = "New immigrants - man",
+      fr = "Nouveaux immigrants - homme"
     )),
     var_short = list(list(
       en = "New imm. M",
       fr = "Nouv. imm. H"
     )),
     description = list(list(
-      en = "The number of males who are recent landed immigrants within the five years preceding the census",
+      en = "The number of man who are recent landed immigrants within the five years preceding the census",
       fr = "Le nombre d'hommes qui sont des immigrants reçus récents dans les cinq années précédant le recensement"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "citizenship_imm_new_f",
+    var_code = "citizenship_imm_new_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3052,18 +3052,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "New immigrants - Female",
-      fr = "Nouveaux immigrants - Femme"
+      en = "New immigrants - women",
+      fr = "Nouveaux immigrants - femme"
     )),
     var_short = list(list(
-      en = "New imm. F",
-      fr = "Nouv. imm. F"
+      en = "New imm. W",
+      fr = "Nouv. imm. W"
     )),
     description = list(list(
-      en = "The number of females who are recent landed immigrants within the five years preceding the census",
+      en = "The number of women who are recent landed immigrants within the five years preceding the census",
       fr = "Le nombre de femmes qui sont des immigrants reçus récents dans les cinq années précédant le recensement"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3110,22 +3110,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Non-permanent residents - Male",
-      fr = "Résidents non permanents - Homme"
+      en = "Non-permanent residents - man",
+      fr = "Résidents non permanents - homme"
     )),
     var_short = list(list(
       en = "Non-perm. M",
       fr = "Non-perm. H"
     )),
     description = list(list(
-      en = "The number of males from another country with a work or study permit or refugee status in Canada",
+      en = "The number of man from another country with a work or study permit or refugee status in Canada",
       fr = "Le nombre d'hommes provenant d'un autre pays détenant un permis de travail ou d'études ou le statut de réfugié au Canada"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "citizenship_nonpr_f",
+    var_code = "citizenship_nonpr_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3139,18 +3139,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Non-permanent residents - Female",
-      fr = "Résidents non permanents - Femme"
+      en = "Non-permanent residents - women",
+      fr = "Résidents non permanents - femme"
     )),
     var_short = list(list(
-      en = "Non-perm. F",
-      fr = "Non-perm. F"
+      en = "Non-perm. W",
+      fr = "Non-perm. W"
     )),
     description = list(list(
-      en = "The number of females from another country with a work or study permit or refugee status in Canada",
+      en = "The number of women from another country with a work or study permit or refugee status in Canada",
       fr = "Le nombre de femmes provenant d'un autre pays détenant un permis de travail ou d'études ou le statut de réfugié au Canada"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   ) |>
   # Visible minority and ethnic origin ----
@@ -3198,22 +3198,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Visible minorities - Male",
-      fr = "Minorités visibles - Homme"
+      en = "Visible minorities - man",
+      fr = "Minorités visibles - homme"
     )),
     var_short = list(list(
       en = "Vis. min. M",
       fr = "Min. vis. H"
     )),
     description = list(list(
-      en = "The number of males who self-identify as members of at least one visible minority group",
+      en = "The number of man who self-identify as members of at least one visible minority group",
       fr = "Le nombre d'hommes qui s'identifient comme appartenant à au moins un groupe de minorités visibles"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "iden_vm_f",
+    var_code = "iden_vm_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3227,18 +3227,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Visible minorities - Female",
-      fr = "Minorités visibles - Femme"
+      en = "Visible minorities - women",
+      fr = "Minorités visibles - femme"
     )),
     var_short = list(list(
-      en = "Vis. min. F",
-      fr = "Min. vis. F"
+      en = "Vis. min. W",
+      fr = "Min. vis. W"
     )),
     description = list(list(
-      en = "The number of females who self-identify as members of at least one visible minority group",
+      en = "The number of women who self-identify as members of at least one visible minority group",
       fr = "Le nombre de femmes qui s'identifient comme appartenant à au moins un groupe de minorités visibles"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3285,22 +3285,22 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Indigenous - Male",
-      fr = "Autochtones - Homme"
+      en = "Indigenous - man",
+      fr = "Autochtones - homme"
     )),
     var_short = list(list(
       en = "Indigenous M",
       fr = "Autochtones H"
     )),
     description = list(list(
-      en = "The number of males who identify as Indigenous",
+      en = "The number of man who identify as Indigenous",
       fr = "Le nombre d'hommes qui s'identifient comme Autochtones"
     )),
     parent_vec = "population_ph_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "iden_aboriginal_f",
+    var_code = "iden_aboriginal_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3314,18 +3314,18 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Indigenous - Female",
-      fr = "Autochtones - Femme"
+      en = "Indigenous - women",
+      fr = "Autochtones - femme"
     )),
     var_short = list(list(
-      en = "Indigenous F",
-      fr = "Autochtones F"
+      en = "Indigenous W",
+      fr = "Autochtones W"
     )),
     description = list(list(
-      en = "The number of females who identify as Indigenous",
+      en = "The number of women who identify as Indigenous",
       fr = "Le nombre de femmes qui s'identifient comme Autochtones"
     )),
-    parent_vec = "population_ph_f",
+    parent_vec = "population_ph_w",
     parent = FALSE
   )
 
@@ -3374,22 +3374,22 @@ census_vectors_identity_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Individuals - Male",
-      fr = "Individus - Homme"
+      en = "Individuals - man",
+      fr = "Individus - homme"
     )),
     var_short = list(list(
       en = "Individuals M",
       fr = "Individus H"
     )),
     description = list(list(
-      en = "The total number of males living in private households",
+      en = "The total number of man living in private households",
       fr = "Le nombre total d'hommes vivant dans des ménages privés"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "population_ph_f",
+    var_code = "population_ph_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3403,15 +3403,15 @@ census_vectors_identity_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Individuals - Female",
-      fr = "Individus - Femme"
+      en = "Individuals - women",
+      fr = "Individus - femme"
     )),
     var_short = list(list(
-      en = "Individuals F",
-      fr = "Individus F"
+      en = "Individuals W",
+      fr = "Individus W"
     )),
     description = list(list(
-      en = "The total number of females living in private households",
+      en = "The total number of women living in private households",
       fr = "Le nombre total de femmes vivant dans des ménages privés"
     )),
     parent_vec = NA,
@@ -3487,22 +3487,22 @@ census_vectors_transport <-
     vec_2001 = list(c("v_CA01_1255", "v_CA01_1256")),
     vec_1996 = list(c("v_CA1996_1326", "v_CA1996_1327")),
     var_title = list(list(
-      en = "Drive to work - Male",
-      fr = "Se rendent au travail en voiture - Homme"
+      en = "Drive to work - man",
+      fr = "Se rendent au travail en voiture - homme"
     )),
     var_short = list(list(
       en = "Drive M",
       fr = "Auto H"
     )),
     description = list(list(
-      en = "The number of employed males whose main mode of commuting is to travel as a driver or passenger in a car, truck or van",
+      en = "The number of employed man whose main mode of commuting is to travel as a driver or passenger in a car, truck or van",
       fr = "Le nombre d'hommes occupés dont le principal mode de transport est de se déplacer comme conducteur ou passager d'une automobile, d'un camion ou d'une fourgonnette"
     )),
     parent_vec = "employment_lf_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "trans_car_f",
+    var_code = "trans_car_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3516,18 +3516,18 @@ census_vectors_transport <-
     vec_2001 = list(c("v_CA01_1264", "v_CA01_1265")),
     vec_1996 = list(c("v_CA1996_1335", "v_CA1996_1336")),
     var_title = list(list(
-      en = "Drive to work - Female",
-      fr = "Se rendent au travail en voiture - Femme"
+      en = "Drive to work - women",
+      fr = "Se rendent au travail en voiture - femme"
     )),
     var_short = list(list(
-      en = "Drive F",
-      fr = "Auto F"
+      en = "Drive W",
+      fr = "Auto W"
     )),
     description = list(list(
-      en = "The number of employed females whose main mode of commuting is to travel as a driver or passenger in a car, truck or van",
+      en = "The number of employed women whose main mode of commuting is to travel as a driver or passenger in a car, truck or van",
       fr = "Le nombre de femmes occupées dont le principal mode de transport est de se déplacer comme conductrice ou passagère d'une automobile, d'un camion ou d'une fourgonnette"
     )),
-    parent_vec = "employment_lf_f",
+    parent_vec = "employment_lf_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3584,22 +3584,22 @@ census_vectors_transport <-
     vec_2001 = list(c("v_CA01_1258", "v_CA01_1259")),
     vec_1996 = list(c("v_CA1996_1329", "v_CA1996_1330")),
     var_title = list(list(
-      en = "Walk or cycle to work - Male",
-      fr = "Se rendent au travail à pied ou à vélo - Homme"
+      en = "Walk or cycle to work - man",
+      fr = "Se rendent au travail à pied ou à vélo - homme"
     )),
     var_short = list(list(
       en = "Walk/cycle M",
       fr = "Marche/vélo H"
     )),
     description = list(list(
-      en = "The number of employed males whose main mode of commuting is walking or cycling",
+      en = "The number of employed man whose main mode of commuting is walking or cycling",
       fr = "Le nombre d'hommes occupés dont le principal mode de transport est la marche ou la bicyclette"
     )),
     parent_vec = "employment_lf_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "trans_walk_or_bike_f",
+    var_code = "trans_walk_or_bike_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3613,18 +3613,18 @@ census_vectors_transport <-
     vec_2001 = list(c("v_CA01_1267", "v_CA01_1268")),
     vec_1996 = list(c("v_CA1996_1338", "v_CA1996_1339")),
     var_title = list(list(
-      en = "Walk or cycle to work - Female",
-      fr = "Se rendent au travail à pied ou à vélo - Femme"
+      en = "Walk or cycle to work - women",
+      fr = "Se rendent au travail à pied ou à vélo - femme"
     )),
     var_short = list(list(
-      en = "Walk/cycle F",
-      fr = "Marche/vélo F"
+      en = "Walk/cycle W",
+      fr = "Marche/vélo W"
     )),
     description = list(list(
-      en = "The number of employed females whose main mode of commuting is walking or cycling",
+      en = "The number of employed women whose main mode of commuting is walking or cycling",
       fr = "Le nombre de femmes occupées dont le principal mode de transport est la marche ou la bicyclette"
     )),
-    parent_vec = "employment_lf_f",
+    parent_vec = "employment_lf_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3671,22 +3671,22 @@ census_vectors_transport <-
     vec_2001 = list("v_CA01_1257"),
     vec_1996 = list("v_CA1996_1328"),
     var_title = list(list(
-      en = "Public transit to work - Male",
-      fr = "Se rendent au travail en transport en commun - Homme"
+      en = "Public transit to work - man",
+      fr = "Se rendent au travail en transport en commun - homme"
     )),
     var_short = list(list(
       en = "Transit M",
       fr = "Transit H"
     )),
     description = list(list(
-      en = "The number of employed males whose main mode of commuting is public transit",
+      en = "The number of employed man whose main mode of commuting is public transit",
       fr = "Le nombre d'hommes occupés dont le principal mode de transport est le transport en commun"
     )),
     parent_vec = "employment_lf_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "trans_transit_f",
+    var_code = "trans_transit_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3700,18 +3700,18 @@ census_vectors_transport <-
     vec_2001 = list("v_CA01_1266"),
     vec_1996 = list("v_CA1996_1337"),
     var_title = list(list(
-      en = "Public transit to work - Female",
-      fr = "Se rendent au travail en transport en commun - Femme"
+      en = "Public transit to work - women",
+      fr = "Se rendent au travail en transport en commun - femme"
     )),
     var_short = list(list(
-      en = "Transit F",
-      fr = "Transit F"
+      en = "Transit W",
+      fr = "Transit W"
     )),
     description = list(list(
-      en = "The number of employed females whose main mode of commuting is public transit",
+      en = "The number of employed women whose main mode of commuting is public transit",
       fr = "Le nombre de femmes occupées dont le principal mode de transport est le transport en commun"
     )),
-    parent_vec = "employment_lf_f",
+    parent_vec = "employment_lf_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3758,22 +3758,22 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute under 15 minutes - Male",
-      fr = "Trajets domicile-travail de moins de 15 minutes - Homme"
+      en = "Commute under 15 minutes - man",
+      fr = "Trajets domicile-travail de moins de 15 minutes - homme"
     )),
     var_short = list(list(
       en = "Commute <15m M",
       fr = "Trajet <15m H"
     )),
     description = list(list(
-      en = "The number of employed males whose usual one-way commute time is less than 15 minutes",
+      en = "The number of employed man whose usual one-way commute time is less than 15 minutes",
       fr = "Le nombre d'hommes occupés dont le temps habituel de trajet aller est inférieur à 15 minutes"
     )),
     parent_vec = "employment_lf_dur_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "trans_t_15_f",
+    var_code = "trans_t_15_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3787,18 +3787,18 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute under 15 minutes - Female",
-      fr = "Trajets domicile-travail de moins de 15 minutes - Femme"
+      en = "Commute under 15 minutes - women",
+      fr = "Trajets domicile-travail de moins de 15 minutes - femme"
     )),
     var_short = list(list(
-      en = "Commute <15m F",
-      fr = "Trajet <15m F"
+      en = "Commute <15m W",
+      fr = "Trajet <15m W"
     )),
     description = list(list(
-      en = "The number of employed females whose usual one-way commute time is less than 15 minutes",
+      en = "The number of employed women whose usual one-way commute time is less than 15 minutes",
       fr = "Le nombre de femmes occupées dont le temps habituel de trajet aller est inférieur à 15 minutes"
     )),
-    parent_vec = "employment_lf_dur_f",
+    parent_vec = "employment_lf_dur_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3845,22 +3845,22 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute 15-45 minutes - Male",
-      fr = "Trajet domicile-travail de 15 à 45 minutes - Homme"
+      en = "Commute 15-45 minutes - man",
+      fr = "Trajet domicile-travail de 15 à 45 minutes - homme"
     )),
     var_short = list(list(
       en = "Commute 15-45 M",
       fr = "Trajet 15-45 H"
     )),
     description = list(list(
-      en = "The number of employed males whose usual one-way commute time is between 15 and 45 minutes",
+      en = "The number of employed man whose usual one-way commute time is between 15 and 45 minutes",
       fr = "Le nombre d'hommes occupés dont le temps habituel de trajet aller est compris entre 15 et 45 minutes"
     )),
     parent_vec = "employment_lf_dur_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "trans_t_45_f",
+    var_code = "trans_t_45_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3874,18 +3874,18 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute 15-45 minutes - Female",
-      fr = "Trajet domicile-travail de 15 à 45 minutes - Femme"
+      en = "Commute 15-45 minutes - women",
+      fr = "Trajet domicile-travail de 15 à 45 minutes - femme"
     )),
     var_short = list(list(
-      en = "Commute 15-45 F",
-      fr = "Trajet 15-45 F"
+      en = "Commute 15-45 W",
+      fr = "Trajet 15-45 W"
     )),
     description = list(list(
-      en = "The number of employed females whose usual one-way commute time is between 15 and 45 minutes",
+      en = "The number of employed women whose usual one-way commute time is between 15 and 45 minutes",
       fr = "Le nombre de femmes occupées dont le temps habituel de trajet aller est compris entre 15 et 45 minutes"
     )),
-    parent_vec = "employment_lf_dur_f",
+    parent_vec = "employment_lf_dur_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -3932,22 +3932,22 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute more than 45 minutes - Male",
-      fr = "Trajet domicile-travail de plus de 45 minutes - Homme"
+      en = "Commute more than 45 minutes - man",
+      fr = "Trajet domicile-travail de plus de 45 minutes - homme"
     )),
     var_short = list(list(
       en = "Commute >45m M",
       fr = "Trajet >45m H"
     )),
     description = list(list(
-      en = "The number of employed males whose usual one-way commute time is 45 minutes or more",
+      en = "The number of employed man whose usual one-way commute time is 45 minutes or more",
       fr = "Le nombre d'hommes occupés dont le temps habituel de trajet aller est de 45 minutes ou plus"
     )),
     parent_vec = "employment_lf_dur_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "trans_t_45_plus_f",
+    var_code = "trans_t_45_plus_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -3961,18 +3961,18 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute more than 45 minutes - Female",
-      fr = "Trajet domicile-travail de plus de 45 minutes - Femme"
+      en = "Commute more than 45 minutes - women",
+      fr = "Trajet domicile-travail de plus de 45 minutes - femme"
     )),
     var_short = list(list(
-      en = "Commute >45m F",
-      fr = "Trajet >45m F"
+      en = "Commute >45m W",
+      fr = "Trajet >45m W"
     )),
     description = list(list(
-      en = "The number of employed females whose usual one-way commute time is 45 minutes or more",
+      en = "The number of employed women whose usual one-way commute time is 45 minutes or more",
       fr = "Le nombre de femmes occupées dont le temps habituel de trajet aller est de 45 minutes ou plus"
     )),
-    parent_vec = "employment_lf_dur_f",
+    parent_vec = "employment_lf_dur_w",
     parent = FALSE
   )
 
@@ -4021,22 +4021,22 @@ census_vectors_transport_parent <-
     vec_2001 = list("v_CA01_1254"),
     vec_1996 = list("v_CA1996_1325"),
     var_title = list(list(
-      en = "Employed individuals - Male",
-      fr = "Personnes employées - Homme"
+      en = "Employed individuals - man",
+      fr = "Personnes employées - homme"
     )),
     var_short = list(list(
       en = "Employed M",
       fr = "Employés H"
     )),
     description = list(list(
-      en = "The number of employed males aged 15 years and over with a usual place of work or no fixed workplace address",
+      en = "The number of employed man aged 15 years and over with a usual place of work or no fixed workplace address",
       fr = "Le nombre d'hommes occupés âgés de 15 ans et plus ayant un lieu habituel de travail ou n'ayant pas d'adresse de travail fixe"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "employment_lf_f",
+    var_code = "employment_lf_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4050,15 +4050,15 @@ census_vectors_transport_parent <-
     vec_2001 = list("v_CA01_1263"),
     vec_1996 = list("v_CA1996_1334"),
     var_title = list(list(
-      en = "Employed individuals - Female",
-      fr = "Personnes employées - Femme"
+      en = "Employed individuals - women",
+      fr = "Personnes employées - femme"
     )),
     var_short = list(list(
-      en = "Employed F",
-      fr = "Employées F"
+      en = "Employed W",
+      fr = "Employées W"
     )),
     description = list(list(
-      en = "The number of employed females aged 15 years and over with a usual place of work or no fixed workplace address",
+      en = "The number of employed women aged 15 years and over with a usual place of work or no fixed workplace address",
       fr = "Le nombre de femmes occupées âgées de 15 ans et plus ayant un lieu habituel de travail ou n'ayant pas d'adresse de travail fixe"
     )),
     parent_vec = NA,
@@ -4108,22 +4108,22 @@ census_vectors_transport_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Employed individuals - commuting duration - Male",
-      fr = "Personnes employées - durée du trajet - Homme"
+      en = "Employed individuals - commuting duration - man",
+      fr = "Personnes employées - durée du trajet - homme"
     )),
     var_short = list(list(
       en = "Employed dur. M",
       fr = "Employés dur. H"
     )),
     description = list(list(
-      en = "The number of employed males aged 15 years and over with a usual place of work or no fixed workplace address by commuting duration",
+      en = "The number of employed man aged 15 years and over with a usual place of work or no fixed workplace address by commuting duration",
       fr = "Le nombre d'hommes occupés âgés de 15 ans et plus ayant un lieu habituel de travail ou n'ayant pas d'adresse de travail fixe, selon la durée du trajet"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "employment_lf_dur_f",
+    var_code = "employment_lf_dur_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4137,15 +4137,15 @@ census_vectors_transport_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Employed individuals - commuting duration - Female",
-      fr = "Personnes employées - durée du trajet - Femme"
+      en = "Employed individuals - commuting duration - women",
+      fr = "Personnes employées - durée du trajet - femme"
     )),
     var_short = list(list(
-      en = "Employed dur. F",
-      fr = "Employées dur F"
+      en = "Employed dur. W",
+      fr = "Employées dur W"
     )),
     description = list(list(
-      en = "The number of employed females aged 15 years and over with a usual place of work or no fixed workplace address by commuting duration",
+      en = "The number of employed women aged 15 years and over with a usual place of work or no fixed workplace address by commuting duration",
       fr = "Le nombre de femmes occupées âgées de 15 ans et plus ayant un lieu habituel de travail ou n'ayant pas d'adresse de travail fixe, selon la durée du trajet"
     )),
     parent_vec = NA,
@@ -4212,22 +4212,22 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_761"),
     vec_1996 = list("v_CA1996_823"),
     var_title = list(list(
-      en = "Employed individuals (15+) - Male",
-      fr = "Personnes en emploi (15 ans et plus) - Homme"
+      en = "Employed individuals (15+) - man",
+      fr = "Personnes en emploi (15 ans et plus) - homme"
     )),
     var_short = list(list(
       en = "Employed M",
       fr = "En emploi H"
     )),
     description = list(list(
-      en = "The number of males aged 15 years and over in the labour force who, during the reference week, did any work for pay or profit or had a job but were absent from work.",
+      en = "The number of man aged 15 years and over in the labour force who, during the reference week, did any work for pay or profit or had a job but were absent from work.",
       fr = "Le nombre d'hommes de 15 ans et plus faisant partie de la population active qui, au cours de la semaine de référence, ont travaillé contre rémunération ou en profit ou avaient un emploi mais étaient absents du travail."
     )),
     parent_vec = "employment_15older_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "employment_er_f",
+    var_code = "employment_er_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4241,18 +4241,18 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_785"),
     vec_1996 = list("v_CA1996_847"),
     var_title = list(list(
-      en = "Employed individuals (15+) - Female",
-      fr = "Personnes en emploi (15 ans et plus) - Femme"
+      en = "Employed individuals (15+) - women",
+      fr = "Personnes en emploi (15 ans et plus) - femme"
     )),
     var_short = list(list(
-      en = "Employed F",
-      fr = "En emploi F"
+      en = "Employed W",
+      fr = "En emploi W"
     )),
     description = list(list(
-      en = "The number of females aged 15 years and over in the labour force who, during the reference week, did any work for pay or profit or had a job but were absent from work.",
+      en = "The number of women aged 15 years and over in the labour force who, during the reference week, did any work for pay or profit or had a job but were absent from work.",
       fr = "Le nombre de femmes de 15 ans et plus faisant partie de la population active qui, au cours de la semaine de référence, ont travaillé contre rémunération ou en profit ou avaient un emploi mais étaient absentes du travail."
     )),
-    parent_vec = "employment_15older_f",
+    parent_vec = "employment_15older_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -4299,22 +4299,22 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_762"),
     vec_1996 = list("v_CA1996_824"),
     var_title = list(list(
-      en = "Unemployed individuals (15+) - Male",
-      fr = "Personnes en chômage (15 ans et plus) - Homme"
+      en = "Unemployed individuals (15+) - man",
+      fr = "Personnes en chômage (15 ans et plus) - homme"
     )),
     var_short = list(list(
       en = "Unemployed M",
       fr = "Chômeurs H"
     )),
     description = list(list(
-      en = "The number of males aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
+      en = "The number of man aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
       fr = "Le nombre d'hommes de 15 ans et plus faisant partie de la population active qui étaient sans travail, disponibles pour travailler et à la recherche d'un emploi, ou mis à pied temporairement en attente de rappel."
     )),
     parent_vec = "employment_15older_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "employment_uer_f",
+    var_code = "employment_uer_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4328,18 +4328,18 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_786"),
     vec_1996 = list("v_CA1996_848"),
     var_title = list(list(
-      en = "Unemployed individuals (15+) - Female",
-      fr = "Personnes en chômage (15 ans et plus) - Femme"
+      en = "Unemployed individuals (15+) - women",
+      fr = "Personnes en chômage (15 ans et plus) - femme"
     )),
     var_short = list(list(
-      en = "Unemployed F",
-      fr = "Chômeuses F"
+      en = "Unemployed W",
+      fr = "Chômeuses W"
     )),
     description = list(list(
-      en = "The number of females aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
+      en = "The number of women aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
       fr = "Le nombre de femmes de 15 ans et plus faisant partie de la population active qui étaient sans travail, disponibles pour travailler et à la recherche d'un emploi, ou mises à pied temporairement en attente de rappel."
     )),
-    parent_vec = "employment_15older_f",
+    parent_vec = "employment_15older_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -4386,22 +4386,22 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1240"),
     vec_1996 = list("v_CA1996_1311"),
     var_title = list(list(
-      en = "Work outside municipality of residence - Male",
-      fr = "Travail hors de la municipalité de résidence - Homme"
+      en = "Work outside municipality of residence - man",
+      fr = "Travail hors de la municipalité de résidence - homme"
     )),
     var_short = list(list(
       en = "Outside M",
       fr = "Hors H"
     )),
     description = list(list(
-      en = "The number of employed males with a usual place of work whose workplace is located outside their municipality of residence.",
+      en = "The number of employed man with a usual place of work whose workplace is located outside their municipality of residence.",
       fr = "Le nombre d'hommes occupés ayant un lieu habituel de travail dont le lieu de travail est situé à l'extérieur de leur municipalité de résidence."
     )),
     parent_vec = "employment_lfupow_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "employment_powoutmun_f",
+    var_code = "employment_powoutmun_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4415,18 +4415,18 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1248"),
     vec_1996 = list("v_CA1996_1319"),
     var_title = list(list(
-      en = "Work outside municipality of residence - Female",
-      fr = "Travail hors de la municipalité de résidence - Femme"
+      en = "Work outside municipality of residence - women",
+      fr = "Travail hors de la municipalité de résidence - femme"
     )),
     var_short = list(list(
-      en = "Outside F",
-      fr = "Hors F"
+      en = "Outside W",
+      fr = "Hors W"
     )),
     description = list(list(
-      en = "The number of employed females with a usual place of work whose workplace is located outside their municipality of residence.",
+      en = "The number of employed women with a usual place of work whose workplace is located outside their municipality of residence.",
       fr = "Le nombre de femmes occupées ayant un lieu habituel de travail dont le lieu de travail est situé à l'extérieur de leur municipalité de résidence."
     )),
-    parent_vec = "employment_lfupow_f",
+    parent_vec = "employment_lfupow_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -4473,22 +4473,22 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1239"),
     vec_1996 = list("v_CA1996_1310"),
     var_title = list(list(
-      en = "Work in municipality of residence - Male",
-      fr = "Travail dans la municipalité de résidence - Homme"
+      en = "Work in municipality of residence - man",
+      fr = "Travail dans la municipalité de résidence - homme"
     )),
     var_short = list(list(
       en = "Within M",
       fr = "Intérieur H"
     )),
     description = list(list(
-      en = "The number of employed males with a usual place of work whose workplace is located in the same municipality as their place of residence.",
+      en = "The number of employed man with a usual place of work whose workplace is located in the same municipality as their place of residence.",
       fr = "Le nombre d'hommes occupés ayant un lieu habituel de travail dont le lieu de travail est situé dans la même municipalité que leur lieu de résidence."
     )),
     parent_vec = "employment_lfupow_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "employment_powinmun_f",
+    var_code = "employment_powinmun_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4502,18 +4502,18 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1247"),
     vec_1996 = list("v_CA1996_1318"),
     var_title = list(list(
-      en = "Work in municipality of residence - Female",
-      fr = "Travail dans la municipalité de résidence - Femme"
+      en = "Work in municipality of residence - women",
+      fr = "Travail dans la municipalité de résidence - femme"
     )),
     var_short = list(list(
-      en = "Within F",
-      fr = "Intérieur F"
+      en = "Within W",
+      fr = "Intérieur W"
     )),
     description = list(list(
-      en = "The number of employed females with a usual place of work whose workplace is located in the same municipality as their place of residence.",
+      en = "The number of employed women with a usual place of work whose workplace is located in the same municipality as their place of residence.",
       fr = "Le nombre de femmes occupées ayant un lieu habituel de travail dont le lieu de travail est situé dans la même municipalité que leur lieu de résidence."
     )),
-    parent_vec = "employment_lfupow_f",
+    parent_vec = "employment_lfupow_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -4560,22 +4560,22 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1242"),
     vec_1996 = list("v_CA1996_1313"),
     var_title = list(list(
-      en = "Work at home - Male",
-      fr = "Travail à domicile - Homme"
+      en = "Work at home - man",
+      fr = "Travail à domicile - homme"
     )),
     var_short = list(list(
       en = "Home M",
       fr = "Domicile H"
     )),
     description = list(list(
-      en = "The number of employed males in the labour force who usually work at home.",
+      en = "The number of employed man in the labour force who usually work at home.",
       fr = "Le nombre d'hommes occupés faisant partie de la population active qui travaillent habituellement à domicile."
     )),
     parent_vec = "employment_em_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "employment_powhome_f",
+    var_code = "employment_powhome_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4589,18 +4589,18 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1250"),
     vec_1996 = list("v_CA1996_1321"),
     var_title = list(list(
-      en = "Work at home - Female",
-      fr = "Travail à domicile - Femme"
+      en = "Work at home - women",
+      fr = "Travail à domicile - femme"
     )),
     var_short = list(list(
-      en = "Home F",
-      fr = "Domicile F"
+      en = "Home W",
+      fr = "Domicile W"
     )),
     description = list(list(
-      en = "The number of employed females in the labour force who usually work at home.",
+      en = "The number of employed women in the labour force who usually work at home.",
       fr = "Le nombre de femmes occupées faisant partie de la population active qui travaillent habituellement à domicile."
     )),
-    parent_vec = "employment_em_f",
+    parent_vec = "employment_em_w",
     parent = FALSE
   )
 
@@ -4649,22 +4649,22 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_759"),
     vec_1996 = list("v_CA1996_821"),
     var_title = list(list(
-      en = "Individuals aged 15 years and over - Male",
-      fr = "Personnes de 15 ans et plus - Homme"
+      en = "Individuals aged 15 years and over - man",
+      fr = "Personnes de 15 ans et plus - homme"
     )),
     var_short = list(list(
       en = "Pop 15+ M",
       fr = "Pop 15+ H"
     )),
     description = list(list(
-      en = "The total male population aged 15 years and over in private households.",
+      en = "The total man population aged 15 years and over in private households.",
       fr = "La population masculine totale de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "employment_15older_f",
+    var_code = "employment_15older_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4678,15 +4678,15 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_783"),
     vec_1996 = list("v_CA1996_845"),
     var_title = list(list(
-      en = "Individuals aged 15 years and over - Female",
-      fr = "Personnes de 15 ans et plus - Femme"
+      en = "Individuals aged 15 years and over - women",
+      fr = "Personnes de 15 ans et plus - femme"
     )),
     var_short = list(list(
-      en = "Pop 15+ F",
-      fr = "Pop 15+ F"
+      en = "Pop 15+ W",
+      fr = "Pop 15+ W"
     )),
     description = list(list(
-      en = "The total female population aged 15 years and over in private households.",
+      en = "The total women population aged 15 years and over in private households.",
       fr = "La population féminine totale de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
@@ -4736,22 +4736,22 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_1238"),
     vec_1996 = list("v_CA1996_1309"),
     var_title = list(list(
-      en = "Employed individuals with a usual place of work - Male",
-      fr = "Personnes employées ayant un lieu de travail habituel - Homme"
+      en = "Employed individuals with a usual place of work - man",
+      fr = "Personnes employées ayant un lieu de travail habituel - homme"
     )),
     var_short = list(list(
       en = "Usual place M",
       fr = "Habituel H"
     )),
     description = list(list(
-      en = "The number of employed males with a usual place of work.",
+      en = "The number of employed man with a usual place of work.",
       fr = "Le nombre d'hommes occupés ayant un lieu de travail habituel."
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "employment_lfupow_f",
+    var_code = "employment_lfupow_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4765,15 +4765,15 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_1246"),
     vec_1996 = list("v_CA1996_1317"),
     var_title = list(list(
-      en = "Employed individuals with a usual place of work - Female",
-      fr = "Personnes employées ayant un lieu de travail habituel - Femme"
+      en = "Employed individuals with a usual place of work - women",
+      fr = "Personnes employées ayant un lieu de travail habituel - femme"
     )),
     var_short = list(list(
-      en = "Usual place F",
-      fr = "Habituel F"
+      en = "Usual place W",
+      fr = "Habituel W"
     )),
     description = list(list(
-      en = "The number of employed females with a usual place of work.",
+      en = "The number of employed women with a usual place of work.",
       fr = "Le nombre de femmes occupées ayant un lieu de travail habituel."
     )),
     parent_vec = NA,
@@ -4790,7 +4790,7 @@ census_vectors_employment_parent <-
     vec_2021 = list("v_CA21_7602"),
     vec_2016 = list("v_CA16_5762"),
     vec_2011 = list("v_CA11N_2176"),
-    vec_2006 = list("v_CA06_1083"),
+    vec_2006 = list("v_CA06_1076"),
     vec_2001 = list("v_CA01_1236"),
     vec_1996 = list("v_CA1996_1307"),
     var_title = list(list(
@@ -4823,22 +4823,22 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_1237"),
     vec_1996 = list("v_CA1996_1308"),
     var_title = list(list(
-      en = "Employed individuals in the labour force - Male",
-      fr = "Personnes en emploi dans la population active - Homme"
+      en = "Employed individuals in the labour force - man",
+      fr = "Personnes en emploi dans la population active - homme"
     )),
     var_short = list(list(
       en = "Employed M",
       fr = "Employé H"
     )),
     description = list(list(
-      en = "The number of males aged 15 years and over in the labour force who are employed.",
+      en = "The number of man aged 15 years and over in the labour force who are employed.",
       fr = "Le nombre d'hommes de 15 ans et plus faisant partie de la population active qui sont en emploi."
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "employment_em_f",
+    var_code = "employment_em_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -4852,15 +4852,15 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_1245"),
     vec_1996 = list("v_CA1996_1316"),
     var_title = list(list(
-      en = "Employed individuals in the labour force - Female",
-      fr = "Personnes en emploi dans la population active - Femme"
+      en = "Employed individuals in the labour force - women",
+      fr = "Personnes en emploi dans la population active - femme"
     )),
     var_short = list(list(
-      en = "Employed F",
-      fr = "Employée F"
+      en = "Employed W",
+      fr = "Employée W"
     )),
     description = list(list(
-      en = "The number of females aged 15 years and over in the labour force who are employed.",
+      en = "The number of women aged 15 years and over in the labour force who are employed.",
       fr = "Le nombre de femmes de 15 ans et plus faisant partie de la population active qui sont en emploi."
     )),
     parent_vec = NA,
@@ -5009,19 +5009,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows French only - Male",
-      fr = "Connaissent seulement le français - Homme"
+      en = "Knows French only - man",
+      fr = "Connaissent seulement le français - homme"
     )),
     var_short = list(list(en = "Fr. only M", fr = "Fr. seulement H")),
     description = list(list(
-      en = "The number of males who know only French as an official language",
+      en = "The number of man who know only French as an official language",
       fr = "Nombre d'hommes qui connaissent seulement le français comme langue officielle"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_french_only_f",
+    var_code = "lang_french_only_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5035,15 +5035,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows French only - Female",
-      fr = "Connaissent seulement le français - Femme"
+      en = "Knows French only - women",
+      fr = "Connaissent seulement le français - femme"
     )),
-    var_short = list(list(en = "Fr. only F", fr = "Fr. seulement F")),
+    var_short = list(list(en = "Fr. only W", fr = "Fr. seulement W")),
     description = list(list(
-      en = "The number of females who know only French as an official language",
+      en = "The number of women who know only French as an official language",
       fr = "Nombre de femmes qui connaissent seulement le français comme langue officielle"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -5090,19 +5090,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows English only - Male",
-      fr = "Connaissent seulement l'anglais - Homme"
+      en = "Knows English only - man",
+      fr = "Connaissent seulement l'anglais - homme"
     )),
     var_short = list(list(en = "Eng. only M", fr = "Ang seulement H")),
     description = list(list(
-      en = "The number of males who know only English as an official language",
+      en = "The number of man who know only English as an official language",
       fr = "Nombre d'hommes qui connaissent seulement l'anglais comme langue officielle"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_eng_only_f",
+    var_code = "lang_eng_only_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5116,15 +5116,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows English only - Female",
-      fr = "Connaissent seulement l'anglais - Femme"
+      en = "Knows English only - women",
+      fr = "Connaissent seulement l'anglais - femme"
     )),
-    var_short = list(list(en = "Eng. only F", fr = "Ang seulement F")),
+    var_short = list(list(en = "Eng. only W", fr = "Ang seulement W")),
     description = list(list(
-      en = "The number of females who know only English as an official language",
+      en = "The number of women who know only English as an official language",
       fr = "Nombre de femmes qui connaissent seulement l'anglais comme langue officielle"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -5171,19 +5171,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows French and English - Male",
-      fr = "Connaissent le français et l'anglais - Homme"
+      en = "Knows French and English - man",
+      fr = "Connaissent le français et l'anglais - homme"
     )),
     var_short = list(list(en = "Fr. and Eng. M", fr = "Fr. et ang. H")),
     description = list(list(
-      en = "The number of males who know both official languages (French and English)",
+      en = "The number of man who know both official languages (French and English)",
       fr = "Nombre d'hommes qui connaissent les deux langues officielles (français et anglais)"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_french_eng_f",
+    var_code = "lang_french_eng_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5197,15 +5197,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows French and English - Female",
-      fr = "Connaissent le français et l'anglais - Femme"
+      en = "Knows French and English - women",
+      fr = "Connaissent le français et l'anglais - femme"
     )),
-    var_short = list(list(en = "Fr. and Eng. F", fr = "Fr. et ang. F")),
+    var_short = list(list(en = "Fr. and Eng. W", fr = "Fr. et ang. W")),
     description = list(list(
-      en = "The number of females who know both official languages (French and English)",
+      en = "The number of women who know both official languages (French and English)",
       fr = "Nombre de femmes qui connaissent les deux langues officielles (français et anglais)"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -5252,19 +5252,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows neither French nor English - Male",
-      fr = "Ne connaissent ni le français ni l'anglais - Homme"
+      en = "Knows neither French nor English - man",
+      fr = "Ne connaissent ni le français ni l'anglais - homme"
     )),
     var_short = list(list(en = "Non-official M", fr = "Non off H")),
     description = list(list(
-      en = "The number of males who do not know either of the official languages",
+      en = "The number of man who do not know either of the official languages",
       fr = "Nombre d'hommes qui ne connaissent ni le français ni l'anglais"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_no_official_f",
+    var_code = "lang_no_official_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5278,15 +5278,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows neither French nor English - Female",
-      fr = "Ne connaissent ni le français ni l'anglais - Femme"
+      en = "Knows neither French nor English - women",
+      fr = "Ne connaissent ni le français ni l'anglais - femme"
     )),
-    var_short = list(list(en = "Non-official F", fr = "Non off F")),
+    var_short = list(list(en = "Non-official W", fr = "Non off W")),
     description = list(list(
-      en = "The number of females who do not know either of the official languages",
+      en = "The number of women who do not know either of the official languages",
       fr = "Nombre de femmes qui ne connaissent ni le français ni l'anglais"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -5333,19 +5333,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak English at home - Male",
-      fr = "Parle le plus souvent l'anglais à la maison - Homme"
+      en = "Most often speak English at home - man",
+      fr = "Parle le plus souvent l'anglais à la maison - homme"
     )),
     var_short = list(list(en = "English M", fr = "Anglais H")),
     description = list(list(
-      en = "The number of males who report English as the language spoken most often at home",
+      en = "The number of man who report English as the language spoken most often at home",
       fr = "Nombre d'hommes qui déclarent l'anglais comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_home_eng_f",
+    var_code = "lang_home_eng_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5359,15 +5359,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak English at home - Female",
-      fr = "Parle le plus souvent l'anglais à la maison - Femme"
+      en = "Most often speak English at home - women",
+      fr = "Parle le plus souvent l'anglais à la maison - femme"
     )),
-    var_short = list(list(en = "English F", fr = "Anglais F")),
+    var_short = list(list(en = "English W", fr = "Anglais W")),
     description = list(list(
-      en = "The number of females who report English as the language spoken most often at home",
+      en = "The number of women who report English as the language spoken most often at home",
       fr = "Nombre de femmes qui déclarent l'anglais comme langue parlée le plus souvent à la maison"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -5414,19 +5414,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak French at home - Male",
-      fr = "Parle le plus souvent le français à la maison - Homme"
+      en = "Most often speak French at home - man",
+      fr = "Parle le plus souvent le français à la maison - homme"
     )),
     var_short = list(list(en = "French M", fr = "Français H")),
     description = list(list(
-      en = "The number of males who report French as the language spoken most often at home",
+      en = "The number of man who report French as the language spoken most often at home",
       fr = "Nombre d'hommes qui déclarent le français comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_home_fr_f",
+    var_code = "lang_home_fr_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5440,15 +5440,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak French at home - Female",
-      fr = "Parle le plus souvent le français à la maison - Femme"
+      en = "Most often speak French at home - women",
+      fr = "Parle le plus souvent le français à la maison - femme"
     )),
-    var_short = list(list(en = "French F", fr = "Français F")),
+    var_short = list(list(en = "French W", fr = "Français W")),
     description = list(list(
-      en = "The number of females who report French as the language spoken most often at home",
+      en = "The number of women who report French as the language spoken most often at home",
       fr = "Nombre de femmes qui déclarent le français comme langue parlée le plus souvent à la maison"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -5495,19 +5495,19 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak a non-official language at home - Male",
-      fr = "Parle le plus souvent une langue non officielle à la maison - Homme"
+      en = "Most often speak a non-official language at home - man",
+      fr = "Parle le plus souvent une langue non officielle à la maison - homme"
     )),
     var_short = list(list(en = "Non-official M", fr = "Non off H")),
     description = list(list(
-      en = "The number of males who report a non-official language as the language spoken most often at home",
+      en = "The number of man who report a non-official language as the language spoken most often at home",
       fr = "Nombre d'hommes qui déclarent une langue non officielle comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "lang_home_nonof_f",
+    var_code = "lang_home_nonof_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5521,15 +5521,15 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak a non-official language at home - Female",
-      fr = "Parle le plus souvent une langue non officielle à la maison - Femme"
+      en = "Most often speak a non-official language at home - women",
+      fr = "Parle le plus souvent une langue non officielle à la maison - femme"
     )),
-    var_short = list(list(en = "Non-official F", fr = "Non off F")),
+    var_short = list(list(en = "Non-official W", fr = "Non off W")),
     description = list(list(
-      en = "The number of females who report a non-official language as the language spoken most often at home",
+      en = "The number of women who report a non-official language as the language spoken most often at home",
       fr = "Nombre de femmes qui déclarent une langue non officielle comme langue parlée le plus souvent à la maison"
     )),
-    parent_vec = "c_population_f",
+    parent_vec = "c_population_w",
     parent = FALSE
   )
 
@@ -5577,17 +5577,17 @@ census_vectors_language_parent <-
     vec_2006 = list("v_CA06_3"),
     vec_2001 = list("v_CA01_6"),
     vec_1996 = list("v_CA1996_6"),
-    var_title = list(list(en = "Male individuals", fr = "Individus - Homme")),
-    var_short = list(list(en = "Males", fr = "Hommes")),
+    var_title = list(list(en = "man individuals", fr = "Individus - homme")),
+    var_short = list(list(en = "man", fr = "hommes")),
     description = list(list(
-      en = "The total count of male individuals",
+      en = "The total count of man individuals",
       fr = "Le nombre total d'individus de sexe masculin"
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "c_population_f",
+    var_code = "c_population_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -5600,10 +5600,10 @@ census_vectors_language_parent <-
     vec_2006 = list("v_CA06_22"),
     vec_2001 = list("v_CA01_25"),
     vec_1996 = list("v_CA1996_30"),
-    var_title = list(list(en = "Female individuals", fr = "Individus - Femme")),
-    var_short = list(list(en = "Females", fr = "Femmes")),
+    var_title = list(list(en = "women individuals", fr = "Individus - femme")),
+    var_short = list(list(en = "women", fr = "femmes")),
     description = list(list(
-      en = "The total count of female individuals",
+      en = "The total count of women individuals",
       fr = "Le nombre total d'individus de sexe féminin"
     )),
     parent_vec = NA,
@@ -5939,7 +5939,7 @@ final_f <- c(recent_f, cleaned_older_f)
 
 
 # ------------------------------------------------------------------------------
-# REPLACE: Build 54 variables (total + male + female), same base structure
+# REPLACE: Build 54 variables (total + men + women), same base structure
 # ------------------------------------------------------------------------------
 
 final_by_sex <- list(
@@ -5958,7 +5958,7 @@ sex_meta <- list(
     parent_vec = c("c_population", "c_population_m")
   ),
   f = list(
-    suffix = "_f",
+    suffix = "_w",
     parent_vec = c("c_population", "c_population_f")
   )
 )
@@ -6012,12 +6012,12 @@ vectors_table <- unlist(
             to
           )
         } else if (sex_key == "m") {
-          var_title_en <- sprintf("Males aged %s to %s years", from, to)
+          var_title_en <- sprintf("Men aged %s to %s years", from, to)
           var_title_fr <- sprintf("Hommes âgés de %s à %s ans", from, to)
           var_short_en <- sprintf("%s-%s (M)", from, to)
           var_short_fr <- sprintf("%s-%s ans (H)", from, to)
           description_en <- sprintf(
-            "The number of males aged %s to %s years.",
+            "The number of men aged %s to %s years.",
             from,
             to
           )
@@ -6027,12 +6027,12 @@ vectors_table <- unlist(
             to
           )
         } else {
-          var_title_en <- sprintf("Females aged %s to %s years", from, to)
+          var_title_en <- sprintf("Women aged %s to %s years", from, to)
           var_title_fr <- sprintf("Femmes âgées de %s à %s ans", from, to)
-          var_short_en <- sprintf("%s-%s (F)", from, to)
+          var_short_en <- sprintf("%s-%s (W)", from, to)
           var_short_fr <- sprintf("%s-%s ans (F)", from, to)
           description_en <- sprintf(
-            "The number of females aged %s to %s years.",
+            "The number of women aged %s to %s years.",
             from,
             to
           )
@@ -6051,18 +6051,18 @@ vectors_table <- unlist(
           description_en <- "The number of persons aged 85 years and over."
           description_fr <- "Le nombre de personnes âgées de 85 ans et plus."
         } else if (sex_key == "m") {
-          var_title_en <- "Males aged 85 years and over"
+          var_title_en <- "Men aged 85 years and over"
           var_title_fr <- "Hommes âgés de 85 ans et plus"
           var_short_en <- "85+ (M)"
           var_short_fr <- "85+ ans (H)"
-          description_en <- "The number of males aged 85 years and over."
+          description_en <- "The number of men aged 85 years and over."
           description_fr <- "Le nombre d'hommes âgés de 85 ans et plus."
         } else {
-          var_title_en <- "Females aged 85 years and over"
+          var_title_en <- "Women aged 85 years and over"
           var_title_fr <- "Femmes âgées de 85 ans et plus"
-          var_short_en <- "85+ (F)"
+          var_short_en <- "85+ (W)"
           var_short_fr <- "85+ ans (F)"
-          description_en <- "The number of females aged 85 years and over."
+          description_en <- "The number of women aged 85 years and over."
           description_fr <- "Le nombre de femmes âgées de 85 ans et plus."
         }
       }
@@ -6115,6 +6115,7 @@ census_vectors_age <- rbind(census_vectors_age, census_vectors_age_page)
 
 usethis::use_data(census_vectors_age, overwrite = TRUE)
 
+
 ## IMPORT EDUCATION CENSUS VECTORS #############################################
 
 census_vectors_education <-
@@ -6159,19 +6160,19 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "No certificate, diploma or degree - Male",
-      fr = "Aucun certificat, diplôme ou grade - Homme"
+      en = "No certificate, diploma or degree - man",
+      fr = "Aucun certificat, diplôme ou grade - homme"
     )),
     var_short = list(list(en = "No degree M", fr = "Sans diplôme H")),
     description = list(list(
-      en = "The number of males aged 15 years and over without any certificate, diploma or degree.",
+      en = "The number of man aged 15 years and over without any certificate, diploma or degree.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus n'ayant aucun certificat, diplôme ou grade."
     )),
     parent_vec = "population_15plus_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "edu_no_degree_f",
+    var_code = "edu_no_degree_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -6185,15 +6186,15 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "No certificate, diploma or degree - Female",
-      fr = "Aucun certificat, diplôme ou grade - Femme"
+      en = "No certificate, diploma or degree - women",
+      fr = "Aucun certificat, diplôme ou grade - femme"
     )),
-    var_short = list(list(en = "No degree F", fr = "Sans diplôme F")),
+    var_short = list(list(en = "No degree W", fr = "Sans diplôme W")),
     description = list(list(
-      en = "The number of females aged 15 years and over without any certificate, diploma or degree.",
+      en = "The number of women aged 15 years and over without any certificate, diploma or degree.",
       fr = "Le nombre de femmes âgées de 15 ans et plus n'ayant aucun certificat, diplôme ou grade."
     )),
-    parent_vec = "population_15plus_f",
+    parent_vec = "population_15plus_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -6208,8 +6209,8 @@ census_vectors_education <-
     vec_2016 = list("v_CA16_5057"),
     vec_2011 = list("v_CA11N_1777"),
     vec_2006 = list(c("v_CA06_1237", "v_CA06_1251", "v_CA06_1265")),
-    vec_2001 = list("v_CA01_1388"),
-    vec_1996 = list("v_CA1996_1351"),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
     var_title = list(list(
       en = "Secondary school diploma or equivalent",
       fr = "Diplôme d'études secondaires ou équivalent"
@@ -6237,19 +6238,19 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Secondary school diploma or equivalent - Male",
-      fr = "Diplôme d'études secondaires ou équivalent - Homme"
+      en = "Secondary school diploma or equivalent - man",
+      fr = "Diplôme d'études secondaires ou équivalent - homme"
     )),
     var_short = list(list(en = "Secondary M", fr = "Secondaire H")),
     description = list(list(
-      en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
+      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un diplôme d'études secondaires ou un équivalent."
     )),
     parent_vec = "population_15plus_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "edu_secondary_f",
+    var_code = "edu_secondary_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -6263,15 +6264,15 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Secondary school diploma or equivalent - Female",
-      fr = "Diplôme d'études secondaires ou équivalent - Femme"
+      en = "Secondary school diploma or equivalent - women",
+      fr = "Diplôme d'études secondaires ou équivalent - femme"
     )),
-    var_short = list(list(en = "Secondary F", fr = "Secondaire F")),
+    var_short = list(list(en = "Secondary W", fr = "Secondaire W")),
     description = list(list(
-      en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
+      en = "The number of women aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
       fr = "Le nombre de femmes âgées de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un diplôme d'études secondaires ou un équivalent."
     )),
-    parent_vec = "population_15plus_f",
+    parent_vec = "population_15plus_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -6286,8 +6287,8 @@ census_vectors_education <-
     vec_2016 = list("v_CA16_5072"),
     vec_2011 = list("v_CA11N_1786"),
     vec_2006 = list(c("v_CA06_1239", "v_CA06_1253", "v_CA06_1267")),
-    vec_2001 = list("v_CA01_1392"),
-    vec_1996 = list("v_CA1996_1355"),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
     var_title = list(list(
       en = "College, CEGEP or other non-university certificate or diploma",
       fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire"
@@ -6315,19 +6316,19 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "College, CEGEP or other non-university certificate or diploma - Male",
-      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - Homme"
+      en = "College, CEGEP or other non-university certificate or diploma - man",
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - homme"
     )),
     var_short = list(list(en = "College/CEGEP M", fr = "Collège/CÉGEP H")),
     description = list(list(
-      en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
+      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade provient d'un collège, d'un CÉGEP ou d'un autre établissement non universitaire."
     )),
     parent_vec = "population_15plus_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "edu_nonuni_f",
+    var_code = "edu_nonuni_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -6341,15 +6342,15 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "College, CEGEP or other non-university certificate or diploma - Female",
-      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - Femme"
+      en = "College, CEGEP or other non-university certificate or diploma - women",
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - femme"
     )),
-    var_short = list(list(en = "College/CEGEP F", fr = "Collège/CÉGEP F")),
+    var_short = list(list(en = "College/CEGEP W", fr = "Collège/CÉGEP W")),
     description = list(list(
-      en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
+      en = "The number of women aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
       fr = "Le nombre de femmes âgées de 15 ans et plus dont le plus haut certificat, diplôme ou grade provient d'un collège, d'un CÉGEP ou d'un autre établissement non universitaire."
     )),
-    parent_vec = "population_15plus_f",
+    parent_vec = "population_15plus_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -6364,8 +6365,8 @@ census_vectors_education <-
     vec_2016 = list("v_CA16_5075"),
     vec_2011 = list("v_CA11N_1789"),
     vec_2006 = list(c("v_CA06_1241", "v_CA06_1255", "v_CA06_1269")),
-    vec_2001 = list("v_CA01_1396"),
-    vec_1996 = list("v_CA1996_1359"),
+    vec_2001 = list(NA),
+    vec_1996 = list(NA),
     var_title = list(list(
       en = "University certificate or diploma below bachelor level",
       fr = "Certificat ou diplôme universitaire inférieur au baccalauréat"
@@ -6393,19 +6394,19 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "University certificate or diploma below bachelor level - Male",
-      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - Homme"
+      en = "University certificate or diploma below bachelor level - man",
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - homme"
     )),
     var_short = list(list(en = "Sub-bch uni M", fr = "Uni sous bac H")),
     description = list(list(
-      en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
+      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un certificat ou diplôme universitaire inférieur au niveau du baccalauréat."
     )),
     parent_vec = "population_15plus_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "edu_uni_below_f",
+    var_code = "edu_uni_below_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -6419,15 +6420,15 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "University certificate or diploma below bachelor level - Female",
-      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - Femme"
+      en = "University certificate or diploma below bachelor level - women",
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - femme"
     )),
-    var_short = list(list(en = "Sub-bch uni F", fr = "Uni sous bac F")),
+    var_short = list(list(en = "Sub-bch uni W", fr = "Uni sous bac W")),
     description = list(list(
-      en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
+      en = "The number of women aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
       fr = "Le nombre de femmes âgées de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un certificat ou diplôme universitaire inférieur au niveau du baccalauréat."
     )),
-    parent_vec = "population_15plus_f",
+    parent_vec = "population_15plus_w",
     parent = FALSE
   ) |>
   tibble::add_row(
@@ -6442,12 +6443,9 @@ census_vectors_education <-
     vec_2016 = list("v_CA16_5078"),
     vec_2011 = list("v_CA11N_1792"),
     vec_2006 = list(c(
-      "v_CA06_1243",
-      "v_CA06_1244",
-      "v_CA06_1257",
-      "v_CA06_1258",
-      "v_CA06_1271",
-      "v_CA06_1272"
+      "v_CA06_1242",
+      "v_CA06_1256",
+      "v_CA06_1270"
     )),
     vec_2001 = list("v_CA01_1397"),
     vec_1996 = list("v_CA1996_1360"),
@@ -6478,19 +6476,19 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Bachelor and above - Male",
-      fr = "Baccalauréat et plus - Homme"
+      en = "Bachelor and above - man",
+      fr = "Baccalauréat et plus - homme"
     )),
     var_short = list(list(en = "Bachelor+ M", fr = "Bacc+ H")),
     description = list(list(
-      en = "The number of males aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
+      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un baccalauréat ou un grade universitaire supérieur."
     )),
     parent_vec = "population_15plus_m",
     parent = FALSE
   ) |>
   tibble::add_row(
-    var_code = "edu_bachelor_above_f",
+    var_code = "edu_bachelor_above_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -6504,15 +6502,15 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Bachelor and above - Female",
-      fr = "Baccalauréat et plus - Femme"
+      en = "Bachelor and above - women",
+      fr = "Baccalauréat et plus - femme"
     )),
-    var_short = list(list(en = "Bachelor+ F", fr = "Baccalauréat+ F")),
+    var_short = list(list(en = "Bachelor+ W", fr = "Baccalauréat+ W")),
     description = list(list(
-      en = "The number of females aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
+      en = "The number of women aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
       fr = "Le nombre de femmes âgées de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un baccalauréat ou un grade universitaire supérieur."
     )),
-    parent_vec = "population_15plus_f",
+    parent_vec = "population_15plus_w",
     parent = FALSE
   )
 
@@ -6559,19 +6557,19 @@ census_vectors_education_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Population aged 15 years and over - Male",
-      fr = "Population âgée de 15 ans et plus - Homme"
+      en = "Population aged 15 years and over - man",
+      fr = "Population âgée de 15 ans et plus - homme"
     )),
     var_short = list(list(en = "Individuals M", fr = "Individus H")),
     description = list(list(
-      en = "The total number of males aged 15 years and over in private households.",
+      en = "The total number of man aged 15 years and over in private households.",
       fr = "Le nombre total d'hommes âgés de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
     parent = TRUE
   ) |>
   tibble::add_row(
-    var_code = "population_15plus_f",
+    var_code = "population_15plus_w",
     type = list(list(
       unit = "count",
       aggregation_field = "sum",
@@ -6585,12 +6583,12 @@ census_vectors_education_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Population aged 15 years and over - Female",
-      fr = "Population âgée de 15 ans et plus - Femme"
+      en = "Population aged 15 years and over - women",
+      fr = "Population âgée de 15 ans et plus - femme"
     )),
-    var_short = list(list(en = "Individuals F", fr = "Individus F")),
+    var_short = list(list(en = "Individuals W", fr = "Individus W")),
     description = list(list(
-      en = "The total number of females aged 15 years and over in private households.",
+      en = "The total number of women aged 15 years and over in private households.",
       fr = "Le nombre total de femmes âgées de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
@@ -6609,6 +6607,8 @@ census_vectors_education <- rbind(
 )
 
 usethis::use_data(census_vectors_education, overwrite = TRUE)
+
+
 
 ## COMBINE ALL CENSUS VECTORS ##################################################
 
@@ -6669,13 +6669,13 @@ check_census_vectors_vec <- function(x) {
 
   # Pattern 1 : Total = M + F (même préfixe, l'un sans suffixe, l'autre avec _m/_f)
   is_valid_mf_pair <- function(vc_i, vc_j) {
-    base_i <- sub("_(m|f)$", "", vc_i)
-    base_j <- sub("_(m|f)$", "", vc_j)
+    base_i <- sub("_(m|w)$", "", vc_i)
+    base_j <- sub("_(m|w)$", "", vc_j)
     if (base_i != base_j) {
       return(FALSE)
     }
-    has_suffix_i <- grepl("_(m|f)$", vc_i)
-    has_suffix_j <- grepl("_(m|f)$", vc_j)
+    has_suffix_i <- grepl("_(m|w)$", vc_i)
+    has_suffix_j <- grepl("_(m|w)$", vc_j)
     xor(has_suffix_i, has_suffix_j)
   }
 
