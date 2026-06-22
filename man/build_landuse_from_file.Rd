@@ -6,7 +6,8 @@
 \usage{
 build_landuse_from_file(
   boundaries,
-  base_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/landuse_v3"),
+  base_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
+    "../landuse/LandCover_Classification_v4"),
   mapping = data.table::data.table(folder = c("QBC", "VIC", "VAN", "CGY", "EDM", "WPG",
     "HMT", "TOR", "OTTGTU", "MTL", "HRM"), region = c("qc_quebec", "bc_victoria",
     "bc_vancouver", "ab_calgary", "ab_edmonton", "mb_winnipeg", "on_hamilton",
@@ -14,12 +15,18 @@ build_landuse_from_file(
     59933, 48825, 48835, 46602, 35537, 35535, 505, 24462, 12205)),
   pattern_year = "\\\\d{4}",
   exact = FALSE,
-  use_data_table = TRUE,
-  progress = TRUE
+  progress = TRUE,
+  checkpoint_dir = NULL
 )
 }
 \arguments{
-\item{base_dir}{Character scalar. Root folder containing CMA subfolders.}
+\item{boundaries}{<\verb{sf data.frame}> Polygons at which to compute land-use.
+Must have an \code{id} column.}
+
+\item{base_dir}{Character scalar. Root folder containing CMA subfolders.
+Defaults to the v4 LULC drop at
+\code{CURBCUT_DATA_SHARING_PATH/../landuse/LandCover_Classification_v4} (the
+v4 drop sits one level above the `IMPORTANT_centralized_data` folder).}
 
 \item{mapping}{Data.frame with required columns: "folder" (subfolder name)
 and "CMA_UID" (character or numeric id). Extra columns are ignored.}
@@ -30,35 +37,35 @@ from filenames. Default "\\\\d{4}".}
 \item{exact}{Logical scalar. If TRUE, use exact area fractions in
 intersections (slower, more accurate). If FALSE, count cell centers.}
 
-\item{use_data_table}{Logical. Whether to use data.table for output
-(recommended for performance).}
-
 \item{progress}{Logical. Whether to show progress messages.}
 
-\item{census_scale}{<\verb{sf data.frame}> Dataframe at which to calculate landuse.}
+\item{checkpoint_dir}{Character scalar or NULL. If a directory path is
+supplied, each successful per-file extraction is written to
+\code{<checkpoint_dir>/<cma_id>_<year>.qs} immediately, and subsequent runs
+skip files whose checkpoint already exists. This makes the build
+crash-resumable: an interrupted run loses at most one file's worth of work
+instead of the entire scale.}
 }
 \value{
-Data.frame. When \code{boundaries} is NULL, one row per CMA-year.
-When \code{boundaries} is provided, one row per (polygon id, CMA-year).
-Columns:
+Data.table with one row per (id, year). Columns:
 \describe{
-\item{cma_id}{CMA UID as character}
-\item{year}{4-digit year (NA if not found)}
-\item{id}{polygon id (only when \code{boundaries} provided)}
-\item{\emph{\emph{pct}{percentages (0..1) for categories 1..5}
-\item{landuse}}}{raw counts for categories 1..5}
+\item{id}{polygon id}
+\item{year}{4-digit year}
+\item{landuse_res_lowrise, landuse_res_midrise, landuse_res_highrise,
+landuse_nonres, landuse_vege, landuse_water, landuse_road}{area (m^2)
+per class}
+\item{\emph{_pct}{percentages (0..1) of each class}
 }
 }
 \description{
 Scans a root directory of CMA subfolders (e.g., "MTL", "CGY"), loads each
-land-use raster, and computes category counts and percentages for values
-1..5 (lowrise, midrise, highrise, nonres, nonbuilt).
+land-use raster (Curbcut LULC v4, 10 m, 7-class), and computes per-class
+area (m^2) and percentages for each polygon in \code{boundaries}.
+
+v4 pixel encoding: 1 = vege, 2 = water, 3 = lowrise, 4 = non-res built,
+5 = midrise, 6 = highrise, 7 = road.
 }
 \details{
-If \code{boundaries} is provided, computes the stats for each polygon in that
-\code{sf} object (after reprojection to the raster CRS) for every raster file
-found. Otherwise, returns one row per CMA-year file (total over all cells).
-
 The function processes raster files in parallel using future.apply.
 Set up your parallel backend before calling this function:
 \code{future::plan(future::multisession, workers = n_cores)}
