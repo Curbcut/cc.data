@@ -513,6 +513,9 @@ build_origin_requests <- function(
 #'   disk. Requires `aws.s3` and the `CURBCUT_BUCKET_ACCESS_ID`,
 #'   `CURBCUT_BUCKET_ACCESS_KEY`, and `CURBCUT_BUCKET_DEFAULT_REGION`
 #'   environment variables to be set.
+#' @param verbose <`logical`> When `TRUE`, print a per-batch timing breakdown
+#'   (load / fetch+parse / serialize / upload / manifest / gc and a TOTAL) so
+#'   it is clear which phase dominates each batch's wall time. Default `FALSE`.
 #'
 #' Preflight check for S3 bucket write access
 #'
@@ -635,7 +638,8 @@ tt_fetch_routes <- function(
   profile = NULL,
   n_concurrent = parallel::detectCores() * 3,
   flush_every = 50000L,
-  bucket = NULL
+  bucket = NULL,
+  verbose = FALSE
 ) {
   if (!is.null(prep)) {
     requests_dir <- prep$requests_dir
@@ -736,7 +740,26 @@ tt_fetch_routes <- function(
     return(invisible(output_dir))
   }
 
+  # Phase timer: returns seconds elapsed since `since` and prints a labelled
+  # line when verbose. Used to attribute per-batch wall time to load / fetch /
+  # serialize / upload / manifest so it's obvious where the time actually goes.
+  secs_since <- function(since) {
+    as.numeric(difftime(Sys.time(), since, units = "secs"))
+  }
+  vlog <- function(batch_idx, label, dt_secs, extra = "") {
+    if (verbose) {
+      message(sprintf(
+        "    [batch %d] %-10s %7.1fs%s",
+        batch_idx,
+        label,
+        dt_secs,
+        if (nzchar(extra)) paste0("  (", extra, ")") else ""
+      ))
+    }
+  }
+
   for (batch_idx in remaining_idx) {
+    t_batch <- Sys.time()
     file_indices <- origin_batches[[batch_idx]]
     batch_files <- request_files[file_indices]
 
@@ -747,7 +770,14 @@ tt_fetch_routes <- function(
       length(batch_files)
     ))
 
+    t0 <- Sys.time()
     batch_requests <- unlist(lapply(batch_files, qs2::qs_read), recursive = FALSE)
+    vlog(
+      batch_idx,
+      "load",
+      secs_since(t0),
+      sprintf("%d files -> %d requests", length(batch_files), length(batch_requests))
+    )
 
     message(sprintf(
       "  Batch %d/%d: Fetching %d requests...",
@@ -756,18 +786,34 @@ tt_fetch_routes <- function(
       length(batch_requests)
     ))
 
+    t0 <- Sys.time()
     batch_results <- fetch_batch_async(
       all_requests = batch_requests,
       routing_server = routing_server,
       profile = profile,
       n_concurrent = n_concurrent
     )
+    vlog(
+      batch_idx,
+      "fetch+parse",
+      secs_since(t0),
+      sprintf("%d origins parsed", length(batch_results))
+    )
 
     batch_filename <- sprintf("batch_%04d.qs", batch_idx)
 
     if (!is.null(bucket)) {
       # Serialize in memory — no local write for batch files
+      t0 <- Sys.time()
       raw_data <- qs2::qs_serialize(batch_results)
+      vlog(
+        batch_idx,
+        "serialize",
+        secs_since(t0),
+        sprintf("%.1f MB", length(raw_data) / 1024^2)
+      )
+
+      t0 <- Sys.time()
       aws.s3::put_object(
         what = raw_data,
         object = batch_filename,
@@ -778,16 +824,20 @@ tt_fetch_routes <- function(
         secret = Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY")
       ) |>
         suppressMessages()
+      vlog(batch_idx, "upload", secs_since(t0))
       rm(raw_data)
     } else {
       # Atomic local write
+      t0 <- Sys.time()
       final_path <- file.path(output_dir, batch_filename)
       tmp_path <- paste0(final_path, ".tmp")
       qs2::qs_save(batch_results, tmp_path)
       file.rename(tmp_path, final_path)
+      vlog(batch_idx, "write", secs_since(t0))
     }
 
     # Update manifest (always local — small, needed for resume)
+    t0 <- Sys.time()
     completed_batches <- c(completed_batches, batch_idx)
     manifest <- data.table::data.table(
       batch = seq_len(total_batches),
@@ -805,6 +855,7 @@ tt_fetch_routes <- function(
     manifest_tmp <- paste0(manifest_path, ".tmp")
     qs2::qs_save(manifest, manifest_tmp)
     file.rename(manifest_tmp, manifest_path)
+    vlog(batch_idx, "manifest", secs_since(t0))
 
     message(sprintf(
       "  Batch %d/%d written (%d requests) -> %s",
@@ -818,8 +869,19 @@ tt_fetch_routes <- function(
       }
     ))
 
+    t0 <- Sys.time()
     rm(batch_requests, batch_results)
     gc()
+    vlog(batch_idx, "gc", secs_since(t0))
+
+    if (verbose) {
+      message(sprintf(
+        "    [batch %d] %-10s %7.1fs",
+        batch_idx,
+        "TOTAL",
+        secs_since(t_batch)
+      ))
+    }
   }
 
   message(sprintf(

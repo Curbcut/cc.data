@@ -12,7 +12,8 @@ tt_fetch_routes(
   profile = NULL,
   n_concurrent = parallel::detectCores() * 3,
   flush_every = 50000L,
-  bucket = NULL
+  bucket = NULL,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -49,6 +50,10 @@ uploaded via multipart upload — nothing beyond the manifest is written to
 disk. Requires \code{aws.s3} and the \code{CURBCUT_BUCKET_ACCESS_ID},
 \code{CURBCUT_BUCKET_ACCESS_KEY}, and \code{CURBCUT_BUCKET_DEFAULT_REGION}
 environment variables to be set.}
+
+\item{verbose}{<\code{logical}> When \code{TRUE}, print a per-batch timing breakdown
+(load / fetch+parse / serialize / upload / manifest / gc and a TOTAL) so
+it is clear which phase dominates each batch's wall time. Default \code{FALSE}.}
 }
 \value{
 \code{invisible(output_dir)}
