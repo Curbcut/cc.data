@@ -514,6 +514,117 @@ build_origin_requests <- function(
 #'   `CURBCUT_BUCKET_ACCESS_KEY`, and `CURBCUT_BUCKET_DEFAULT_REGION`
 #'   environment variables to be set.
 #'
+#' Preflight check for S3 bucket write access
+#'
+#' Verifies that the `CURBCUT_BUCKET_*` credentials are set and that they can
+#' actually write to (and delete from) `bucket` in its real region. Does a tiny
+#' put + delete round-trip so misconfigurations (missing keys, wrong region,
+#' wrong bucket) fail immediately rather than after a batch's worth of fetching.
+#'
+#' @param bucket <`character`> Bucket string, optionally including a key prefix
+#'   (e.g. `"curbcut-routing/202606/foot"`). Only the first path segment is the
+#'   bucket; the rest is treated as a prefix for the probe object.
+#'
+#' @return `invisible(TRUE)` on success; stops with an informative error
+#'   otherwise.
+#' @export
+tt_check_bucket_access <- function(bucket) {
+  if (!requireNamespace("aws.s3", quietly = TRUE)) {
+    stop("Package \"aws.s3\" must be installed.", call. = FALSE)
+  }
+
+  missing_env <- c(
+    "CURBCUT_BUCKET_ACCESS_ID",
+    "CURBCUT_BUCKET_ACCESS_KEY",
+    "CURBCUT_BUCKET_DEFAULT_REGION"
+  )
+  missing_env <- missing_env[vapply(
+    missing_env,
+    function(v) Sys.getenv(v) == "",
+    logical(1)
+  )]
+  if (length(missing_env) > 0) {
+    stop(
+      "Missing bucket credentials/config: ",
+      paste(missing_env, collapse = ", "),
+      ". Set them in .Renviron.",
+      call. = FALSE
+    )
+  }
+
+  # aws.s3 splits "bucket/prefix/..." on the first "/": bucket is the first
+  # segment, the rest is a key prefix.
+  parts <- strsplit(bucket, "/", fixed = TRUE)[[1]]
+  bkt <- parts[1]
+  prefix <- if (length(parts) > 1) {
+    paste0(paste(parts[-1], collapse = "/"), "/")
+  } else {
+    ""
+  }
+
+  region <- Sys.getenv("CURBCUT_BUCKET_DEFAULT_REGION")
+  key <- Sys.getenv("CURBCUT_BUCKET_ACCESS_ID")
+  secret <- Sys.getenv("CURBCUT_BUCKET_ACCESS_KEY")
+
+  probe_key <- paste0(prefix, "._tt_access_check")
+
+  put_ok <- tryCatch(
+    {
+      aws.s3::put_object(
+        what = charToRaw("ok"),
+        object = probe_key,
+        bucket = bkt,
+        region = region,
+        key = key,
+        secret = secret
+      )
+    },
+    error = function(e) e
+  )
+
+  if (inherits(put_ok, "error") || isFALSE(put_ok)) {
+    msg <- if (inherits(put_ok, "error")) conditionMessage(put_ok) else
+      "put_object returned FALSE"
+    stop(
+      sprintf(
+        paste0(
+          "Bucket write check failed for s3://%s (region '%s'): %s\n",
+          "Check CURBCUT_BUCKET_ACCESS_ID/KEY and that ",
+          "CURBCUT_BUCKET_DEFAULT_REGION matches the bucket's real region ",
+          "(PermanentRedirect => wrong region)."
+        ),
+        bkt,
+        region,
+        msg
+      ),
+      call. = FALSE
+    )
+  }
+
+  # Clean up the probe object (best effort).
+  tryCatch(
+    aws.s3::delete_object(
+      object = probe_key,
+      bucket = bkt,
+      region = region,
+      key = key,
+      secret = secret
+    ),
+    error = function(e) {
+      warning(
+        "Bucket write check passed but could not delete probe object ",
+        probe_key,
+        ": ",
+        conditionMessage(e),
+        call. = FALSE
+      )
+    }
+  )
+
+  message(sprintf("Bucket access OK: s3://%s (region '%s')", bkt, region))
+  invisible(TRUE)
+}
+
 #' @return `invisible(output_dir)`
 #' @export
 tt_fetch_routes <- function(
@@ -547,9 +658,9 @@ tt_fetch_routes <- function(
         call. = FALSE
       )
     }
-    if (Sys.getenv("CURBCUT_BUCKET_ACCESS_ID") == "") {
-      stop("You do not have Curbcut database user access.", call. = FALSE)
-    }
+    # Preflight: verify creds + region + write access with a real round-trip
+    # (tiny put + delete) so a bad config fails now, not after the first batch.
+    tt_check_bucket_access(bucket)
   }
 
   message(sprintf(
