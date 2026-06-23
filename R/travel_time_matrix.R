@@ -851,7 +851,11 @@ tt_fetch_routes <- function(
       sprintf("%d origins parsed", length(batch_results))
     )
 
-    batch_filename <- sprintf("batch_%04d.qs", batch_idx)
+    # `.qs2` because batch results are written with qs2 (qs_serialize /
+    # qs_save). The extension signals the format so consumers reach for
+    # qs2::qs_deserialize() (raw bytes) or qs2::qs_read(), not the older qs
+    # package, which cannot read this format.
+    batch_filename <- sprintf("batch_%04d.qs2", batch_idx)
 
     if (!is.null(bucket)) {
       # Serialize in memory — no local write for batch files
@@ -892,7 +896,7 @@ tt_fetch_routes <- function(
     completed_batches <- c(completed_batches, batch_idx)
     manifest <- data.table::data.table(
       batch = seq_len(total_batches),
-      file = sprintf("batch_%04d.qs", seq_len(total_batches)),
+      file = sprintf("batch_%04d.qs2", seq_len(total_batches)),
       n_origins = lengths(origin_batches),
       status = ifelse(
         seq_len(total_batches) %in% completed_batches,
