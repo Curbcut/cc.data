@@ -75,6 +75,11 @@ zoning_read_da <- function(proj_crs = 3347L, census_year = 2021L) {
 #'   empty tibble when no zone permits the usage or no DA intersects it.
 #' @keywords internal
 zoning_area_for_usage <- function(zones, da, usage) {
+  ## Workers are separate R processes and do not inherit sf_use_s2() from the
+  ## main session. Force planar geometry here so st_union / st_intersection
+  ## behave consistently (data is projected, EPSG:3347).
+  suppressMessages(sf::sf_use_s2(FALSE))
+
   ## usage_classification can be either a list-column (vector of usages per
   ## zone) or, after the mirai-safe conversion below, a pipe-delimited string
   ## like "single_detached|duplex". List-columns can be mangled when
