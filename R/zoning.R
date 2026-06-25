@@ -27,7 +27,7 @@ zoning_read_zones <- function(path, proj_crs = 3347L) {
   zones <- sf::st_read(path, quiet = TRUE) |>
     sf::st_make_valid() |>
     sf::st_transform(proj_crs)
-  
+
   ## Keep only the most recent year per zone (csd_id + zone_code).
   zones |>
     dplyr::group_by(csd_id, zone_code) |>
@@ -75,21 +75,23 @@ zoning_read_da <- function(proj_crs = 3347L, census_year = 2021L) {
 #'   empty tibble when no zone permits the usage or no DA intersects it.
 #' @keywords internal
 zoning_area_for_usage <- function(zones, da, usage) {
-  ## usage_classification is a list-column: each zone holds a vector of the
-  ## usages it permits. Keep zones whose vector contains `usage`. Inlined here
-  ## (rather than calling a separate helper) so the function is self-contained
-  ## when shipped to a mirai worker.
-  keep <- vapply(
-    zones$usage_classification,
-    function(v) usage %in% v,
-    logical(1)
-  )
+  ## usage_classification can be either a list-column (vector of usages per
+  ## zone) or, after the mirai-safe conversion below, a pipe-delimited string
+  ## like "single_detached|duplex". List-columns can be mangled when
+  ## serialized to a worker, so a flat string is used across the mirai
+  ## boundary; handle both here.
+  uc <- zones$usage_classification
+  if (is.list(uc)) {
+    keep <- vapply(uc, function(v) usage %in% v, logical(1))
+  } else {
+    keep <- grepl(paste0("(^|\\|)", usage, "($|\\|)"), uc)
+  }
   z <- zones[keep, ]
-  
+
   if (nrow(z) == 0) {
     return(tibble::tibble(id = character(0), value = numeric(0)))
   }
-  
+
   ## mirai serialization can leave the sf_column attribute pointing to a
   ## column that is no longer a live sfc after subsetting. Rather than rely
   ## on st_geometry (which reads that attribute), grab the geometry column
@@ -99,29 +101,29 @@ zoning_area_for_usage <- function(zones, da, usage) {
     return(tibble::tibble(id = character(0), value = numeric(0)))
   }
   zgeom <- z[[geom_col[1]]]
-  
+
   dissolved <- sf::st_union(zgeom)
   dissolved <- sf::st_make_valid(dissolved)
-  
+
   ## Same precaution for `da`: re-assert its geometry column so st_filter /
   ## st_intersection work after serialization.
   da_geom_col <- names(da)[vapply(da, function(col) inherits(col, "sfc"), logical(1))]
   if (length(da_geom_col) > 0) {
     da <- sf::st_set_geometry(da, da_geom_col[1])
   }
-  
+
   da_hit <- sf::st_filter(da, dissolved)
   if (nrow(da_hit) == 0) {
     return(tibble::tibble(id = character(0), value = numeric(0)))
   }
-  
+
   pieces <- suppressWarnings(sf::st_intersection(da_hit, dissolved))
   if (nrow(pieces) == 0) {
     return(tibble::tibble(id = character(0), value = numeric(0)))
   }
-  
+
   pieces$area_m2 <- as.numeric(sf::st_area(pieces))
-  
+
   tibble::as_tibble(sf::st_drop_geometry(pieces)) |>
     dplyr::group_by(id) |>
     dplyr::summarise(value = sum(area_m2, na.rm = TRUE), .groups = "drop")
@@ -160,7 +162,7 @@ zoning_make_par_env <- function(...) {
 #' @keywords internal
 zoning_collect_results <- function(mp, usages) {
   res <- mp[.progress]
-  
+
   bad <- vapply(res, mirai::is_error_value, logical(1))
   if (any(bad)) {
     idx <- which(bad)
@@ -172,7 +174,7 @@ zoning_collect_results <- function(mp, usages) {
       call. = FALSE
     )
   }
-  
+
   stats::setNames(res, usages)
 }
 
@@ -189,6 +191,18 @@ zoning_collect_results <- function(mp, usages) {
 #' @return A named list of tibbles (`id`, `value`), one per usage.
 #' @export
 zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
+  ## Flatten the usage_classification list-column to a pipe-delimited string
+  ## BEFORE sending to workers. List-columns can be corrupted by mirai
+  ## serialization (only the first usage matches in the worker), which would
+  ## silently zero out every usage but one.
+  if (is.list(zones$usage_classification)) {
+    zones$usage_classification <- vapply(
+      zones$usage_classification,
+      function(v) paste(v, collapse = "|"),
+      character(1)
+    )
+  }
+
   ## Build a self-contained env so the worker resolves zoning_area_for_usage
   ## (and its dependencies) from the env rather than the installed namespace.
   par_env <- zoning_make_par_env(
@@ -196,12 +210,12 @@ zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
     da = da,
     zoning_area_for_usage = zoning_area_for_usage
   )
-  
+
   .worker <- function(usage) {
     zoning_area_for_usage(zones, da, usage)
   }
   environment(.worker) <- par_env
-  
+
   mp <- mirai::mirai_map(usages, .worker)
   zoning_collect_results(mp, usages)
 }
@@ -252,7 +266,7 @@ zoning_da_universe <- function(cma_ids, dataset = "CA21") {
 #' @export
 zoning_complete_universe <- function(areas, da_universe, collected_csds) {
   da_universe$covered <- da_universe$csd_id %in% as.character(collected_csds)
-  
+
   lapply(areas, function(tbl) {
     if (!is.data.frame(tbl)) {
       tbl <- tibble::tibble(id = character(0), value = numeric(0))
