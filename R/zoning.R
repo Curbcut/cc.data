@@ -206,6 +206,72 @@ zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
   zoning_collect_results(mp, usages)
 }
 
+#' Build the DA universe for the in-scope CMAs
+#'
+#' Returns every dissemination area in the given CMAs, with its parent CSD,
+#' via the cancensus hierarchy (no spatial join). This is the universe over
+#' which results are completed: DAs whose CSD was collected get 0 for absent
+#' usages, DAs whose CSD was not collected get NA.
+#'
+#' @param cma_ids Character vector of CMA UIDs (the zoning scope).
+#' @param dataset Character. cancensus dataset code (default "CA21").
+#'
+#' @return A tibble with columns `id` (DAUID) and `csd_id`.
+#' @export
+zoning_da_universe <- function(cma_ids, dataset = "CA21") {
+  da_hier <- cancensus::get_census(
+    dataset = dataset,
+    regions = list(CMA = cma_ids),
+    level = "DA",
+    geo_format = NA,
+    use_cache = TRUE,
+    quiet = TRUE
+  )
+  tibble::tibble(
+    id     = as.character(da_hier$GeoUID),
+    csd_id = as.character(da_hier$CSD_UID)
+  )
+}
+
+#' Complete usage results with 0 (collected) or NA (not collected)
+#'
+#' For each usage, expands results to the full DA universe of the in-scope
+#' CMAs. A DA whose CSD appears in the collected zoning (so the city was
+#' processed) gets 0 when the usage is absent — the absence is real. A DA
+#' whose CSD was not collected gets NA — the data is missing. DAs outside the
+#' universe (outside the scope CMAs) are not included.
+#'
+#' @param areas A named list of tibbles (`id`, `value`), one per usage, as
+#'   returned by `zoning_area_all_usages()`.
+#' @param da_universe A tibble (`id`, `csd_id`) from `zoning_da_universe()`.
+#' @param collected_csds Character vector of CSD UIDs present in the zoning
+#'   data (i.e. `unique(zones$csd_id)`).
+#'
+#' @return A named list of tibbles (`id`, `value`), one per usage, completed
+#'   over the universe with 0 / NA.
+#' @export
+zoning_complete_universe <- function(areas, da_universe, collected_csds) {
+  da_universe$covered <- da_universe$csd_id %in% as.character(collected_csds)
+  
+  lapply(areas, function(tbl) {
+    if (!is.data.frame(tbl)) {
+      tbl <- tibble::tibble(id = character(0), value = numeric(0))
+    }
+    da_universe |>
+      dplyr::left_join(dplyr::select(tbl, id, value), by = "id") |>
+      dplyr::mutate(
+        ## has a computed area -> keep it
+        ## else covered CSD -> 0 (real absence); uncovered CSD -> NA (no data)
+        value = dplyr::case_when(
+          !is.na(value) ~ value,
+          covered       ~ 0,
+          TRUE          ~ NA_real_
+        )
+      ) |>
+      dplyr::select(id, value)
+  })
+}
+
 #' Reshape usage areas into long-format upload tables
 #'
 #' Converts the named list of per-usage area tibbles into the long format
