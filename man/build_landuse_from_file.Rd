@@ -26,7 +26,8 @@ Must have an \code{id} column.}
 \item{base_dir}{Character scalar. Root folder containing CMA subfolders.
 Defaults to the v4 LULC drop at
 \code{CURBCUT_DATA_SHARING_PATH/../landuse/LandCover_Classification_v4} (the
-v4 drop sits one level above the `IMPORTANT_centralized_data` folder).}
+v4 folder sits one level above the \code{IMPORTANT_centralized_data} directory
+that \code{CURBCUT_DATA_SHARING_PATH} points to).}
 
 \item{mapping}{Data.frame with required columns: "folder" (subfolder name)
 and "CMA_UID" (character or numeric id). Extra columns are ignored.}
@@ -41,10 +42,13 @@ intersections (slower, more accurate). If FALSE, count cell centers.}
 
 \item{checkpoint_dir}{Character scalar or NULL. If a directory path is
 supplied, each successful per-file extraction is written to
-\code{<checkpoint_dir>/<cma_id>_<year>.qs} immediately, and subsequent runs
-skip files whose checkpoint already exists. This makes the build
-crash-resumable: an interrupted run loses at most one file's worth of work
-instead of the entire scale.}
+\verb{<checkpoint_dir>/<cma_id>_<year>.qs} immediately, and subsequent runs
+skip files whose checkpoint already exists. Makes the build crash-
+resumable: an interrupted run loses at most one file instead of an
+entire scale. Defaults to NULL (no checkpointing); the canonical
+shared location is
+\verb{CURBCUT_DATA_SHARING_PATH/cc.data/landuse_ckpt/<scale>} — see the
+example at the bottom of \code{R/landuse.R}.}
 }
 \value{
 Data.table with one row per (id, year). Columns:
@@ -54,18 +58,18 @@ Data.table with one row per (id, year). Columns:
 \item{landuse_res_lowrise, landuse_res_midrise, landuse_res_highrise,
 landuse_nonres, landuse_vege, landuse_water, landuse_road}{area (m^2)
 per class}
-\item{\emph{_pct}{percentages (0..1) of each class}
+\item{*_pct}{percentages (0..1) of each class}
 }
 }
 \description{
 Scans a root directory of CMA subfolders (e.g., "MTL", "CGY"), loads each
 land-use raster (Curbcut LULC v4, 10 m, 7-class), and computes per-class
 area (m^2) and percentages for each polygon in \code{boundaries}.
-
-v4 pixel encoding: 1 = vege, 2 = water, 3 = lowrise, 4 = non-res built,
-5 = midrise, 6 = highrise, 7 = road.
 }
 \details{
+v4 pixel encoding: 1 = vege, 2 = water, 3 = lowrise, 4 = non-res built,
+5 = midrise, 6 = highrise, 7 = road.
+
 The function processes raster files in parallel using future.apply.
 Set up your parallel backend before calling this function:
 \code{future::plan(future::multisession, workers = n_cores)}

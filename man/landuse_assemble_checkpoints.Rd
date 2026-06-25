@@ -5,10 +5,8 @@
 \title{Assemble per-file landuse checkpoints into a single plug-and-play .qs}
 \usage{
 landuse_assemble_checkpoints(
-  ckpt_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
-    "cc.data/landuse_ckpt"),
-  out_path = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"),
-    "cc.data/landuse.qs"),
+  ckpt_dir = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/landuse_ckpt"),
+  out_path = paste0(Sys.getenv("CURBCUT_DATA_SHARING_PATH"), "cc.data/landuse.qs"),
   aggregate = TRUE,
   progress = TRUE
 )
@@ -17,8 +15,8 @@ landuse_assemble_checkpoints(
 \item{ckpt_dir}{Character. Root directory containing one subdirectory
 per scale (e.g. \code{landuse_ckpt/CMA}, \code{landuse_ckpt/DB}). Each
 subdirectory should contain \verb{<cma_id>_<year>.qs} checkpoint files
-written by \code{\link[=build_landuse_from_file]{build_landuse_from_file()}}. Defaults to the canonical shared
-location \code{CURBCUT_DATA_SHARING_PATH/cc.data/landuse_ckpt}.}
+written by \code{\link[=build_landuse_from_file]{build_landuse_from_file()}}. Defaults to the canonical
+shared location \code{CURBCUT_DATA_SHARING_PATH/cc.data/landuse_ckpt}.}
 
 \item{out_path}{Character or NULL. If a path is supplied, the assembled
 list is written there with \code{qs::qsave}. Defaults to the canonical

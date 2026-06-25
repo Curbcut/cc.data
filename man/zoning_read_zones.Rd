@@ -2,21 +2,22 @@
 % Please edit documentation in R/zoning.R
 \name{zoning_read_zones}
 \alias{zoning_read_zones}
-\title{Read a zoning dataset, validated and projected to metres}
+\title{Read the zoning polygons}
 \usage{
 zoning_read_zones(path, proj_crs = 3347L)
 }
 \arguments{
-\item{path}{Character. Path to the zoning file.}
+\item{path}{Character. Path to the zoning GeoJSON file.}
 
-\item{proj_crs}{Integer. Target (metric) projection CRS. Default 3347.}
+\item{proj_crs}{Integer. Target projected CRS (default 3347, Canada Lambert).}
 }
 \value{
-An sf object in \code{proj_crs}, with an integer \code{zone_row} key.
+An \code{sf} object of zoning polygons in \code{proj_crs}, one row per zone.
 }
 \description{
-Reads a GeoJSON (or any format readable by \code{sf::st_read}), repairs invalid
-geometries, and reprojects to a metric CRS. Adds a stable row key \code{zone_row}
-so usage flags can be re-joined to the intersection pieces without carrying
-the list-column through mirai.
+Reads the zoning GeoJSON, repairs geometries, reprojects to the working CRS,
+and keeps only the most recent year of each zone. The GeoJSON stores one row
+per (zone, year); since a zone's permitted usages change over time, only the
+latest year is kept so the result reflects current zoning rather than a mix
+of historical states. A zone is identified by \code{csd_id} + \code{zone_code}.
 }

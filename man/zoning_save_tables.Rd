@@ -2,18 +2,18 @@
 % Please edit documentation in R/zoning.R
 \name{zoning_save_tables}
 \alias{zoning_save_tables}
-\title{Save the per-usage df_long tables to a .qs file}
+\title{Save usage tables to a qs file}
 \usage{
 zoning_save_tables(tables, path)
 }
 \arguments{
-\item{tables}{A named list of df_long tibbles.}
+\item{tables}{A named list of long-format tibbles.}
 
-\item{path}{Character. Full output path for the .qs file.}
+\item{path}{Character. Output path for the \code{.qs} file.}
 }
 \value{
-The path, invisibly.
+The output path, invisibly.
 }
 \description{
-Save the per-usage df_long tables to a .qs file
+Save usage tables to a qs file
 }

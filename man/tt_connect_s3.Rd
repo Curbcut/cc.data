@@ -76,7 +76,7 @@ if (!file.exists(cached_index)) \{
                       bucket = "curbcut.traveltimes",
                       file   = cached_index)
 \}
-index <- qs::qread(cached_index)
+index <- qs2::qs_read(cached_index)
 attr(con, "ttm_index")  <- index
 attr(con, "ttm_bucket") <- "curbcut.traveltimes"
 }\if{html}{\out{</div>}}

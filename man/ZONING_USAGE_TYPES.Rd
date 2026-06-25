@@ -3,7 +3,7 @@
 \docType{data}
 \name{ZONING_USAGE_TYPES}
 \alias{ZONING_USAGE_TYPES}
-\title{Default residential usage types}
+\title{Residential usage types carried by the zoning dataset}
 \format{
 An object of class \code{character} of length 12.
 }
@@ -11,7 +11,7 @@ An object of class \code{character} of length 12.
 ZONING_USAGE_TYPES
 }
 \description{
-Character vector of usage classes used by default across this module's
-functions. Override via each function's \code{usage_types} argument.
+The 12 residential usage categories encoded in the \code{usage_classification}
+list-column of the zoning GeoJSON. Each zone permits one or more of these.
 }
-\keyword{datasets}
+\keyword{internal}

@@ -1,117 +1,143 @@
-################################################################################
-## Residential zoning — intersection with dissemination areas (DA)
-##
-## Reusable functions to intersect a zoning dataset (polygons with a usage
-## classification) against census DAs, compute clipped area per usage, and
-## produce df_long tables ready for cc.pipe. The heavy intersection step runs
-## in parallel via mirai, following the cc.cmhc make_par_env() pattern.
-################################################################################
-
-#' Default residential usage types
+#' Residential usage types carried by the zoning dataset
 #'
-#' Character vector of usage classes used by default across this module's
-#' functions. Override via each function's `usage_types` argument.
+#' The 12 residential usage categories encoded in the `usage_classification`
+#' list-column of the zoning GeoJSON. Each zone permits one or more of these.
+#'
+#' @keywords internal
 ZONING_USAGE_TYPES <- c(
   "single_detached", "semi_detached", "duplex", "triplex",
   "townhouse", "row_house", "mid_rise", "high_rise",
   "collective", "mobile_home", "accessory", "other"
 )
 
-#' Read a zoning dataset, validated and projected to metres
+#' Read the zoning polygons
 #'
-#' Reads a GeoJSON (or any format readable by `sf::st_read`), repairs invalid
-#' geometries, and reprojects to a metric CRS. Adds a stable row key `zone_row`
-#' so usage flags can be re-joined to the intersection pieces without carrying
-#' the list-column through mirai.
+#' Reads the zoning GeoJSON, repairs geometries, reprojects to the working CRS,
+#' and keeps only the most recent year of each zone. The GeoJSON stores one row
+#' per (zone, year); since a zone's permitted usages change over time, only the
+#' latest year is kept so the result reflects current zoning rather than a mix
+#' of historical states. A zone is identified by `csd_id` + `zone_code`.
 #'
-#' @param path Character. Path to the zoning file.
-#' @param proj_crs Integer. Target (metric) projection CRS. Default 3347.
-#' @return An sf object in `proj_crs`, with an integer `zone_row` key.
+#' @param path Character. Path to the zoning GeoJSON file.
+#' @param proj_crs Integer. Target projected CRS (default 3347, Canada Lambert).
+#'
+#' @return An `sf` object of zoning polygons in `proj_crs`, one row per zone.
 #' @export
 zoning_read_zones <- function(path, proj_crs = 3347L) {
   zones <- sf::st_read(path, quiet = TRUE) |>
     sf::st_make_valid() |>
     sf::st_transform(proj_crs)
-  zones$zone_row <- seq_len(nrow(zones))
-  message(sprintf("Loaded %d zoning features", nrow(zones)))
-  zones
+  
+  ## Keep only the most recent year per zone (csd_id + zone_code).
+  zones |>
+    dplyr::group_by(csd_id, zone_code) |>
+    dplyr::filter(year == max(year)) |>
+    dplyr::ungroup()
 }
 
-#' Read DA polygons from cc.data, validated and projected to metres
+#' Read dissemination-area geometries
 #'
-#' @param census_year Character. Census year. Default "2021".
-#' @param proj_crs Integer. Target (metric) projection CRS. Default 3347.
-#' @return An sf object with columns `id` + `geometry` in `proj_crs`.
+#' Fetches dissemination-area boundaries for a given census year via
+#' `cc.data::census_empty_geometries()`, repairs geometries, and reprojects to
+#' the working CRS.
+#'
+#' @param proj_crs Integer. Target projected CRS (default 3347).
+#' @param census_year Integer. Census year (default 2021).
+#'
+#' @return An `sf` object of dissemination areas with an `id` column.
 #' @export
-zoning_read_da <- function(census_year = "2021", proj_crs = 3347L) {
-  da_raw <- cc.data::census_empty_geometries(
+zoning_read_da <- function(proj_crs = 3347L, census_year = 2021L) {
+  geos <- cc.data::census_empty_geometries(
     census_scales = "DA",
-    census_years  = census_year
+    census_years = census_year
   )
-  da <- da_raw$DA[[census_year]] |>
-    sf::st_as_sf() |>
-    sf::st_make_valid() |>
-    sf::st_transform(proj_crs) |>
-    dplyr::rename(id = ID)
-  message(sprintf("Loaded %d DA polygons", nrow(da)))
+  da <- geos[["DA"]][[as.character(census_year)]]
+  names(da)[names(da) == "ID"] <- "id"
+  da$id <- as.character(da$id)
+  ## census_empty_geometries already returns valid geometries in EPSG:3347,
+  ## so no st_make_valid / st_transform is needed here.
   da
 }
 
-#' Build a usage-flag lookup: one logical column per usage type, keyed by row
+#' Compute per-DA land area for a single usage
 #'
-#' Flattens the usage list-column into a plain data.frame of TRUE/FALSE flags.
-#' No geometry and no list-column, so it joins fast and serializes cleanly for
-#' mirai.
+#' Zones permitting `usage` are dissolved into one geometry (`st_union`) BEFORE
+#' intersecting with the dissemination areas. Dissolving first is essential:
+#' when two zones permitting the same usage overlap, summing per-zone
+#' intersections counts the shared ground more than once. The union collapses
+#' overlaps so each parcel of ground is counted exactly once per usage.
 #'
-#' @param zones An sf zoning object with `zone_row` + the usage list-column.
-#' @param usage_col Character. Name of the usage list-column.
-#'   Default "usage_classification".
-#' @param usage_types Character. Vector of usage flags.
-#' @return A data.frame with `zone_row` + one logical column per usage.
-zoning_usage_flags <- function(zones,
-                               usage_col = "usage_classification",
-                               usage_types = ZONING_USAGE_TYPES) {
-  vals <- zones[[usage_col]]
-  flags <- lapply(usage_types, function(u) {
-    vapply(vals, function(v) u %in% v, logical(1))
-  })
-  names(flags) <- usage_types
-  cbind(data.frame(zone_row = zones$zone_row), as.data.frame(flags))
-}
-
-#' Intersect one chunk of zones with the DA layer, return pieces as a table
+#' @param zones An `sf` object of zoning polygons (with `usage_classification`).
+#' @param da An `sf` object of dissemination areas with an `id` column.
+#' @param usage Character. The usage type to compute.
 #'
-#' Each output row is one (zone piece x DA) with its DA id, the originating
-#' `zone_row`, and the clipped area in m2. No geometry is returned (dropped
-#' after area is computed) so results are light to collect.
-#'
-#' @param zone_rows Integer. `zone_row` values for this chunk.
-#' @param zones An sf zoning object (metric CRS, with `zone_row`).
-#' @param da An sf DA object (metric CRS, with `id`).
-#' @return A data.frame (zone_row, id, area_m2), or NULL if no overlap.
-zoning_intersect_chunk <- function(zone_rows, zones, da) {
-  z <- zones[zones$zone_row %in% zone_rows, c("zone_row")]
-
-  pieces <- suppressWarnings(sf::st_intersection(z, da))
-  pieces <- pieces[!sf::st_is_empty(sf::st_geometry(pieces)), ]
-  if (nrow(pieces) == 0) return(NULL)
-
+#' @return A tibble with columns `id` and `value` (land area in m2). Returns an
+#'   empty tibble when no zone permits the usage or no DA intersects it.
+#' @keywords internal
+zoning_area_for_usage <- function(zones, da, usage) {
+  ## usage_classification is a list-column: each zone holds a vector of the
+  ## usages it permits. Keep zones whose vector contains `usage`. Inlined here
+  ## (rather than calling a separate helper) so the function is self-contained
+  ## when shipped to a mirai worker.
+  keep <- vapply(
+    zones$usage_classification,
+    function(v) usage %in% v,
+    logical(1)
+  )
+  z <- zones[keep, ]
+  
+  if (nrow(z) == 0) {
+    return(tibble::tibble(id = character(0), value = numeric(0)))
+  }
+  
+  ## mirai serialization can leave the sf_column attribute pointing to a
+  ## column that is no longer a live sfc after subsetting. Rather than rely
+  ## on st_geometry (which reads that attribute), grab the geometry column
+  ## directly by detecting the sfc column, and union that.
+  geom_col <- names(z)[vapply(z, function(col) inherits(col, "sfc"), logical(1))]
+  if (length(geom_col) == 0) {
+    return(tibble::tibble(id = character(0), value = numeric(0)))
+  }
+  zgeom <- z[[geom_col[1]]]
+  
+  dissolved <- sf::st_union(zgeom)
+  dissolved <- sf::st_make_valid(dissolved)
+  
+  ## Same precaution for `da`: re-assert its geometry column so st_filter /
+  ## st_intersection work after serialization.
+  da_geom_col <- names(da)[vapply(da, function(col) inherits(col, "sfc"), logical(1))]
+  if (length(da_geom_col) > 0) {
+    da <- sf::st_set_geometry(da, da_geom_col[1])
+  }
+  
+  da_hit <- sf::st_filter(da, dissolved)
+  if (nrow(da_hit) == 0) {
+    return(tibble::tibble(id = character(0), value = numeric(0)))
+  }
+  
+  pieces <- suppressWarnings(sf::st_intersection(da_hit, dissolved))
+  if (nrow(pieces) == 0) {
+    return(tibble::tibble(id = character(0), value = numeric(0)))
+  }
+  
   pieces$area_m2 <- as.numeric(sf::st_area(pieces))
-
-  pieces |>
-    sf::st_drop_geometry() |>
-    dplyr::select(zone_row, id, area_m2) |>
-    dplyr::filter(area_m2 > 0)
+  
+  tibble::as_tibble(sf::st_drop_geometry(pieces)) |>
+    dplyr::group_by(id) |>
+    dplyr::summarise(value = sum(area_m2, na.rm = TRUE), .groups = "drop")
 }
 
 #' Build a self-contained environment for mirai daemon serialization
 #'
-#' Creates an environment holding the named objects passed in, with
-#' `globalenv()` as parent, and rebinds every function's enclosing environment
-#' to this environment so workers are self-contained.
+#' When a closure is serialized for mirai, package-namespace functions resolve
+#' to the INSTALLED version on the daemon, not the `load_all()` dev version.
+#' This helper creates an environment holding all needed objects and rebinds
+#' every function's enclosing environment so internal references resolve from
+#' the environment rather than the installed namespace.
 #'
-#' @param ... Named objects (functions, data, constants) the worker needs.
+#' @param ... Named objects (functions, data) the worker needs.
 #' @return An environment with parent `globalenv()`.
+#' @keywords internal
 zoning_make_par_env <- function(...) {
   objs <- list(...)
   env <- list2env(objs, parent = globalenv())
@@ -123,127 +149,116 @@ zoning_make_par_env <- function(...) {
   env
 }
 
-#' Build the chunk task grid — one plain integer row per chunk
+#' Collect mirai_map results with a progress bar and error check
 #'
-#' Passes only a chunk index to each worker (a simple integer column, which
-#' `mirai_map` handles cleanly). The worker derives its own slice of zone_rows
-#' from chunk_id + chunk_size, so no list-column crosses the daemon boundary.
+#' Drives the `[.progress` ETA progress bar, then verifies no worker returned
+#' an error value before returning the named list of result tibbles.
 #'
-#' @param zones An sf zoning object with `zone_row`.
-#' @param chunk_size Integer. Zones per chunk. Default 1000.
-#' @return A data.frame with one `chunk_id` per chunk.
-zoning_build_chunks <- function(zones, chunk_size = 1000L) {
-  n_chunks <- ceiling(nrow(zones) / chunk_size)
-  data.frame(chunk_id = seq_len(n_chunks))
-}
-
-#' Run the intersection over all chunks, in parallel with progress
-#'
-#' The caller is responsible for starting mirai daemons
-#' (`mirai::daemons(n)`) before the call and stopping them afterwards.
-#'
-#' @param zones An sf zoning object (metric CRS).
-#' @param da An sf DA object (metric CRS).
-#' @param chunk_size Integer. Zones per chunk. Default 1000.
-#' @return A data.frame (zone_row, id, area_m2) for every piece, all chunks.
-#' @export
-zoning_intersect_all <- function(zones, da, chunk_size = 1000L) {
-  chunks <- zoning_build_chunks(zones, chunk_size)
-  message(sprintf(
-    "Intersecting %d zones in %d chunks of %d...",
-    nrow(zones), nrow(chunks), chunk_size
-  ))
-
-  .worker <- function(chunk_id) {
-    suppressPackageStartupMessages({
-      library(sf)
-      library(dplyr)
-    })
-    start <- (chunk_id - 1L) * chunk_size + 1L
-    end   <- min(chunk_id * chunk_size, nrow(zones))
-    zone_rows <- zones$zone_row[start:end]
-    zoning_intersect_chunk(zone_rows, zones = zones, da = da)
-  }
-
-  par_env <- zoning_make_par_env(
-    zones                  = zones,
-    da                     = da,
-    chunk_size             = chunk_size,
-    zoning_intersect_chunk = zoning_intersect_chunk
-  )
-  environment(.worker) <- par_env
-
-  mp <- mirai::mirai_map(chunks, .worker)
+#' @param mp A mirai_map promise object.
+#' @param usages Character vector of usage names, used to name the results.
+#' @return A named list of tibbles (`id`, `value`), one per usage.
+#' @keywords internal
+zoning_collect_results <- function(mp, usages) {
   res <- mp[.progress]
-
+  
   bad <- vapply(res, mirai::is_error_value, logical(1))
   if (any(bad)) {
     idx <- which(bad)
-    stop(sprintf(
-      "Intersection failed in %d chunk(s). First: chunk %d\n%s",
-      length(idx), idx[1], as.character(res[[idx[1]]])
-    ), call. = FALSE)
+    stop(
+      sprintf(
+        "mirai_map had %d failure(s). First failure:\nindex=%d\n%s",
+        length(idx), idx[1], as.character(res[[idx[1]]])
+      ),
+      call. = FALSE
+    )
   }
-
-  dplyr::bind_rows(res)
+  
+  stats::setNames(res, usages)
 }
 
-#' Turn intersection pieces into one df_long table per usage type
+#' Compute per-DA land area for every usage
 #'
-#' Joins the usage flags onto the pieces, then for each usage sums m2 by DA.
-#' Pure data-frame work — no spatial ops.
+#' Computes per-DA area for each usage in parallel, one mirai task per usage,
+#' with a native ETA progress bar. Requires active mirai daemons (set with
+#' `mirai::daemons()` beforehand).
 #'
-#' @param pieces A data.frame (zone_row, id, area_m2) from `zoning_intersect_all()`.
-#' @param flags A data.frame (zone_row + one logical column per usage).
-#' @param time Character. Time-period value. Default "2026".
-#' @param geo_vintage Character. Boundary vintage. Default "2021".
-#' @param usage_types Character. Vector of usage flags.
-#' @return A named list of df_long tibbles (id, time, geo_vintage, value).
+#' @param zones An `sf` object of zoning polygons (with `usage_classification`).
+#' @param da An `sf` object of dissemination areas with an `id` column.
+#' @param usages Character vector of usage types (default `ZONING_USAGE_TYPES`).
+#'
+#' @return A named list of tibbles (`id`, `value`), one per usage.
 #' @export
-zoning_sum_by_usage <- function(pieces, flags,
-                                time = "2026",
-                                geo_vintage = "2021",
-                                usage_types = ZONING_USAGE_TYPES) {
-  pf <- dplyr::left_join(pieces, flags, by = "zone_row")
-
-  tables <- lapply(usage_types, function(u) {
-    df <- pf |>
-      dplyr::filter(.data[[u]]) |>
-      dplyr::group_by(id) |>
-      dplyr::summarise(value = sum(area_m2), .groups = "drop") |>
-      dplyr::filter(value > 0) |>
-      dplyr::mutate(time = time, geo_vintage = geo_vintage) |>
-      dplyr::select(id, time, geo_vintage, value) |>
-      tibble::as_tibble()
-    if (nrow(df) == 0) NULL else df
-  })
-  names(tables) <- usage_types
-  Filter(Negate(is.null), tables)
+zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
+  ## Build a self-contained env so the worker resolves zoning_area_for_usage
+  ## (and its dependencies) from the env rather than the installed namespace.
+  par_env <- zoning_make_par_env(
+    zones = zones,
+    da = da,
+    zoning_area_for_usage = zoning_area_for_usage
+  )
+  
+  .worker <- function(usage) {
+    zoning_area_for_usage(zones, da, usage)
+  }
+  environment(.worker) <- par_env
+  
+  mp <- mirai::mirai_map(usages, .worker)
+  zoning_collect_results(mp, usages)
 }
 
-#' Save the per-usage df_long tables to a .qs file
+#' Reshape usage areas into long-format upload tables
 #'
-#' @param tables A named list of df_long tibbles.
-#' @param path Character. Full output path for the .qs file.
-#' @return The path, invisibly.
+#' Converts the named list of per-usage area tibbles into the long format
+#' expected by the upload pipeline: one table per usage with columns `id`,
+#' `time`, `geo_vintage`, and `value`.
+#'
+#' @param areas A named list of tibbles (`id`, `value`), one per usage.
+#' @param time Character. The time period label (default "2026").
+#' @param geo_vintage Character. The census boundary vintage (default "2021").
+#'
+#' @return A named list of long-format tibbles, one per usage.
+#' @export
+zoning_to_df_long <- function(areas, time = "2026", geo_vintage = "2021") {
+  lapply(areas, function(tbl) {
+    if (!is.data.frame(tbl) || nrow(tbl) == 0) {
+      return(tibble::tibble(
+        id = character(0), time = character(0),
+        geo_vintage = character(0), value = numeric(0)
+      ))
+    }
+    tbl |>
+      dplyr::mutate(time = time, geo_vintage = geo_vintage) |>
+      dplyr::select(id, time, geo_vintage, value)
+  })
+}
+
+#' Save usage tables to a qs file
+#'
+#' @param tables A named list of long-format tibbles.
+#' @param path Character. Output path for the `.qs` file.
+#'
+#' @return The output path, invisibly.
 #' @export
 zoning_save_tables <- function(tables, path) {
   qs::qsave(tables, path)
-  message(sprintf("Saved %d usage tables to %s", length(tables), path))
   invisible(path)
 }
 
-#' Print a per-usage summary: DA count and total km2
+#' Print a per-usage summary
 #'
-#' @param tables A named list of df_long tibbles.
-#' @return The summary tibble, invisibly.
+#' Prints one line per usage: the number of DAs and the total land area.
+#'
+#' @param tables A named list of long-format tibbles.
+#'
+#' @return `tables`, invisibly.
 #' @export
 zoning_summary <- function(tables) {
-  summ <- tibble::tibble(
-    usage     = names(tables),
-    n_da      = vapply(tables, nrow, integer(1)),
-    total_km2 = vapply(tables, function(df) sum(df$value) / 1e6, numeric(1))
-  )
-  print(summ, n = nrow(summ))
-  invisible(summ)
+  for (usage in names(tables)) {
+    tbl <- tables[[usage]]
+    message(sprintf(
+      "%-18s %6d DAs   total = %.0f m2",
+      usage, nrow(tbl), sum(tbl$value, na.rm = TRUE)
+    ))
+  }
+  invisible(tables)
 }

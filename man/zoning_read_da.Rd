@@ -2,18 +2,20 @@
 % Please edit documentation in R/zoning.R
 \name{zoning_read_da}
 \alias{zoning_read_da}
-\title{Read DA polygons from cc.data, validated and projected to metres}
+\title{Read dissemination-area geometries}
 \usage{
-zoning_read_da(census_year = "2021", proj_crs = 3347L)
+zoning_read_da(proj_crs = 3347L, census_year = 2021L)
 }
 \arguments{
-\item{census_year}{Character. Census year. Default "2021".}
+\item{proj_crs}{Integer. Target projected CRS (default 3347).}
 
-\item{proj_crs}{Integer. Target (metric) projection CRS. Default 3347.}
+\item{census_year}{Integer. Census year (default 2021).}
 }
 \value{
-An sf object with columns \code{id} + \code{geometry} in \code{proj_crs}.
+An \code{sf} object of dissemination areas with an \code{id} column.
 }
 \description{
-Read DA polygons from cc.data, validated and projected to metres
+Fetches dissemination-area boundaries for a given census year via
+\code{cc.data::census_empty_geometries()}, repairs geometries, and reprojects to
+the working CRS.
 }

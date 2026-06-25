@@ -2,16 +2,16 @@
 % Please edit documentation in R/zoning.R
 \name{zoning_summary}
 \alias{zoning_summary}
-\title{Print a per-usage summary: DA count and total km2}
+\title{Print a per-usage summary}
 \usage{
 zoning_summary(tables)
 }
 \arguments{
-\item{tables}{A named list of df_long tibbles.}
+\item{tables}{A named list of long-format tibbles.}
 }
 \value{
-The summary tibble, invisibly.
+\code{tables}, invisibly.
 }
 \description{
-Print a per-usage summary: DA count and total km2
+Prints one line per usage: the number of DAs and the total land area.
 }

@@ -81,7 +81,7 @@ destination coordinates.
 \item \strong{URL construction}: Builds OSRM table API URLs with format:
 \verb{\{server\}table/v1/\{profile\}/\{coords\}?sources=0&annotations=distance,duration}
 where coords are semicolon-separated \verb{lon,lat} pairs (origin first).
-\item \strong{Atomic save}: Request metadata saved to disk via \code{qs::qsave()} for
+\item \strong{Atomic save}: Request metadata saved to disk via \code{qs2::qs_save()} for
 later batch fetching.
 }
 }

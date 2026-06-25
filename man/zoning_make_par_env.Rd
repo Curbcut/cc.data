@@ -7,13 +7,16 @@
 zoning_make_par_env(...)
 }
 \arguments{
-\item{...}{Named objects (functions, data, constants) the worker needs.}
+\item{...}{Named objects (functions, data) the worker needs.}
 }
 \value{
 An environment with parent \code{globalenv()}.
 }
 \description{
-Creates an environment holding the named objects passed in, with
-\code{globalenv()} as parent, and rebinds every function's enclosing environment
-to this environment so workers are self-contained.
+When a closure is serialized for mirai, package-namespace functions resolve
+to the INSTALLED version on the daemon, not the \code{load_all()} dev version.
+This helper creates an environment holding all needed objects and rebinds
+every function's enclosing environment so internal references resolve from
+the environment rather than the installed namespace.
 }
+\keyword{internal}
