@@ -279,12 +279,14 @@ zoning_complete_universe <- function(areas, da_universe, collected_csds) {
     da_universe |>
       dplyr::left_join(dplyr::select(tbl, id, value), by = "id") |>
       dplyr::mutate(
-        ## has a computed area -> keep it
-        ## else covered CSD -> 0 (real absence); uncovered CSD -> NA (no data)
+        ## CSD membership (from cancensus) is the source of truth, not geometry.
+        ## A DA whose CSD was NOT collected is NA even if a neighbouring
+        ## collected city's zone spills a sliver across the boundary onto it.
+        ## So test !covered FIRST, before keeping any computed value.
         value = dplyr::case_when(
-          !is.na(value) ~ value,
-          covered       ~ 0,
-          TRUE          ~ NA_real_
+          !covered      ~ NA_real_,   # CSD not collected -> no data, full stop
+          !is.na(value) ~ value,      # collected + has area -> keep
+          TRUE          ~ 0           # collected + usage absent -> real 0
         )
       ) |>
       dplyr::select(id, value)
