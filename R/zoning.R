@@ -317,6 +317,107 @@ zoning_combine_usages <- function(res, tasks, usages) {
   out
 }
 
+#' Compute per-DA land area for every usage, in chunks (CMHC-style)
+#'
+#' Runs the (usage x CMA) tasks in chunks. Each chunk gets its own native green
+#' `[.progress` bar with ETA, and a one-line summary is printed after each chunk
+#' (how many done, elapsed time) — the same pattern as the CMHC pipeline. A
+#' `gc()` runs between chunks to keep memory flat. Combines results per usage at
+#' the end.
+#'
+#' Because the green bar only renders at top level, this function calls
+#' `mp[.progress]` directly (it is itself meant to be called at the top level of
+#' a script, which is the normal case).
+#'
+#' @param zones An `sf` object of zoning polygons (needs `cma_id`).
+#' @param da An `sf` object of dissemination areas (needs `id`, `cma_id`).
+#' @param usages Character vector of usage types (default `ZONING_USAGE_TYPES`).
+#' @param chunk_size Integer. Tasks per chunk (default 48).
+#' @return A named list of tibbles (`id`, `value`), one per usage.
+#' @export
+zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
+                                chunk_size = 48L) {
+  if (!"cma_id" %in% names(zones) || !"cma_id" %in% names(da)) {
+    stop("`zones` and `da` must both have a `cma_id` column (see zoning_attach_cma).")
+  }
+
+  if (is.list(zones$usage_classification)) {
+    zones$usage_classification <- vapply(
+      zones$usage_classification,
+      function(v) paste(v, collapse = "|"),
+      character(1)
+    )
+  }
+
+  cmas <- sort(unique(as.character(da$cma_id)))
+  tasks <- expand.grid(
+    usage = usages, cma = cmas,
+    KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+  )
+  n_total <- nrow(tasks)
+  n_chunks <- ceiling(n_total / chunk_size)
+
+  par_env <- zoning_make_par_env(
+    zones = zones, da = da,
+    zoning_area_for_usage = zoning_area_for_usage
+  )
+  .worker <- function(usage, cma) {
+    z <- zones[as.character(zones$cma_id) == cma, ]
+    d <- da[as.character(da$cma_id) == cma, ]
+    if (nrow(z) == 0 || nrow(d) == 0) {
+      return(tibble::tibble(id = character(0), value = numeric(0)))
+    }
+    zoning_area_for_usage(z, d, usage)
+  }
+  environment(.worker) <- par_env
+
+  out <- stats::setNames(vector("list", length(usages)), usages)
+  t0 <- Sys.time()
+  done <- 0L
+
+  cat(sprintf("[zoning] %d tasks (%d usages x %d CMA) in %d chunks of %d\n",
+              n_total, length(usages), length(cmas), n_chunks, chunk_size))
+
+  for (ch in seq_len(n_chunks)) {
+    lo <- (ch - 1L) * chunk_size + 1L
+    hi <- min(ch * chunk_size, n_total)
+    chunk_tasks <- tasks[lo:hi, , drop = FALSE]
+
+    cat(sprintf("\n[zoning] chunk %d/%d  (tasks %d-%d)\n", ch, n_chunks, lo, hi))
+
+    ## Green bar + ETA for THIS chunk (top-level [.progress)
+    mp <- mirai::mirai_map(chunk_tasks, .worker)
+    res <- mp[.progress]
+
+    bad <- vapply(res, mirai::is_error_value, logical(1))
+    if (any(bad)) {
+      idx <- which(bad)
+      stop(sprintf(
+        "chunk %d: mirai_map had %d failure(s). First:\n%s",
+        ch, length(idx), as.character(res[[idx[1]]])
+      ), call. = FALSE)
+    }
+
+    ## Accumulate this chunk's results per usage
+    for (k in seq_len(nrow(chunk_tasks))) {
+      u <- chunk_tasks$usage[k]
+      out[[u]] <- dplyr::bind_rows(out[[u]], res[[k]])
+    }
+
+    done <- done + nrow(chunk_tasks)
+    el <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+    cat(sprintf("[zoning] chunk %d/%d done — %d/%d tasks total (%.0fs elapsed)\n",
+                ch, n_chunks, done, n_total, el))
+
+    rm(res, mp)
+    gc()
+  }
+
+  cat(sprintf("\n[zoning] ALL DONE — %d tasks in %.0fs\n",
+              n_total, as.numeric(difftime(Sys.time(), t0, units = "secs"))))
+  out
+}
+
 #' Compute per-DA land area for every usage (wrapper, no live progress bar)
 #'
 #' Convenience wrapper around `zoning_launch_usages()` +
