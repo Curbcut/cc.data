@@ -159,13 +159,12 @@ zoning_make_par_env <- function(...) {
 #' Collect mirai_map results with a progress bar and error check
 #'
 #' Drives the `[.progress` ETA progress bar, then verifies no worker returned
-#' an error value before returning the named list of result tibbles.
+#' an error value before returning the raw result list.
 #'
 #' @param mp A mirai_map promise object.
-#' @param usages Character vector of usage names, used to name the results.
-#' @return A named list of tibbles (`id`, `value`), one per usage.
+#' @return The list of worker results.
 #' @keywords internal
-zoning_collect_results <- function(mp, usages) {
+zoning_collect_results <- function(mp) {
   res <- mp[.progress]
 
   bad <- vapply(res, mirai::is_error_value, logical(1))
@@ -180,26 +179,31 @@ zoning_collect_results <- function(mp, usages) {
     )
   }
 
-  stats::setNames(res, usages)
+  res
 }
 
-#' Compute per-DA land area for every usage
+#' Compute per-DA land area for every usage (chunked by CMA)
 #'
-#' Computes per-DA area for each usage in parallel, one mirai task per usage,
-#' with a native ETA progress bar. Requires active mirai daemons (set with
-#' `mirai::daemons()` beforehand).
+#' Computes per-DA area for each usage in parallel. The work is split into one
+#' task per (usage x CMA) pair — e.g. 12 usages x 11 CMAs = 132 small tasks —
+#' so the native `[.progress` ETA bar fills steadily from the start instead of
+#' staying frozen until a whole national usage finishes. Each task filters
+#' zones and DAs to its CMA by `cma_id` (attribute filter, no spatial op).
+#' Requires active mirai daemons.
 #'
-#' @param zones An `sf` object of zoning polygons (with `usage_classification`).
-#' @param da An `sf` object of dissemination areas with an `id` column.
+#' @param zones An `sf` object of zoning polygons. Must have a `cma_id` column.
+#' @param da An `sf` object of dissemination areas with `id` and `cma_id`.
 #' @param usages Character vector of usage types (default `ZONING_USAGE_TYPES`).
 #'
 #' @return A named list of tibbles (`id`, `value`), one per usage.
 #' @export
 zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
+  if (!"cma_id" %in% names(zones) || !"cma_id" %in% names(da)) {
+    stop("`zones` and `da` must both have a `cma_id` column (see zoning_attach_cma).")
+  }
+
   ## Flatten the usage_classification list-column to a pipe-delimited string
-  ## BEFORE sending to workers. List-columns can be corrupted by mirai
-  ## serialization (only the first usage matches in the worker), which would
-  ## silently zero out every usage but one.
+  ## BEFORE sending to workers (list-columns can be mangled by serialization).
   if (is.list(zones$usage_classification)) {
     zones$usage_classification <- vapply(
       zones$usage_classification,
@@ -208,21 +212,77 @@ zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
     )
   }
 
-  ## Build a self-contained env so the worker resolves zoning_area_for_usage
-  ## (and its dependencies) from the env rather than the installed namespace.
+  ## One task per (usage, cma). Small tasks -> the progress bar advances
+  ## steadily and the ETA is meaningful from the first completions.
+  cmas <- sort(unique(as.character(da$cma_id)))
+  tasks <- expand.grid(
+    usage = usages,
+    cma   = cmas,
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  )
+
   par_env <- zoning_make_par_env(
     zones = zones,
     da = da,
     zoning_area_for_usage = zoning_area_for_usage
   )
 
-  .worker <- function(usage) {
-    zoning_area_for_usage(zones, da, usage)
+  .worker <- function(usage, cma) {
+    z <- zones[as.character(zones$cma_id) == cma, ]
+    d <- da[as.character(da$cma_id) == cma, ]
+    if (nrow(z) == 0 || nrow(d) == 0) {
+      return(tibble::tibble(id = character(0), value = numeric(0)))
+    }
+    zoning_area_for_usage(z, d, usage)
   }
   environment(.worker) <- par_env
 
-  mp <- mirai::mirai_map(usages, .worker)
-  zoning_collect_results(mp, usages)
+  mp <- mirai::mirai_map(tasks, .worker)
+  res <- zoning_collect_results(mp)
+
+  ## Recombine: bind all CMA pieces of each usage back into one tibble.
+  out <- stats::setNames(vector("list", length(usages)), usages)
+  for (i in seq_len(nrow(tasks))) {
+    u <- tasks$usage[i]
+    out[[u]] <- dplyr::bind_rows(out[[u]], res[[i]])
+  }
+  out
+}
+
+#' Attach the parent CMA id to zones and DAs
+#'
+#' Adds a `cma_id` column to both the zones and the DA `sf` objects, using the
+#' DA-universe (cancensus) CSD/CMA hierarchy. DAs are matched on `id`; zones on
+#' `csd_id`. This is what lets `zoning_area_all_usages()` chunk by CMA without
+#' any spatial join.
+#'
+#' @param zones An `sf` object with a `csd_id` column.
+#' @param da An `sf` object with an `id` column.
+#' @param cma_ids Character vector of in-scope CMA UIDs.
+#' @param dataset Character. cancensus dataset code (default "CA21").
+#' @return A list with `zones` and `da`, each gaining a `cma_id` column.
+#' @export
+zoning_attach_cma <- function(zones, da, cma_ids, dataset = "CA21") {
+  hier <- cancensus::get_census(
+    dataset = dataset,
+    regions = list(CMA = cma_ids),
+    level = "DA",
+    geo_format = NA,
+    use_cache = TRUE,
+    quiet = TRUE
+  )
+  da_cma  <- stats::setNames(as.character(hier$CMA_UID), as.character(hier$GeoUID))
+  csd_cma <- tapply(
+    as.character(hier$CMA_UID),
+    as.character(hier$CSD_UID),
+    function(x) x[1]
+  )
+
+  da$cma_id    <- unname(da_cma[as.character(da$id)])
+  zones$cma_id <- unname(csd_cma[as.character(zones$csd_id)])
+
+  list(zones = zones, da = da)
 }
 
 #' Build the DA universe for the in-scope CMAs
