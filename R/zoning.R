@@ -183,21 +183,28 @@ zoning_collect_results <- function(mp) {
 }
 
 #' Compute per-DA land area for every usage (chunked by CMA)
-#'
 #' Computes per-DA area for each usage in parallel. The work is split into one
-#' task per (usage x CMA) pair — e.g. 12 usages x 11 CMAs = 132 small tasks —
-#' so the native `[.progress` ETA bar fills steadily from the start instead of
-#' staying frozen until a whole national usage finishes. Each task filters
-#' zones and DAs to its CMA by `cma_id` (attribute filter, no spatial op).
-#' Requires active mirai daemons.
+#' task per (usage x CMA) pair — e.g. 12 usages x 11 CMAs = 132 small tasks.
+#'
+#' IMPORTANT: the native `[.progress` green ETA bar only renders when the
+#' `mp[.progress]` call happens at the TOP LEVEL of an interactive script, not
+#' when buried inside nested function calls. So this function is split in two:
+#'   1. `zoning_launch_usages()` builds the tasks and returns the live
+#'      `mirai_map` object `mp` (plus the task table).
+#'   2. the caller runs `res <- mp[.progress]` at top level (bar shows here).
+#'   3. `zoning_combine_usages(res, tasks, usages)` reassembles per-usage.
+#' `zoning_area_all_usages()` is kept as a convenience wrapper for when the
+#' progress bar is not needed.
 #'
 #' @param zones An `sf` object of zoning polygons. Must have a `cma_id` column.
 #' @param da An `sf` object of dissemination areas with `id` and `cma_id`.
 #' @param usages Character vector of usage types (default `ZONING_USAGE_TYPES`).
 #'
-#' @return A named list of tibbles (`id`, `value`), one per usage.
+#' @return A list with `mp` (mirai_map object), `tasks` (data.frame), and
+#'   `usages`. Run `res <- mp[.progress]` then
+#'   `zoning_combine_usages(res, tasks, usages)`.
 #' @export
-zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
+zoning_launch_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
   if (!"cma_id" %in% names(zones) || !"cma_id" %in% names(da)) {
     stop("`zones` and `da` must both have a `cma_id` column (see zoning_attach_cma).")
   }
@@ -212,8 +219,6 @@ zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
     )
   }
 
-  ## One task per (usage, cma). Small tasks -> the progress bar advances
-  ## steadily and the ETA is meaningful from the first completions.
   cmas <- sort(unique(as.character(da$cma_id)))
   tasks <- expand.grid(
     usage = usages,
@@ -239,15 +244,48 @@ zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
   environment(.worker) <- par_env
 
   mp <- mirai::mirai_map(tasks, .worker)
-  res <- zoning_collect_results(mp)
+  list(mp = mp, tasks = tasks, usages = usages)
+}
 
-  ## Recombine: bind all CMA pieces of each usage back into one tibble.
+#' Reassemble per-(usage x CMA) results into one tibble per usage
+#'
+#' @param res The collected result list (from `mp[.progress]`).
+#' @param tasks The task data.frame returned by `zoning_launch_usages()`.
+#' @param usages Character vector of usage names.
+#' @return A named list of tibbles (`id`, `value`), one per usage.
+#' @export
+zoning_combine_usages <- function(res, tasks, usages) {
+  bad <- vapply(res, mirai::is_error_value, logical(1))
+  if (any(bad)) {
+    idx <- which(bad)
+    stop(sprintf(
+      "mirai_map had %d failure(s). First failure:\nindex=%d\n%s",
+      length(idx), idx[1], as.character(res[[idx[1]]])
+    ), call. = FALSE)
+  }
+
   out <- stats::setNames(vector("list", length(usages)), usages)
   for (i in seq_len(nrow(tasks))) {
     u <- tasks$usage[i]
     out[[u]] <- dplyr::bind_rows(out[[u]], res[[i]])
   }
   out
+}
+
+#' Compute per-DA land area for every usage (wrapper, no live progress bar)
+#'
+#' Convenience wrapper around `zoning_launch_usages()` +
+#' `zoning_combine_usages()`. The green ETA bar will NOT show through this
+#' wrapper because `[.progress` is not at top level — use the two-step form in
+#' a script when you want the bar.
+#'
+#' @inheritParams zoning_launch_usages
+#' @return A named list of tibbles (`id`, `value`), one per usage.
+#' @export
+zoning_area_all_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
+  launched <- zoning_launch_usages(zones, da, usages)
+  res <- launched$mp[.progress]
+  zoning_combine_usages(res, launched$tasks, launched$usages)
 }
 
 #' Attach the parent CMA id to zones and DAs
