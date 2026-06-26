@@ -5959,7 +5959,7 @@ sex_meta <- list(
   ),
   f = list(
     suffix = "_w",
-    parent_vec = c("c_population", "c_population_f")
+    parent_vec = c("c_population", "c_population_w")
   )
 )
 
