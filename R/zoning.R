@@ -284,6 +284,10 @@ zoning_launch_usages <- function(zones, da, usages = ZONING_USAGE_TYPES) {
     if (nrow(z) == 0 || nrow(d) == 0) {
       return(tibble::tibble(id = character(0), value = numeric(0)))
     }
+    zg <- names(z)[vapply(z, function(c) inherits(c, "sfc"), logical(1))]
+    dg <- names(d)[vapply(d, function(c) inherits(c, "sfc"), logical(1))]
+    if (length(zg) > 0) z <- sf::st_set_geometry(z, zg[1])
+    if (length(dg) > 0) d <- sf::st_set_geometry(d, dg[1])
     zoning_area_for_usage(z, d, usage)
   }
   environment(.worker) <- par_env
@@ -367,6 +371,12 @@ zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
     if (nrow(z) == 0 || nrow(d) == 0) {
       return(tibble::tibble(id = character(0), value = numeric(0)))
     }
+    ## Subsetting can desync the sf_column attribute (esp. after mirai
+    ## serialization). Re-detect and re-assert the geometry column on both.
+    zg <- names(z)[vapply(z, function(c) inherits(c, "sfc"), logical(1))]
+    dg <- names(d)[vapply(d, function(c) inherits(c, "sfc"), logical(1))]
+    if (length(zg) > 0) z <- sf::st_set_geometry(z, zg[1])
+    if (length(dg) > 0) d <- sf::st_set_geometry(d, dg[1])
     zoning_area_for_usage(z, d, usage)
   }
   environment(.worker) <- par_env
