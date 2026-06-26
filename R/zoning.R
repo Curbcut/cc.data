@@ -156,10 +156,7 @@ zoning_make_par_env <- function(...) {
   env
 }
 
-#' Collect mirai_map results with a progress bar and error check
-#'
-#' Drives the `[.progress` ETA progress bar, then verifies no worker returned
-#' an error value before returning the raw result list.
+#' Collect mirai_map results with the native green ETA progress bar
 #'
 #' @param mp A mirai_map promise object.
 #' @return The list of worker results.
@@ -179,6 +176,54 @@ zoning_collect_results <- function(mp) {
     )
   }
 
+  res
+}
+
+#' Collect mirai_map results with per-task text messages (CMHC-style)
+#'
+#' Polls the running tasks and prints one line each time a task finishes,
+#' naming the (usage x CMA) pair and showing the running count and elapsed
+#' time. Unlike the green `[.progress` bar, this reveals WHICH task is slow or
+#' stuck — useful when the bar sits frozen at one percentage.
+#'
+#' @param mp A mirai_map object (from `zoning_launch_usages()`).
+#' @param tasks The task data.frame (columns `usage`, `cma`).
+#' @param poll Numeric seconds between status checks (default 0.5).
+#' @return The list of worker results, in task order.
+#' @export
+zoning_collect_verbose <- function(mp, tasks, poll = 0.5) {
+  n <- nrow(tasks)
+  done <- rep(FALSE, n)
+  t0 <- Sys.time()
+  cat(sprintf("[zoning] %d tasks launched (usage x CMA)\n", n))
+
+  repeat {
+    ## mirai marks each element unresolved while still running
+    unres <- mirai::unresolved(mp)
+    finished_now <- which(!unres & !done)
+    for (i in finished_now) {
+      done[i] <- TRUE
+      el <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+      cat(sprintf(
+        "  [%3d/%3d] done: %-18s CMA %-6s  (%.0fs elapsed)\n",
+        sum(done), n, tasks$usage[i], tasks$cma[i], el
+      ))
+      utils::flush.console()
+    }
+    if (all(done)) break
+    Sys.sleep(poll)
+  }
+
+  res <- mp[]  # collect (already resolved)
+
+  bad <- vapply(res, mirai::is_error_value, logical(1))
+  if (any(bad)) {
+    idx <- which(bad)
+    stop(sprintf(
+      "mirai_map had %d failure(s). First failure:\nindex=%d\n%s",
+      length(idx), idx[1], as.character(res[[idx[1]]])
+    ), call. = FALSE)
+  }
   res
 }
 
