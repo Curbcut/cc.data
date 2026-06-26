@@ -323,15 +323,16 @@ zoning_combine_usages <- function(res, tasks, usages) {
 
 #' Compute per-DA land area for every usage, in chunks (CMHC-style)
 #'
-#' Runs the (usage x CMA) tasks in chunks. Each chunk gets its own native green
-#' `[.progress` bar with ETA, and a one-line summary is printed after each chunk
-#' (how many done, elapsed time) — the same pattern as the CMHC pipeline. A
-#' `gc()` runs between chunks to keep memory flat. Combines results per usage at
-#' the end.
+#' Runs the (usage x CMA) tasks in chunks with a native green `[.progress` bar
+#' and ETA per chunk, plus a one-line summary after each chunk — same pattern as
+#' the CMHC pipeline.
 #'
-#' Because the green bar only renders at top level, this function calls
-#' `mp[.progress]` directly (it is itself meant to be called at the top level of
-#' a script, which is the normal case).
+#' Key design: zones and DAs are PRE-SPLIT by CMA in the main session, and each
+#' worker receives only its own CMA's small sf slices (passed as serialized WKB
+#' blobs, rebuilt to sf inside the worker). This avoids shipping the full
+#' national sf object to every worker and sidesteps the sf_column corruption
+#' that happens when subsetting a serialized sf inside a worker. It is also
+#' faster (far less data crosses to each worker).
 #'
 #' @param zones An `sf` object of zoning polygons (needs `cma_id`).
 #' @param da An `sf` object of dissemination areas (needs `id`, `cma_id`).
@@ -345,6 +346,7 @@ zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
     stop("`zones` and `da` must both have a `cma_id` column (see zoning_attach_cma).")
   }
 
+  ## Flatten the usage list-column to a pipe string.
   if (is.list(zones$usage_classification)) {
     zones$usage_classification <- vapply(
       zones$usage_classification,
@@ -354,6 +356,33 @@ zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
   }
 
   cmas <- sort(unique(as.character(da$cma_id)))
+
+  ## --- PRE-SPLIT by CMA in the MAIN session (clean sf slices) --------------
+  ## For each CMA, keep only what the worker needs and serialize geometry to
+  ## WKB (a plain raw vector that survives mirai cleanly). The worker rebuilds
+  ## sf from WKB, so no sf object is subset inside a worker.
+  zg <- attr(zones, "sf_column")
+  dg <- attr(da, "sf_column")
+
+  zones_by_cma <- lapply(cmas, function(cm) {
+    zz <- zones[as.character(zones$cma_id) == cm, ]
+    list(
+      usage = zz$usage_classification,
+      wkb   = sf::st_as_binary(sf::st_geometry(zz))
+    )
+  })
+  names(zones_by_cma) <- cmas
+
+  da_by_cma <- lapply(cmas, function(cm) {
+    dd <- da[as.character(da$cma_id) == cm, ]
+    list(
+      id  = as.character(dd$id),
+      wkb = sf::st_as_binary(sf::st_geometry(dd))
+    )
+  })
+  names(da_by_cma) <- cmas
+
+  ## Tasks
   tasks <- expand.grid(
     usage = usages, cma = cmas,
     KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
@@ -361,22 +390,26 @@ zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
   n_total <- nrow(tasks)
   n_chunks <- ceiling(n_total / chunk_size)
 
+  ## Worker: rebuild sf from WKB for its CMA, then compute one usage.
   par_env <- zoning_make_par_env(
-    zones = zones, da = da,
+    zones_by_cma = zones_by_cma,
+    da_by_cma = da_by_cma,
     zoning_area_for_usage = zoning_area_for_usage
   )
   .worker <- function(usage, cma) {
-    z <- zones[as.character(zones$cma_id) == cma, ]
-    d <- da[as.character(da$cma_id) == cma, ]
-    if (nrow(z) == 0 || nrow(d) == 0) {
+    zc <- zones_by_cma[[cma]]
+    dc <- da_by_cma[[cma]]
+    if (is.null(zc) || is.null(dc) || length(zc$usage) == 0 || length(dc$id) == 0) {
       return(tibble::tibble(id = character(0), value = numeric(0)))
     }
-    ## Subsetting can desync the sf_column attribute (esp. after mirai
-    ## serialization). Re-detect and re-assert the geometry column on both.
-    zg <- names(z)[vapply(z, function(c) inherits(c, "sfc"), logical(1))]
-    dg <- names(d)[vapply(d, function(c) inherits(c, "sfc"), logical(1))]
-    if (length(zg) > 0) z <- sf::st_set_geometry(z, zg[1])
-    if (length(dg) > 0) d <- sf::st_set_geometry(d, dg[1])
+    z <- sf::st_sf(
+      usage_classification = zc$usage,
+      geometry = sf::st_as_sfc(zc$wkb, crs = 3347)
+    )
+    d <- sf::st_sf(
+      id = dc$id,
+      geometry = sf::st_as_sfc(dc$wkb, crs = 3347)
+    )
     zoning_area_for_usage(z, d, usage)
   }
   environment(.worker) <- par_env
@@ -395,7 +428,6 @@ zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
 
     cat(sprintf("\n[zoning] chunk %d/%d  (tasks %d-%d)\n", ch, n_chunks, lo, hi))
 
-    ## Green bar + ETA for THIS chunk (top-level [.progress)
     mp <- mirai::mirai_map(chunk_tasks, .worker)
     res <- mp[.progress]
 
@@ -408,7 +440,6 @@ zoning_area_chunked <- function(zones, da, usages = ZONING_USAGE_TYPES,
       ), call. = FALSE)
     }
 
-    ## Accumulate this chunk's results per usage
     for (k in seq_len(nrow(chunk_tasks))) {
       u <- chunk_tasks$usage[k]
       out[[u]] <- dplyr::bind_rows(out[[u]], res[[k]])
