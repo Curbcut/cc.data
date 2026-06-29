@@ -19,14 +19,15 @@ zoning_area_chunked(zones, da, usages = ZONING_USAGE_TYPES, chunk_size = 48L)
 A named list of tibbles (\code{id}, \code{value}), one per usage.
 }
 \description{
-Runs the (usage x CMA) tasks in chunks. Each chunk gets its own native green
-\verb{[.progress} bar with ETA, and a one-line summary is printed after each chunk
-(how many done, elapsed time) — the same pattern as the CMHC pipeline. A
-\code{gc()} runs between chunks to keep memory flat. Combines results per usage at
-the end.
+Runs the (usage x CMA) tasks in chunks with a native green \verb{[.progress} bar
+and ETA per chunk, plus a one-line summary after each chunk — same pattern as
+the CMHC pipeline.
 }
 \details{
-Because the green bar only renders at top level, this function calls
-\code{mp[.progress]} directly (it is itself meant to be called at the top level of
-a script, which is the normal case).
+Key design: zones and DAs are PRE-SPLIT by CMA in the main session, and each
+worker receives only its own CMA's small sf slices (passed as serialized WKB
+blobs, rebuilt to sf inside the worker). This avoids shipping the full
+national sf object to every worker and sidesteps the sf_column corruption
+that happens when subsetting a serialized sf inside a worker. It is also
+faster (far less data crosses to each worker).
 }
