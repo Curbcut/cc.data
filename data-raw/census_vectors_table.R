@@ -418,15 +418,15 @@ census_vectors_housing <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "One-year housing mobility - man",
-      fr = "Mobilité du logement sur un an - homme"
+      en = "One-year housing mobility - men",
+      fr = "Mobilité du logement sur un an - hommes"
     )),
     var_short = list(list(
       en = "1-year mob. M",
       fr = "Mob. 1 an H"
     )),
     description = list(list(
-      en = "The number of man who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
+      en = "The number of men who moved in the past year, measured as those whose place of residence on the reference day was different from their place of residence on the same date one year earlier",
       fr = "Le nombre d'hommes ayant déménagé au cours de l'année précédente, mesuré comme celles dont le lieu de résidence au jour de référence différait de leur lieu de résidence à la même date un an plus tôt"
     )),
     parent_vec = "mobility_status_1_m",
@@ -685,7 +685,7 @@ census_vectors_housing_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Residents - man (1 year prior)",
+      en = "Residents - men (1 year prior)",
       fr = "Résidents - hommes (1 an auparavant)"
     )),
     var_short = list(list(
@@ -693,7 +693,7 @@ census_vectors_housing_parent <-
       fr = "Rés. H 1 an"
     )),
     description = list(list(
-      en = "The total number of man residents one year prior",
+      en = "The total number of men residents one year prior",
       fr = "Le nombre total de résidents hommes un an auparavant"
     )),
     parent_vec = NA,
@@ -778,7 +778,7 @@ census_vectors_housing_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Residents - man (5 years prior)",
+      en = "Residents - men (5 years prior)",
       fr = "Résidents - hommes (5 ans auparavant)"
     )),
     var_short = list(list(
@@ -786,7 +786,7 @@ census_vectors_housing_parent <-
       fr = "Rés. H 5 ans"
     )),
     description = list(list(
-      en = "The total number of man residents five years prior",
+      en = "The total number of men residents five years prior",
       fr = "Le nombre total de résidents hommes cinq ans auparavant"
     )),
     parent_vec = NA,
@@ -1557,15 +1557,15 @@ census_vectors_householdsize <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "One-person - man",
-      fr = "Une personne - homme"
+      en = "One-person - men",
+      fr = "Une personne - hommes"
     )),
     var_short = list(list(
       en = "One M",
       fr = "Un. H"
     )),
     description = list(list(
-      en = "The number of private households consisting of one man person",
+      en = "The number of private households consisting of one man",
       fr = "Le nombre de ménages privés composés d'un seul homme"
     )),
     parent_vec = "private_households",
@@ -1587,14 +1587,14 @@ census_vectors_householdsize <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "One-person - women",
-      fr = "Une personne - femme"
+      fr = "Une personne - femmes"
     )),
     var_short = list(list(
       en = "One W",
       fr = "Un. W"
     )),
     description = list(list(
-      en = "The number of private households consisting of one women person",
+      en = "The number of private households consisting of one woman",
       fr = "Le nombre de ménages privés composés d'une seule femme"
     )),
     parent_vec = "private_households",
@@ -1931,15 +1931,15 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Prevalence of low income (after-tax) - man",
-      fr = "Prévalence des faibles revenus (après impôts) - homme"
+      en = "Prevalence of low income (after-tax) - men",
+      fr = "Prévalence des faibles revenus (après impôts) - hommes"
     )),
     var_short = list(list(
       en = "Low income M",
       fr = "Faible rev. H"
     )),
     description = list(list(
-      en = "The number of man in low income based on the Low-income measure, after-tax (LIM-AT)",
+      en = "The number of men in low income based on the Low-income measure, after-tax (LIM-AT)",
       fr = "Le nombre d'hommes à faible revenu selon la mesure de faible revenu après impôt (MFR-AT)"
     )),
     parent_vec = "income_status_m",
@@ -1961,7 +1961,7 @@ census_vectors_income <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Prevalence of low income (after-tax) - women",
-      fr = "Prévalence des faibles revenus (après impôts) - femme"
+      fr = "Prévalence des faibles revenus (après impôts) - femmes"
     )),
     var_short = list(list(
       en = "Low income W",
@@ -2019,15 +2019,15 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1471"),
     vec_1996 = list("v_CA1996_1476"),
     var_title = list(list(
-      en = "Individuals: median income - man",
-      fr = "Personnes : revenu médian - homme"
+      en = "Individuals: median income - men",
+      fr = "Personnes : revenu médian - hommes"
     )),
     var_short = list(list(
       en = "Med. inc. M",
       fr = "Rev. Méd. H"
     )),
     description = list(list(
-      en = "The median total income of man individuals before tax",
+      en = "The median total income of men before tax",
       fr = "Le revenu total médian des hommes avant impôt"
     )),
     parent_vec = "with_income_m",
@@ -2049,14 +2049,14 @@ census_vectors_income <-
     vec_1996 = list("v_CA1996_1498"),
     var_title = list(list(
       en = "Individuals: median income - women",
-      fr = "Personnes : revenu médian - femme"
+      fr = "Personnes : revenu médian - femmes"
     )),
     var_short = list(list(
       en = "Med. inc. W",
       fr = "Rev. Méd. W"
     )),
     description = list(list(
-      en = "The median total income of women individuals before tax",
+      en = "The median total income of women before tax",
       fr = "Le revenu total médian des femmes avant impôt"
     )),
     parent_vec = "with_income_w",
@@ -2106,15 +2106,15 @@ census_vectors_income <-
     vec_2001 = list("v_CA01_1470"),
     vec_1996 = list("v_CA1996_1475"),
     var_title = list(list(
-      en = "Individuals: average income - man",
-      fr = "Personnes : revenu moyen - homme"
+      en = "Individuals: average income - men",
+      fr = "Personnes : revenu moyen - hommes"
     )),
     var_short = list(list(
       en = "Avg. inc. M",
       fr = "Rev. moy. H"
     )),
     description = list(list(
-      en = "The average total income of man individuals before tax",
+      en = "The average total income of men before tax",
       fr = "Le revenu total moyen des hommes avant impôt"
     )),
     parent_vec = "with_income_m",
@@ -2136,14 +2136,14 @@ census_vectors_income <-
     vec_1996 = list("v_CA1996_1497"),
     var_title = list(list(
       en = "Individuals: average income - women",
-      fr = "Personnes : revenu moyen - femme"
+      fr = "Personnes : revenu moyen - femmes"
     )),
     var_short = list(list(
       en = "Avg. inc. W",
       fr = "Rev. moy. W"
     )),
     description = list(list(
-      en = "The average total income of women individuals before tax",
+      en = "The average total income of women before tax",
       fr = "Le revenu total moyen des femmes avant impôt"
     )),
     parent_vec = "with_income_w",
@@ -2233,15 +2233,15 @@ census_vectors_income <-
     vec_2001 = list(paste0("v_CA01_", 1454:1467)),
     vec_1996 = list(paste0("v_CA1996_", 1459:1472)),
     var_title = list(list(
-      en = "Individuals: income under $50k - man",
-      fr = "Personnes : revenu inférieur à 50 000 $ - homme"
+      en = "Individuals: income under $50k - men",
+      fr = "Personnes : revenu inférieur à 50 000 $ - hommes"
     )),
     var_short = list(list(
       en = "Inc. <$50k M",
       fr = "Rev. <$50k H"
     )),
     description = list(list(
-      en = "The number of man whose total income is under $50,000",
+      en = "The number of men whose total income is under $50,000",
       fr = "Le nombre d'hommes dont le revenu total est inférieur à 50 000 $"
     )),
     parent_vec = "with_income_m",
@@ -2283,7 +2283,7 @@ census_vectors_income <-
     vec_1996 = list(paste0("v_CA1996_", 1481:1494)),
     var_title = list(list(
       en = "Individuals: income under $50k - women",
-      fr = "Personnes : revenu inférieur à 50 000 $ - femme"
+      fr = "Personnes : revenu inférieur à 50 000 $ - femmes"
     )),
     var_short = list(list(
       en = "Inc. <$50k W",
@@ -2372,15 +2372,15 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Individuals: income between $50k-$100k - man",
-      fr = "Personnes : revenu entre 50 000 et 100 000 $ - homme"
+      en = "Individuals: income between $50k-$100k - men",
+      fr = "Personnes : revenu entre 50 000 et 100 000 $ - hommes"
     )),
     var_short = list(list(
       en = "Inc. $50-100k M",
       fr = "Rev. $50-100k H"
     )),
     description = list(list(
-      en = "The number of man whose total income is between $50,000 and $99,999",
+      en = "The number of men whose total income is between $50,000 and $99,999",
       fr = "Le nombre d'hommes dont le revenu total se situe entre 50 000 $ et 99 999 $"
     )),
     parent_vec = "with_income_m",
@@ -2418,7 +2418,7 @@ census_vectors_income <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Individuals: income between $50k-$100k - women",
-      fr = "Personnes : revenu entre 50 000 et 100 000 $ - femme"
+      fr = "Personnes : revenu entre 50 000 et 100 000 $ - femmes"
     )),
     var_short = list(list(
       en = "Inc. $50-100k W",
@@ -2475,15 +2475,15 @@ census_vectors_income <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Individuals: income above $100k - man",
-      fr = "Personnes : revenu supérieur à 100 000 $ - homme"
+      en = "Individuals: income above $100k - men",
+      fr = "Personnes : revenu supérieur à 100 000 $ - hommes"
     )),
     var_short = list(list(
       en = "Inc. >$100k M",
       fr = "Rev. >$100k H"
     )),
     description = list(list(
-      en = "The number of man whose total income is $100,000 or more",
+      en = "The number of men whose total income is $100,000 or more",
       fr = "Le nombre d'hommes dont le revenu total est de 100 000 $ ou plus"
     )),
     parent_vec = "with_income_m",
@@ -2505,7 +2505,7 @@ census_vectors_income <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Individuals: income above $100k - women",
-      fr = "Personnes : revenu supérieur à 100 000 $ - femme"
+      fr = "Personnes : revenu supérieur à 100 000 $ - femmes"
     )),
     var_short = list(list(
       en = "Inc. >$100k W",
@@ -2565,16 +2565,16 @@ census_vectors_income_parent <-
     vec_2001 = list("v_CA01_1453"),
     vec_1996 = list("v_CA1996_1458"),
     var_title = list(list(
-      en = "Individuals with income - man",
-      fr = "Personnes avec revenu - homme"
+      en = "Individuals with income - men",
+      fr = "Personnes avec revenu - hommes"
     )),
     var_short = list(list(
       en = "With income M",
       fr = "Avec revenu H"
     )),
     description = list(list(
-      en = "The total man population aged 15 years and over with an income",
-      fr = "La population masculine totale âgée de 15 ans et plus disposant d'un revenu"
+      en = "The total number of men aged 15 years and over with an income",
+      fr = "Le nombre total d'hommes âgés de 15 ans et plus disposant d'un revenu"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -2595,15 +2595,15 @@ census_vectors_income_parent <-
     vec_1996 = list("v_CA1996_1480"),
     var_title = list(list(
       en = "Individuals with income - women",
-      fr = "Personnes avec revenu - femme"
+      fr = "Personnes avec revenu - femmes"
     )),
     var_short = list(list(
       en = "With income W",
       fr = "Avec revenu W"
     )),
     description = list(list(
-      en = "The total women population aged 15 years and over with an income",
-      fr = "La population féminine totale âgée de 15 ans et plus disposant d'un revenu"
+      en = "The total number of women aged 15 years and over with an income",
+      fr = "Le nombre total de femmes âgées de 15 ans et plus disposant d'un revenu"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -2653,16 +2653,16 @@ census_vectors_income_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Population in private households (LIM-AT applicable) - man",
-      fr = "Population en ménages privés (MFR-AT applicable) - homme"
+      en = "Population in private households (LIM-AT applicable) - men",
+      fr = "Population en ménages privés (MFR-AT applicable) - hommes"
     )),
     var_short = list(list(
       en = "Households M",
       fr = "Ménages H"
     )),
     description = list(list(
-      en = "The total man population in private households to whom low-income concepts are applicable",
-      fr = "La population masculine totale des ménages privés à laquelle s'appliquent les concepts de bas revenus"
+      en = "The total number of men in private households to whom low-income concepts are applicable",
+      fr = "Le nombre total d'hommes dans les ménages privés auxquels s'appliquent les concepts de bas revenus"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -2683,15 +2683,15 @@ census_vectors_income_parent <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Population in private households (LIM-AT applicable) - women",
-      fr = "Population en ménages privés (MFR-AT applicable) - femme"
+      fr = "Population en ménages privés (MFR-AT applicable) - femmes"
     )),
     var_short = list(list(
       en = "Households W",
       fr = "Ménages W"
     )),
     description = list(list(
-      en = "The total women population in private households to whom low-income concepts are applicable",
-      fr = "La population féminine totale des ménages privés à laquelle s'appliquent les concepts de bas revenus"
+      en = "The total number of women in private households to whom low-income concepts are applicable",
+      fr = "Le nombre total de femmes dans les ménages privés auxquels s'appliquent les concepts de bas revenus"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -2762,15 +2762,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Canadian citizens - man",
-      fr = "Citoyens canadiens - homme"
+      en = "Canadian citizens - men",
+      fr = "Citoyens canadiens - hommes"
     )),
     var_short = list(list(
       en = "Citizens M",
       fr = "Citoyens H"
     )),
     description = list(list(
-      en = "The number of man who hold Canadian citizenship",
+      en = "The number of men who hold Canadian citizenship",
       fr = "Le nombre d'hommes qui possèdent la citoyenneté canadienne"
     )),
     parent_vec = "population_ph_m",
@@ -2792,7 +2792,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Canadian citizens - women",
-      fr = "Citoyens canadiens - femme"
+      fr = "Citoyens canadiens - femmes"
     )),
     var_short = list(list(
       en = "Citizens W",
@@ -2849,15 +2849,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Non-immigrants - man",
-      fr = "Non-immigrants - homme"
+      en = "Non-immigrants - men",
+      fr = "Non-immigrants - hommes"
     )),
     var_short = list(list(
       en = "Non-imm. M",
       fr = "Non-imm. H"
     )),
     description = list(list(
-      en = "The number of man who are Canadian citizens by birth and have never been landed immigrants",
+      en = "The number of men who are Canadian citizens by birth and have never been landed immigrants",
       fr = "Le nombre d'hommes qui sont des citoyens canadiens de naissance et qui n'ont jamais été des immigrants reçus"
     )),
     parent_vec = "population_ph_m",
@@ -2879,7 +2879,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Non-immigrants - women",
-      fr = "Non-immigrants - femme"
+      fr = "Non-immigrants - femmes"
     )),
     var_short = list(list(
       en = "Non-imm. W",
@@ -2936,15 +2936,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Immigrants - man",
-      fr = "Immigrants - homme"
+      en = "Immigrants - men",
+      fr = "Immigrants - hommes"
     )),
     var_short = list(list(
       en = "Immigrants M",
       fr = "Immigrants H"
     )),
     description = list(list(
-      en = "The number of man who are, or have ever been, landed immigrants or permanent residents of Canada",
+      en = "The number of men who are, or have ever been, landed immigrants or permanent residents of Canada",
       fr = "Le nombre d'hommes qui sont ou ont déjà été des immigrants reçus ou des résidents permanents du Canada"
     )),
     parent_vec = "population_ph_m",
@@ -2966,7 +2966,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Immigrants - women",
-      fr = "Immigrants - femme"
+      fr = "Immigrants - femmes"
     )),
     var_short = list(list(
       en = "Immigrants W",
@@ -3023,15 +3023,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "New immigrants - man",
-      fr = "Nouveaux immigrants - homme"
+      en = "New immigrants - men",
+      fr = "Nouveaux immigrants - hommes"
     )),
     var_short = list(list(
       en = "New imm. M",
       fr = "Nouv. imm. H"
     )),
     description = list(list(
-      en = "The number of man who are recent landed immigrants within the five years preceding the census",
+      en = "The number of men who are recent landed immigrants within the five years preceding the census",
       fr = "Le nombre d'hommes qui sont des immigrants reçus récents dans les cinq années précédant le recensement"
     )),
     parent_vec = "population_ph_m",
@@ -3053,7 +3053,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "New immigrants - women",
-      fr = "Nouveaux immigrants - femme"
+      fr = "Nouveaux immigrants - femmes"
     )),
     var_short = list(list(
       en = "New imm. W",
@@ -3110,15 +3110,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Non-permanent residents - man",
-      fr = "Résidents non permanents - homme"
+      en = "Non-permanent residents - men",
+      fr = "Résidents non permanents - hommes"
     )),
     var_short = list(list(
       en = "Non-perm. M",
       fr = "Non-perm. H"
     )),
     description = list(list(
-      en = "The number of man from another country with a work or study permit or refugee status in Canada",
+      en = "The number of men from another country with a work or study permit or refugee status in Canada",
       fr = "Le nombre d'hommes provenant d'un autre pays détenant un permis de travail ou d'études ou le statut de réfugié au Canada"
     )),
     parent_vec = "population_ph_m",
@@ -3140,7 +3140,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Non-permanent residents - women",
-      fr = "Résidents non permanents - femme"
+      fr = "Résidents non permanents - femmes"
     )),
     var_short = list(list(
       en = "Non-perm. W",
@@ -3198,15 +3198,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Visible minorities - man",
-      fr = "Minorités visibles - homme"
+      en = "Visible minorities - men",
+      fr = "Minorités visibles - hommes"
     )),
     var_short = list(list(
       en = "Vis. min. M",
       fr = "Min. vis. H"
     )),
     description = list(list(
-      en = "The number of man who self-identify as members of at least one visible minority group",
+      en = "The number of men who self-identify as members of at least one visible minority group",
       fr = "Le nombre d'hommes qui s'identifient comme appartenant à au moins un groupe de minorités visibles"
     )),
     parent_vec = "population_ph_m",
@@ -3228,7 +3228,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Visible minorities - women",
-      fr = "Minorités visibles - femme"
+      fr = "Minorités visibles - femmes"
     )),
     var_short = list(list(
       en = "Vis. min. W",
@@ -3285,15 +3285,15 @@ census_vectors_identity <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Indigenous - man",
-      fr = "Autochtones - homme"
+      en = "Indigenous - men",
+      fr = "Autochtones - hommes"
     )),
     var_short = list(list(
       en = "Indigenous M",
       fr = "Autochtones H"
     )),
     description = list(list(
-      en = "The number of man who identify as Indigenous",
+      en = "The number of men who identify as Indigenous",
       fr = "Le nombre d'hommes qui s'identifient comme Autochtones"
     )),
     parent_vec = "population_ph_m",
@@ -3315,7 +3315,7 @@ census_vectors_identity <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Indigenous - women",
-      fr = "Autochtones - femme"
+      fr = "Autochtones - femmes"
     )),
     var_short = list(list(
       en = "Indigenous W",
@@ -3374,15 +3374,15 @@ census_vectors_identity_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Individuals - man",
-      fr = "Individus - homme"
+      en = "Individuals - men",
+      fr = "Individus - hommes"
     )),
     var_short = list(list(
       en = "Individuals M",
       fr = "Individus H"
     )),
     description = list(list(
-      en = "The total number of man living in private households",
+      en = "The total number of men living in private households",
       fr = "Le nombre total d'hommes vivant dans des ménages privés"
     )),
     parent_vec = NA,
@@ -3404,7 +3404,7 @@ census_vectors_identity_parent <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Individuals - women",
-      fr = "Individus - femme"
+      fr = "Individus - femmes"
     )),
     var_short = list(list(
       en = "Individuals W",
@@ -3487,15 +3487,15 @@ census_vectors_transport <-
     vec_2001 = list(c("v_CA01_1255", "v_CA01_1256")),
     vec_1996 = list(c("v_CA1996_1326", "v_CA1996_1327")),
     var_title = list(list(
-      en = "Drive to work - man",
-      fr = "Se rendent au travail en voiture - homme"
+      en = "Drive to work - men",
+      fr = "Se rendent au travail en voiture - hommes"
     )),
     var_short = list(list(
       en = "Drive M",
       fr = "Auto H"
     )),
     description = list(list(
-      en = "The number of employed man whose main mode of commuting is to travel as a driver or passenger in a car, truck or van",
+      en = "The number of employed men whose main mode of commuting is to travel as a driver or passenger in a car, truck or van",
       fr = "Le nombre d'hommes occupés dont le principal mode de transport est de se déplacer comme conducteur ou passager d'une automobile, d'un camion ou d'une fourgonnette"
     )),
     parent_vec = "employment_lf_m",
@@ -3517,7 +3517,7 @@ census_vectors_transport <-
     vec_1996 = list(c("v_CA1996_1335", "v_CA1996_1336")),
     var_title = list(list(
       en = "Drive to work - women",
-      fr = "Se rendent au travail en voiture - femme"
+      fr = "Se rendent au travail en voiture - femmes"
     )),
     var_short = list(list(
       en = "Drive W",
@@ -3584,15 +3584,15 @@ census_vectors_transport <-
     vec_2001 = list(c("v_CA01_1258", "v_CA01_1259")),
     vec_1996 = list(c("v_CA1996_1329", "v_CA1996_1330")),
     var_title = list(list(
-      en = "Walk or cycle to work - man",
-      fr = "Se rendent au travail à pied ou à vélo - homme"
+      en = "Walk or cycle to work - men",
+      fr = "Se rendent au travail à pied ou à vélo - hommes"
     )),
     var_short = list(list(
       en = "Walk/cycle M",
       fr = "Marche/vélo H"
     )),
     description = list(list(
-      en = "The number of employed man whose main mode of commuting is walking or cycling",
+      en = "The number of employed men whose main mode of commuting is walking or cycling",
       fr = "Le nombre d'hommes occupés dont le principal mode de transport est la marche ou la bicyclette"
     )),
     parent_vec = "employment_lf_m",
@@ -3614,7 +3614,7 @@ census_vectors_transport <-
     vec_1996 = list(c("v_CA1996_1338", "v_CA1996_1339")),
     var_title = list(list(
       en = "Walk or cycle to work - women",
-      fr = "Se rendent au travail à pied ou à vélo - femme"
+      fr = "Se rendent au travail à pied ou à vélo - femmes"
     )),
     var_short = list(list(
       en = "Walk/cycle W",
@@ -3671,15 +3671,15 @@ census_vectors_transport <-
     vec_2001 = list("v_CA01_1257"),
     vec_1996 = list("v_CA1996_1328"),
     var_title = list(list(
-      en = "Public transit to work - man",
-      fr = "Se rendent au travail en transport en commun - homme"
+      en = "Public transit to work - men",
+      fr = "Se rendent au travail en transport en commun - hommes"
     )),
     var_short = list(list(
       en = "Transit M",
       fr = "Transit H"
     )),
     description = list(list(
-      en = "The number of employed man whose main mode of commuting is public transit",
+      en = "The number of employed men whose main mode of commuting is public transit",
       fr = "Le nombre d'hommes occupés dont le principal mode de transport est le transport en commun"
     )),
     parent_vec = "employment_lf_m",
@@ -3701,7 +3701,7 @@ census_vectors_transport <-
     vec_1996 = list("v_CA1996_1337"),
     var_title = list(list(
       en = "Public transit to work - women",
-      fr = "Se rendent au travail en transport en commun - femme"
+      fr = "Se rendent au travail en transport en commun - femmes"
     )),
     var_short = list(list(
       en = "Transit W",
@@ -3758,15 +3758,15 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute under 15 minutes - man",
-      fr = "Trajets domicile-travail de moins de 15 minutes - homme"
+      en = "Commute under 15 minutes - men",
+      fr = "Trajets domicile-travail de moins de 15 minutes - hommes"
     )),
     var_short = list(list(
       en = "Commute <15m M",
       fr = "Trajet <15m H"
     )),
     description = list(list(
-      en = "The number of employed man whose usual one-way commute time is less than 15 minutes",
+      en = "The number of employed men whose usual one-way commute time is less than 15 minutes",
       fr = "Le nombre d'hommes occupés dont le temps habituel de trajet aller est inférieur à 15 minutes"
     )),
     parent_vec = "employment_lf_dur_m",
@@ -3788,7 +3788,7 @@ census_vectors_transport <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Commute under 15 minutes - women",
-      fr = "Trajets domicile-travail de moins de 15 minutes - femme"
+      fr = "Trajets domicile-travail de moins de 15 minutes - femmes"
     )),
     var_short = list(list(
       en = "Commute <15m W",
@@ -3845,15 +3845,15 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute 15-45 minutes - man",
-      fr = "Trajet domicile-travail de 15 à 45 minutes - homme"
+      en = "Commute 15-45 minutes - men",
+      fr = "Trajet domicile-travail de 15 à 45 minutes - hommes"
     )),
     var_short = list(list(
       en = "Commute 15-45 M",
       fr = "Trajet 15-45 H"
     )),
     description = list(list(
-      en = "The number of employed man whose usual one-way commute time is between 15 and 45 minutes",
+      en = "The number of employed men whose usual one-way commute time is between 15 and 45 minutes",
       fr = "Le nombre d'hommes occupés dont le temps habituel de trajet aller est compris entre 15 et 45 minutes"
     )),
     parent_vec = "employment_lf_dur_m",
@@ -3875,7 +3875,7 @@ census_vectors_transport <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Commute 15-45 minutes - women",
-      fr = "Trajet domicile-travail de 15 à 45 minutes - femme"
+      fr = "Trajet domicile-travail de 15 à 45 minutes - femmes"
     )),
     var_short = list(list(
       en = "Commute 15-45 W",
@@ -3932,15 +3932,15 @@ census_vectors_transport <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Commute more than 45 minutes - man",
-      fr = "Trajet domicile-travail de plus de 45 minutes - homme"
+      en = "Commute more than 45 minutes - men",
+      fr = "Trajet domicile-travail de plus de 45 minutes - hommes"
     )),
     var_short = list(list(
       en = "Commute >45m M",
       fr = "Trajet >45m H"
     )),
     description = list(list(
-      en = "The number of employed man whose usual one-way commute time is 45 minutes or more",
+      en = "The number of employed men whose usual one-way commute time is 45 minutes or more",
       fr = "Le nombre d'hommes occupés dont le temps habituel de trajet aller est de 45 minutes ou plus"
     )),
     parent_vec = "employment_lf_dur_m",
@@ -3962,7 +3962,7 @@ census_vectors_transport <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Commute more than 45 minutes - women",
-      fr = "Trajet domicile-travail de plus de 45 minutes - femme"
+      fr = "Trajet domicile-travail de plus de 45 minutes - femmes"
     )),
     var_short = list(list(
       en = "Commute >45m W",
@@ -4021,15 +4021,15 @@ census_vectors_transport_parent <-
     vec_2001 = list("v_CA01_1254"),
     vec_1996 = list("v_CA1996_1325"),
     var_title = list(list(
-      en = "Employed individuals - man",
-      fr = "Personnes employées - homme"
+      en = "Employed individuals - men",
+      fr = "Personnes employées - hommes"
     )),
     var_short = list(list(
       en = "Employed M",
       fr = "Employés H"
     )),
     description = list(list(
-      en = "The number of employed man aged 15 years and over with a usual place of work or no fixed workplace address",
+      en = "The number of employed men aged 15 years and over with a usual place of work or no fixed workplace address",
       fr = "Le nombre d'hommes occupés âgés de 15 ans et plus ayant un lieu habituel de travail ou n'ayant pas d'adresse de travail fixe"
     )),
     parent_vec = NA,
@@ -4051,7 +4051,7 @@ census_vectors_transport_parent <-
     vec_1996 = list("v_CA1996_1334"),
     var_title = list(list(
       en = "Employed individuals - women",
-      fr = "Personnes employées - femme"
+      fr = "Personnes employées - femmes"
     )),
     var_short = list(list(
       en = "Employed W",
@@ -4108,15 +4108,15 @@ census_vectors_transport_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Employed individuals - commuting duration - man",
-      fr = "Personnes employées - durée du trajet - homme"
+      en = "Employed individuals - commuting duration - men",
+      fr = "Personnes employées - durée du trajet - hommes"
     )),
     var_short = list(list(
       en = "Employed dur. M",
       fr = "Employés dur. H"
     )),
     description = list(list(
-      en = "The number of employed man aged 15 years and over with a usual place of work or no fixed workplace address by commuting duration",
+      en = "The number of employed men aged 15 years and over with a usual place of work or no fixed workplace address by commuting duration",
       fr = "Le nombre d'hommes occupés âgés de 15 ans et plus ayant un lieu habituel de travail ou n'ayant pas d'adresse de travail fixe, selon la durée du trajet"
     )),
     parent_vec = NA,
@@ -4138,7 +4138,7 @@ census_vectors_transport_parent <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Employed individuals - commuting duration - women",
-      fr = "Personnes employées - durée du trajet - femme"
+      fr = "Personnes employées - durée du trajet - femmes"
     )),
     var_short = list(list(
       en = "Employed dur. W",
@@ -4212,15 +4212,15 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_761"),
     vec_1996 = list("v_CA1996_823"),
     var_title = list(list(
-      en = "Employed individuals (15+) - man",
-      fr = "Personnes en emploi (15 ans et plus) - homme"
+      en = "Employed individuals (15+) - men",
+      fr = "Personnes en emploi (15 ans et plus) - hommes"
     )),
     var_short = list(list(
       en = "Employed M",
       fr = "En emploi H"
     )),
     description = list(list(
-      en = "The number of man aged 15 years and over in the labour force who, during the reference week, did any work for pay or profit or had a job but were absent from work.",
+      en = "The number of men aged 15 years and over in the labour force who, during the reference week, did any work for pay or profit or had a job but were absent from work.",
       fr = "Le nombre d'hommes de 15 ans et plus faisant partie de la population active qui, au cours de la semaine de référence, ont travaillé contre rémunération ou en profit ou avaient un emploi mais étaient absents du travail."
     )),
     parent_vec = "employment_15older_m",
@@ -4242,7 +4242,7 @@ census_vectors_employment <-
     vec_1996 = list("v_CA1996_847"),
     var_title = list(list(
       en = "Employed individuals (15+) - women",
-      fr = "Personnes en emploi (15 ans et plus) - femme"
+      fr = "Personnes en emploi (15 ans et plus) - femmes"
     )),
     var_short = list(list(
       en = "Employed W",
@@ -4299,15 +4299,15 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_762"),
     vec_1996 = list("v_CA1996_824"),
     var_title = list(list(
-      en = "Unemployed individuals (15+) - man",
-      fr = "Personnes en chômage (15 ans et plus) - homme"
+      en = "Unemployed individuals (15+) - men",
+      fr = "Personnes en chômage (15 ans et plus) - hommes"
     )),
     var_short = list(list(
       en = "Unemployed M",
       fr = "Chômeurs H"
     )),
     description = list(list(
-      en = "The number of man aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
+      en = "The number of men aged 15 years and over in the labour force who were without work, available for work and looking for work, or on temporary lay-off with an expectation of recall.",
       fr = "Le nombre d'hommes de 15 ans et plus faisant partie de la population active qui étaient sans travail, disponibles pour travailler et à la recherche d'un emploi, ou mis à pied temporairement en attente de rappel."
     )),
     parent_vec = "employment_15older_m",
@@ -4329,7 +4329,7 @@ census_vectors_employment <-
     vec_1996 = list("v_CA1996_848"),
     var_title = list(list(
       en = "Unemployed individuals (15+) - women",
-      fr = "Personnes en chômage (15 ans et plus) - femme"
+      fr = "Personnes en chômage (15 ans et plus) - femmes"
     )),
     var_short = list(list(
       en = "Unemployed W",
@@ -4386,15 +4386,15 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1240"),
     vec_1996 = list("v_CA1996_1311"),
     var_title = list(list(
-      en = "Work outside municipality of residence - man",
-      fr = "Travail hors de la municipalité de résidence - homme"
+      en = "Work outside municipality of residence - men",
+      fr = "Travail hors de la municipalité de résidence - hommes"
     )),
     var_short = list(list(
       en = "Outside M",
       fr = "Hors H"
     )),
     description = list(list(
-      en = "The number of employed man with a usual place of work whose workplace is located outside their municipality of residence.",
+      en = "The number of employed men with a usual place of work whose workplace is located outside their municipality of residence.",
       fr = "Le nombre d'hommes occupés ayant un lieu habituel de travail dont le lieu de travail est situé à l'extérieur de leur municipalité de résidence."
     )),
     parent_vec = "employment_lfupow_m",
@@ -4416,7 +4416,7 @@ census_vectors_employment <-
     vec_1996 = list("v_CA1996_1319"),
     var_title = list(list(
       en = "Work outside municipality of residence - women",
-      fr = "Travail hors de la municipalité de résidence - femme"
+      fr = "Travail hors de la municipalité de résidence - femmes"
     )),
     var_short = list(list(
       en = "Outside W",
@@ -4473,15 +4473,15 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1239"),
     vec_1996 = list("v_CA1996_1310"),
     var_title = list(list(
-      en = "Work in municipality of residence - man",
-      fr = "Travail dans la municipalité de résidence - homme"
+      en = "Work in municipality of residence - men",
+      fr = "Travail dans la municipalité de résidence - hommes"
     )),
     var_short = list(list(
       en = "Within M",
       fr = "Intérieur H"
     )),
     description = list(list(
-      en = "The number of employed man with a usual place of work whose workplace is located in the same municipality as their place of residence.",
+      en = "The number of employed men with a usual place of work whose workplace is located in the same municipality as their place of residence.",
       fr = "Le nombre d'hommes occupés ayant un lieu habituel de travail dont le lieu de travail est situé dans la même municipalité que leur lieu de résidence."
     )),
     parent_vec = "employment_lfupow_m",
@@ -4503,7 +4503,7 @@ census_vectors_employment <-
     vec_1996 = list("v_CA1996_1318"),
     var_title = list(list(
       en = "Work in municipality of residence - women",
-      fr = "Travail dans la municipalité de résidence - femme"
+      fr = "Travail dans la municipalité de résidence - femmes"
     )),
     var_short = list(list(
       en = "Within W",
@@ -4560,15 +4560,15 @@ census_vectors_employment <-
     vec_2001 = list("v_CA01_1242"),
     vec_1996 = list("v_CA1996_1313"),
     var_title = list(list(
-      en = "Work at home - man",
-      fr = "Travail à domicile - homme"
+      en = "Work at home - men",
+      fr = "Travail à domicile - hommes"
     )),
     var_short = list(list(
       en = "Home M",
       fr = "Domicile H"
     )),
     description = list(list(
-      en = "The number of employed man in the labour force who usually work at home.",
+      en = "The number of employed men in the labour force who usually work at home.",
       fr = "Le nombre d'hommes occupés faisant partie de la population active qui travaillent habituellement à domicile."
     )),
     parent_vec = "employment_em_m",
@@ -4590,7 +4590,7 @@ census_vectors_employment <-
     vec_1996 = list("v_CA1996_1321"),
     var_title = list(list(
       en = "Work at home - women",
-      fr = "Travail à domicile - femme"
+      fr = "Travail à domicile - femmes"
     )),
     var_short = list(list(
       en = "Home W",
@@ -4649,16 +4649,16 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_759"),
     vec_1996 = list("v_CA1996_821"),
     var_title = list(list(
-      en = "Individuals aged 15 years and over - man",
-      fr = "Personnes de 15 ans et plus - homme"
+      en = "Individuals aged 15 years and over - men",
+      fr = "Personnes de 15 ans et plus - hommes"
     )),
     var_short = list(list(
       en = "Pop 15+ M",
       fr = "Pop 15+ H"
     )),
     description = list(list(
-      en = "The total man population aged 15 years and over in private households.",
-      fr = "La population masculine totale de 15 ans et plus vivant dans des ménages privés."
+      en = "The total number of men aged 15 years and over in private households.",
+      fr = "Le nombre total d'hommes de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
     parent = TRUE
@@ -4679,15 +4679,15 @@ census_vectors_employment_parent <-
     vec_1996 = list("v_CA1996_845"),
     var_title = list(list(
       en = "Individuals aged 15 years and over - women",
-      fr = "Personnes de 15 ans et plus - femme"
+      fr = "Personnes de 15 ans et plus - femmes"
     )),
     var_short = list(list(
       en = "Pop 15+ W",
       fr = "Pop 15+ W"
     )),
     description = list(list(
-      en = "The total women population aged 15 years and over in private households.",
-      fr = "La population féminine totale de 15 ans et plus vivant dans des ménages privés."
+      en = "The total number of women aged 15 years and over in private households.",
+      fr = "Le nombre total de femmes de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
     parent = TRUE
@@ -4736,15 +4736,15 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_1238"),
     vec_1996 = list("v_CA1996_1309"),
     var_title = list(list(
-      en = "Employed individuals with a usual place of work - man",
-      fr = "Personnes employées ayant un lieu de travail habituel - homme"
+      en = "Employed individuals with a usual place of work - men",
+      fr = "Personnes employées ayant un lieu de travail habituel - hommes"
     )),
     var_short = list(list(
       en = "Usual place M",
       fr = "Habituel H"
     )),
     description = list(list(
-      en = "The number of employed man with a usual place of work.",
+      en = "The number of employed men with a usual place of work.",
       fr = "Le nombre d'hommes occupés ayant un lieu de travail habituel."
     )),
     parent_vec = NA,
@@ -4766,7 +4766,7 @@ census_vectors_employment_parent <-
     vec_1996 = list("v_CA1996_1317"),
     var_title = list(list(
       en = "Employed individuals with a usual place of work - women",
-      fr = "Personnes employées ayant un lieu de travail habituel - femme"
+      fr = "Personnes employées ayant un lieu de travail habituel - femmes"
     )),
     var_short = list(list(
       en = "Usual place W",
@@ -4823,15 +4823,15 @@ census_vectors_employment_parent <-
     vec_2001 = list("v_CA01_1237"),
     vec_1996 = list("v_CA1996_1308"),
     var_title = list(list(
-      en = "Employed individuals in the labour force - man",
-      fr = "Personnes en emploi dans la population active - homme"
+      en = "Employed individuals in the labour force - men",
+      fr = "Personnes en emploi dans la population active - hommes"
     )),
     var_short = list(list(
       en = "Employed M",
       fr = "Employé H"
     )),
     description = list(list(
-      en = "The number of man aged 15 years and over in the labour force who are employed.",
+      en = "The number of men aged 15 years and over in the labour force who are employed.",
       fr = "Le nombre d'hommes de 15 ans et plus faisant partie de la population active qui sont en emploi."
     )),
     parent_vec = NA,
@@ -4853,7 +4853,7 @@ census_vectors_employment_parent <-
     vec_1996 = list("v_CA1996_1316"),
     var_title = list(list(
       en = "Employed individuals in the labour force - women",
-      fr = "Personnes en emploi dans la population active - femme"
+      fr = "Personnes en emploi dans la population active - femmes"
     )),
     var_short = list(list(
       en = "Employed W",
@@ -5009,12 +5009,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows French only - man",
-      fr = "Connaissent seulement le français - homme"
+      en = "Knows French only - men",
+      fr = "Connaissent seulement le français - hommes"
     )),
     var_short = list(list(en = "Fr. only M", fr = "Fr. seulement H")),
     description = list(list(
-      en = "The number of man who know only French as an official language",
+      en = "The number of men who know only French as an official language",
       fr = "Nombre d'hommes qui connaissent seulement le français comme langue officielle"
     )),
     parent_vec = "c_population_m",
@@ -5036,7 +5036,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Knows French only - women",
-      fr = "Connaissent seulement le français - femme"
+      fr = "Connaissent seulement le français - femmes"
     )),
     var_short = list(list(en = "Fr. only W", fr = "Fr. seulement W")),
     description = list(list(
@@ -5090,12 +5090,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows English only - man",
-      fr = "Connaissent seulement l'anglais - homme"
+      en = "Knows English only - men",
+      fr = "Connaissent seulement l'anglais - hommes"
     )),
     var_short = list(list(en = "Eng. only M", fr = "Ang seulement H")),
     description = list(list(
-      en = "The number of man who know only English as an official language",
+      en = "The number of men who know only English as an official language",
       fr = "Nombre d'hommes qui connaissent seulement l'anglais comme langue officielle"
     )),
     parent_vec = "c_population_m",
@@ -5117,7 +5117,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Knows English only - women",
-      fr = "Connaissent seulement l'anglais - femme"
+      fr = "Connaissent seulement l'anglais - femmes"
     )),
     var_short = list(list(en = "Eng. only W", fr = "Ang seulement W")),
     description = list(list(
@@ -5171,12 +5171,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows French and English - man",
-      fr = "Connaissent le français et l'anglais - homme"
+      en = "Knows French and English - men",
+      fr = "Connaissent le français et l'anglais - hommes"
     )),
     var_short = list(list(en = "Fr. and Eng. M", fr = "Fr. et ang. H")),
     description = list(list(
-      en = "The number of man who know both official languages (French and English)",
+      en = "The number of men who know both official languages (French and English)",
       fr = "Nombre d'hommes qui connaissent les deux langues officielles (français et anglais)"
     )),
     parent_vec = "c_population_m",
@@ -5198,7 +5198,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Knows French and English - women",
-      fr = "Connaissent le français et l'anglais - femme"
+      fr = "Connaissent le français et l'anglais - femmes"
     )),
     var_short = list(list(en = "Fr. and Eng. W", fr = "Fr. et ang. W")),
     description = list(list(
@@ -5252,12 +5252,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Knows neither French nor English - man",
-      fr = "Ne connaissent ni le français ni l'anglais - homme"
+      en = "Knows neither French nor English - men",
+      fr = "Ne connaissent ni le français ni l'anglais - hommes"
     )),
     var_short = list(list(en = "Non-official M", fr = "Non off H")),
     description = list(list(
-      en = "The number of man who do not know either of the official languages",
+      en = "The number of men who do not know either of the official languages",
       fr = "Nombre d'hommes qui ne connaissent ni le français ni l'anglais"
     )),
     parent_vec = "c_population_m",
@@ -5279,7 +5279,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Knows neither French nor English - women",
-      fr = "Ne connaissent ni le français ni l'anglais - femme"
+      fr = "Ne connaissent ni le français ni l'anglais - femmes"
     )),
     var_short = list(list(en = "Non-official W", fr = "Non off W")),
     description = list(list(
@@ -5333,12 +5333,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak English at home - man",
-      fr = "Parle le plus souvent l'anglais à la maison - homme"
+      en = "Most often speak English at home - men",
+      fr = "Parle le plus souvent l'anglais à la maison - hommes"
     )),
     var_short = list(list(en = "English M", fr = "Anglais H")),
     description = list(list(
-      en = "The number of man who report English as the language spoken most often at home",
+      en = "The number of men who report English as the language spoken most often at home",
       fr = "Nombre d'hommes qui déclarent l'anglais comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population_m",
@@ -5360,7 +5360,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Most often speak English at home - women",
-      fr = "Parle le plus souvent l'anglais à la maison - femme"
+      fr = "Parle le plus souvent l'anglais à la maison - femmes"
     )),
     var_short = list(list(en = "English W", fr = "Anglais W")),
     description = list(list(
@@ -5414,12 +5414,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak French at home - man",
-      fr = "Parle le plus souvent le français à la maison - homme"
+      en = "Most often speak French at home - men",
+      fr = "Parle le plus souvent le français à la maison - hommes"
     )),
     var_short = list(list(en = "French M", fr = "Français H")),
     description = list(list(
-      en = "The number of man who report French as the language spoken most often at home",
+      en = "The number of men who report French as the language spoken most often at home",
       fr = "Nombre d'hommes qui déclarent le français comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population_m",
@@ -5441,7 +5441,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Most often speak French at home - women",
-      fr = "Parle le plus souvent le français à la maison - femme"
+      fr = "Parle le plus souvent le français à la maison - femmes"
     )),
     var_short = list(list(en = "French W", fr = "Français W")),
     description = list(list(
@@ -5495,12 +5495,12 @@ census_vectors_language <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Most often speak a non-official language at home - man",
-      fr = "Parle le plus souvent une langue non officielle à la maison - homme"
+      en = "Most often speak a non-official language at home - men",
+      fr = "Parle le plus souvent une langue non officielle à la maison - hommes"
     )),
     var_short = list(list(en = "Non-official M", fr = "Non off H")),
     description = list(list(
-      en = "The number of man who report a non-official language as the language spoken most often at home",
+      en = "The number of men who report a non-official language as the language spoken most often at home",
       fr = "Nombre d'hommes qui déclarent une langue non officielle comme langue parlée le plus souvent à la maison"
     )),
     parent_vec = "c_population_m",
@@ -5522,7 +5522,7 @@ census_vectors_language <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Most often speak a non-official language at home - women",
-      fr = "Parle le plus souvent une langue non officielle à la maison - femme"
+      fr = "Parle le plus souvent une langue non officielle à la maison - femmes"
     )),
     var_short = list(list(en = "Non-official W", fr = "Non off W")),
     description = list(list(
@@ -5577,11 +5577,11 @@ census_vectors_language_parent <-
     vec_2006 = list("v_CA06_3"),
     vec_2001 = list("v_CA01_6"),
     vec_1996 = list("v_CA1996_6"),
-    var_title = list(list(en = "man individuals", fr = "Individus - homme")),
-    var_short = list(list(en = "man", fr = "hommes")),
+    var_title = list(list(en = "Men", fr = "Individus - hommes")),
+    var_short = list(list(en = "men", fr = "hommes")),
     description = list(list(
-      en = "The total count of man individuals",
-      fr = "Le nombre total d'individus de sexe masculin"
+      en = "The total number of men",
+      fr = "Le nombre total d'hommes"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -5600,11 +5600,11 @@ census_vectors_language_parent <-
     vec_2006 = list("v_CA06_22"),
     vec_2001 = list("v_CA01_25"),
     vec_1996 = list("v_CA1996_30"),
-    var_title = list(list(en = "women individuals", fr = "Individus - femme")),
+    var_title = list(list(en = "Women", fr = "Individus - femmes")),
     var_short = list(list(en = "women", fr = "femmes")),
     description = list(list(
-      en = "The total count of women individuals",
-      fr = "Le nombre total d'individus de sexe féminin"
+      en = "The total number of women",
+      fr = "Le nombre total de femmes"
     )),
     parent_vec = NA,
     parent = TRUE
@@ -6160,12 +6160,12 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "No certificate, diploma or degree - man",
-      fr = "Aucun certificat, diplôme ou grade - homme"
+      en = "No certificate, diploma or degree - men",
+      fr = "Aucun certificat, diplôme ou grade - hommes"
     )),
     var_short = list(list(en = "No degree M", fr = "Sans diplôme H")),
     description = list(list(
-      en = "The number of man aged 15 years and over without any certificate, diploma or degree.",
+      en = "The number of men aged 15 years and over without any certificate, diploma or degree.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus n'ayant aucun certificat, diplôme ou grade."
     )),
     parent_vec = "population_15plus_m",
@@ -6187,7 +6187,7 @@ census_vectors_education <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "No certificate, diploma or degree - women",
-      fr = "Aucun certificat, diplôme ou grade - femme"
+      fr = "Aucun certificat, diplôme ou grade - femmes"
     )),
     var_short = list(list(en = "No degree W", fr = "Sans diplôme W")),
     description = list(list(
@@ -6238,12 +6238,12 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Secondary school diploma or equivalent - man",
-      fr = "Diplôme d'études secondaires ou équivalent - homme"
+      en = "Secondary school diploma or equivalent - men",
+      fr = "Diplôme d'études secondaires ou équivalent - hommes"
     )),
     var_short = list(list(en = "Secondary M", fr = "Secondaire H")),
     description = list(list(
-      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
+      en = "The number of men aged 15 years and over whose highest certificate, diploma or degree is a secondary (high) school diploma or equivalent.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un diplôme d'études secondaires ou un équivalent."
     )),
     parent_vec = "population_15plus_m",
@@ -6265,7 +6265,7 @@ census_vectors_education <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Secondary school diploma or equivalent - women",
-      fr = "Diplôme d'études secondaires ou équivalent - femme"
+      fr = "Diplôme d'études secondaires ou équivalent - femmes"
     )),
     var_short = list(list(en = "Secondary W", fr = "Secondaire W")),
     description = list(list(
@@ -6316,12 +6316,12 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "College, CEGEP or other non-university certificate or diploma - man",
-      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - homme"
+      en = "College, CEGEP or other non-university certificate or diploma - men",
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - hommes"
     )),
     var_short = list(list(en = "College/CEGEP M", fr = "Collège/CÉGEP H")),
     description = list(list(
-      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
+      en = "The number of men aged 15 years and over whose highest certificate, diploma or degree is from a college, CEGEP or other non-university institution.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade provient d'un collège, d'un CÉGEP ou d'un autre établissement non universitaire."
     )),
     parent_vec = "population_15plus_m",
@@ -6343,7 +6343,7 @@ census_vectors_education <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "College, CEGEP or other non-university certificate or diploma - women",
-      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - femme"
+      fr = "Certificat ou diplôme d'un collège, d'un CÉGEP ou autre non universitaire - femmes"
     )),
     var_short = list(list(en = "College/CEGEP W", fr = "Collège/CÉGEP W")),
     description = list(list(
@@ -6394,12 +6394,12 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "University certificate or diploma below bachelor level - man",
-      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - homme"
+      en = "University certificate or diploma below bachelor level - men",
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - hommes"
     )),
     var_short = list(list(en = "Sub-bch uni M", fr = "Uni sous bac H")),
     description = list(list(
-      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
+      en = "The number of men aged 15 years and over whose highest certificate, diploma or degree is a university certificate or diploma below the bachelor level.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un certificat ou diplôme universitaire inférieur au niveau du baccalauréat."
     )),
     parent_vec = "population_15plus_m",
@@ -6421,7 +6421,7 @@ census_vectors_education <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "University certificate or diploma below bachelor level - women",
-      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - femme"
+      fr = "Certificat ou diplôme universitaire inférieur au baccalauréat - femmes"
     )),
     var_short = list(list(en = "Sub-bch uni W", fr = "Uni sous bac W")),
     description = list(list(
@@ -6476,12 +6476,12 @@ census_vectors_education <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Bachelor and above - man",
-      fr = "Baccalauréat et plus - homme"
+      en = "Bachelor and above - men",
+      fr = "Baccalauréat et plus - hommes"
     )),
     var_short = list(list(en = "Bachelor+ M", fr = "Bacc+ H")),
     description = list(list(
-      en = "The number of man aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
+      en = "The number of men aged 15 years and over whose highest certificate, diploma or degree is a bachelor's degree or a higher university credential.",
       fr = "Le nombre d'hommes âgés de 15 ans et plus dont le plus haut certificat, diplôme ou grade est un baccalauréat ou un grade universitaire supérieur."
     )),
     parent_vec = "population_15plus_m",
@@ -6503,7 +6503,7 @@ census_vectors_education <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Bachelor and above - women",
-      fr = "Baccalauréat et plus - femme"
+      fr = "Baccalauréat et plus - femmes"
     )),
     var_short = list(list(en = "Bachelor+ W", fr = "Baccalauréat+ W")),
     description = list(list(
@@ -6557,12 +6557,12 @@ census_vectors_education_parent <-
     vec_2001 = list(NA),
     vec_1996 = list(NA),
     var_title = list(list(
-      en = "Population aged 15 years and over - man",
-      fr = "Population âgée de 15 ans et plus - homme"
+      en = "Population aged 15 years and over - men",
+      fr = "Population âgée de 15 ans et plus - hommes"
     )),
     var_short = list(list(en = "Individuals M", fr = "Individus H")),
     description = list(list(
-      en = "The total number of man aged 15 years and over in private households.",
+      en = "The total number of men aged 15 years and over in private households.",
       fr = "Le nombre total d'hommes âgés de 15 ans et plus vivant dans des ménages privés."
     )),
     parent_vec = NA,
@@ -6584,7 +6584,7 @@ census_vectors_education_parent <-
     vec_1996 = list(NA),
     var_title = list(list(
       en = "Population aged 15 years and over - women",
-      fr = "Population âgée de 15 ans et plus - femme"
+      fr = "Population âgée de 15 ans et plus - femmes"
     )),
     var_short = list(list(en = "Individuals W", fr = "Individus W")),
     description = list(list(
