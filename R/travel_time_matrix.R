@@ -163,6 +163,27 @@ tt_local_osrm <- function(
     )
   }
 
+  # Remove stale build artifacts from previous runs. `osrm-extract` re-runs on
+  # every call and stamps a fresh connectivity checksum into `.osrm.edges`, but
+  # the algorithm-specific graph files (`.osrm.mldgr` for MLD, `.osrm.hsgr` for
+  # CH) are left in place across runs. A daemon launched for one algorithm can
+  # then load the *other* algorithm's stale graph file and abort on a checksum
+  # mismatch (SIGSEGV / exit 139). Clearing all `.osrm*` files first guarantees
+  # the served graph matches this run's extract and chosen `algorithm`. The
+  # `.osm.pbf` download is deliberately preserved (note `.osrm` vs `.osm`).
+  stale <- list.files(
+    dest_folder,
+    pattern = "^geofabrik_canada\\.osrm",
+    full.names = TRUE
+  )
+  if (length(stale) > 0) {
+    file.remove(stale)
+    message(sprintf(
+      "Removed %d stale OSRM build artifact(s) from a previous run.",
+      length(stale)
+    ))
+  }
+
   message(sprintf(
     "Starting OSRM (%s) with %d threads, max-table-size %d (can't do URLs that long anyway)...",
     toupper(algorithm),
