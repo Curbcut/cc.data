@@ -27,8 +27,15 @@
 #     plan <- cmhc_refresh(con, "csd", dry_run = TRUE)$plan   # one scale, plan
 #     mirai::daemons(18)
 #     out  <- cmhc_refresh(con, "csd")                        # fetch one scale
-#     all  <- cmhc_refresh_all(con)                           # fetch all scales
+#     all  <- cmhc_refresh_all(cc.pipe::prod_connect)         # fetch all scales
 #     mirai::daemons(0)
+#
+# Note the FUNCTION (no parentheses) passed to cmhc_refresh_all: a full refresh
+# runs for hours — CSD alone is ~95 minutes — which is longer than the SSM
+# port-forward lives. The database is only read while each scale plans, so
+# passing a factory lets every scale open and close its own connection. Passing
+# a single live connection works for one short scale but will die partway
+# through a full run, taking every remaining scale with it.
 #
 # Daemons MUST be running for a real fetch: the cc.data engine only ships the
 # worker's helper functions to workers in parallel mode.
@@ -48,11 +55,17 @@
 #' Returns `b` when `a` is `NULL` or a length-one `NA`, otherwise `a`. Used to
 #' supply defaults throughout the updater.
 #'
+#' NOT named `%||%`: gtfs_historic_transitfeed_download.R defines a top-level
+#' `%||%` with different semantics (`is.na(x) || is.null(x) || x == ""`), and R
+#' sources files alphabetically, so that one silently won over this definition
+#' and every `NULL %||% default` here raised "missing value where TRUE/FALSE
+#' needed". Keep this operator uniquely named so the two cannot collide.
+#'
 #' @param a Value to test.
 #' @param b Fallback returned when `a` is `NULL` or `NA`.
 #' @return `a` if it is neither `NULL` nor a scalar `NA`; otherwise `b`.
 #' @noRd
-`%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+`%or%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
 
 
 # =============================================================================
@@ -179,36 +192,92 @@ cmhc_registry <- function() {
 #' @noRd
 .cmhc_remote_cache <- new.env(parent = emptyenv())
 
-#' Latest period published by CMHC for the survey (cached, national probe)
+#' Provinces probed for survey availability
 #'
-#' Issues one national `geo_uid = "01"` probe to learn the most recent period
-#' CMHC has published for the survey at the given frequency. The survey
-#' publishes on a single schedule, so the result is shared across all scales and
-#' memoised in [.cmhc_remote_cache] for the session.
+#' The ten provinces, excluding the territories: YT and NT publish no monthly
+#' Scss at all and NU publishes neither frequency, so including them would make
+#' the unanimity check below fail permanently rather than meaningfully.
+#'
+#' @return Named character vector of province `geo_uid`s.
+#' @noRd
+.cmhc_probe_provinces <- function() {
+  c(NL = "10", PE = "11", NS = "12", NB = "13", QC = "24",
+    ON = "35", MB = "46", SK = "47", AB = "48", BC = "59")
+}
+
+#' Latest period published by CMHC for one geography
+#'
+#' @param geo_uid Character. Geography to probe.
+#' @param survey,frequency Character. CMHC survey code and `"Monthly"`/`"Annual"`.
+#' @param width Integer. 6 for `YYYYMM`, 4 for `YYYY`.
+#' @return The latest normalised period, or `NA_character_` on any failure.
+#' @noRd
+.cmhc_probe_one <- function(geo_uid, survey, frequency, width) {
+  raw <- tryCatch(
+    cmhc::get_cmhc(survey = survey, series = "Starts", dimension = "Dwelling Type",
+                   breakdown = "Historical Time Periods", geo_uid = geo_uid,
+                   frequency = frequency),
+    error = function(e) NULL, warning = function(w) NULL
+  )
+  if (is.null(raw) || !nrow(raw) || !"DateString" %in% names(raw)) return(NA_character_)
+  p <- vapply(as.character(raw$DateString), .cmhc_norm_period, character(1),
+              USE.NAMES = FALSE)
+  p <- p[!is.na(p) & nchar(p) == width]
+  if (length(p)) max(p) else NA_character_
+}
+
+#' Latest period published by CMHC for the survey (cached, province quorum)
+#'
+#' Probes all ten provinces and requires them to agree. Scss is a single national
+#' release, so in normal operation every province reports the same latest period
+#' (verified across all ten provinces and all five series). Treating that as a
+#' contract rather than an assumption is deliberate:
+#'
+#' The previous implementation issued ONE probe at `geo_uid = "01"`, swallowed
+#' the error, and returned `NA` on failure. [.cmhc_window()] maps `NA` to an
+#' empty window, so when CMHC began answering `"01"` with HTTP 500 the whole
+#' updater reported a clean "0 to fetch, ~0 API calls" and silently stopped
+#' loading data — for months, while looking healthy. An outage must never again
+#' be indistinguishable from "nothing new".
+#'
+#' Hence: any province failing to answer is an error (a 500 is exactly the signal
+#' that matters), and any disagreement between provinces is an error (it means
+#' the release schedule or the API changed). Both are retryable — a disagreement
+#' can also mean the probe landed mid-publication — so callers should surface the
+#' message rather than treat it as fatal corruption.
 #'
 #' @param freq Either `"monthly"` or `"annual"`.
 #' @param survey Character. CMHC survey code. Defaults to `"Scss"`.
-#' @return The latest published period (`"YYYYMM"` or `"YYYY"`), or
-#'   `NA_character_` if the probe returns nothing.
+#' @return The latest published period (`"YYYYMM"` or `"YYYY"`).
 #' @noRd
 .cmhc_remote_latest <- function(freq, survey = "Scss") {
   key <- paste(survey, freq, sep = "||")
   if (!exists(key, envir = .cmhc_remote_cache, inherits = FALSE)) {
     frequency <- if (freq == "monthly") "Monthly" else "Annual"
     width <- if (freq == "monthly") 6L else 4L
-    raw <- tryCatch(
-      cmhc::get_cmhc(survey = survey, series = "Starts", dimension = "Dwelling Type",
-                     breakdown = "Historical Time Periods", geo_uid = "01",
-                     frequency = frequency),
-      error = function(e) NULL
-    )
-    latest <- NA_character_
-    if (!is.null(raw) && nrow(raw) && "DateString" %in% names(raw)) {
-      p <- vapply(raw$DateString, .cmhc_norm_period, character(1), USE.NAMES = FALSE)
-      p <- p[!is.na(p) & nchar(p) == width]
-      if (length(p)) latest <- max(p)
+    provinces <- .cmhc_probe_provinces()
+
+    per <- vapply(provinces, .cmhc_probe_one, character(1),
+                  survey = survey, frequency = frequency, width = width)
+    names(per) <- names(provinces)
+
+    # Guard the empty/partial case FIRST. `all(x == x[1])` is TRUE on an empty
+    # vector and max(character(0)) is -Inf, so an all-failed probe would sail
+    # through a naive agreement test and resurrect the silent no-op.
+    if (anyNA(per)) {
+      stop(sprintf(
+        "CMHC %s availability probe failed for %d of %d provinces (%s). The API may be down or the geo codes changed; re-run before assuming there is nothing to fetch.",
+        frequency, sum(is.na(per)), length(per),
+        paste(names(per)[is.na(per)], collapse = ", ")), call. = FALSE)
     }
-    assign(key, latest, envir = .cmhc_remote_cache)
+    if (length(unique(per)) > 1L) {
+      stop(sprintf(
+        "CMHC %s provinces disagree on the latest published period: %s. Scss normally releases nationally at once, so this means the schedule or the API changed, or the probe landed mid-publication. Re-run; if it persists, inspect before refreshing.",
+        frequency, paste(sprintf("%s=%s", names(per), per), collapse = ", ")),
+        call. = FALSE)
+    }
+
+    assign(key, unname(per[[1]]), envir = .cmhc_remote_cache)
   }
   get(key, envir = .cmhc_remote_cache)
 }
@@ -335,12 +404,24 @@ cmhc_levels <- function(zone_qsm_path = cmhc_zone_qsm_path(),
                         nbhd_qsm_path = cmhc_nbhd_qsm_path()) {
 
   # Shared par_env_objs for the plain fetch->clean->reshape scales (CMA/CSD/CT).
+  #
+  # `%||%` must be shipped explicitly. cmhc_make_par_env() re-binds every shipped
+  # function's environment to an env whose parent is globalenv(), so on a mirai
+  # daemon these functions can see ONLY what is listed here — the cc.data
+  # namespace is not reachable. Four shipped functions use the operator
+  # (cmhc_fetch_ct_data, cmhc_fetch_zone_data, cmhc_attach_zone_id,
+  # cmhc_fetch_nbhd_data), all on NULL-able values (`month %||% "--"` where month
+  # is NULL for annual, `m$method %||% NA_character_`), so they need the NULL-safe
+  # definition — the gtfs one raises on NULL. Without this, CT/ZONE/NBHD fail
+  # every task with `could not find function "%||%"` while CMA/CSD, which ship
+  # none of those four, run clean.
   base_env <- list(
     cmhc_with_retry      = cc.data:::cmhc_with_retry,
     cmhc_clean_results   = cc.data:::cmhc_clean_results,
     cmhc_reshape_results = cc.data:::cmhc_reshape_results,
     cmhc_clean_names     = cc.data:::cmhc_clean_names,
-    CMHC_PCT_SERIES      = cc.data:::CMHC_PCT_SERIES
+    CMHC_PCT_SERIES      = cc.data:::CMHC_PCT_SERIES,
+    `%||%`               = `%or%`
   )
 
   list(
@@ -530,11 +611,11 @@ cmhc_levels <- function(zone_qsm_path = cmhc_zone_qsm_path(),
                              nbhd_matching = NULL) {
   refs <- list(zone_qsm_path = zone_qsm_path, nbhd_qsm_path = nbhd_qsm_path)
   if ("cma_to_met" %in% needs)
-    refs$cma_to_met <- cma_to_met %||% cc.data:::cmhc_get_cma_to_met()
+    refs$cma_to_met <- cma_to_met %or% cc.data:::cmhc_get_cma_to_met()
   if ("zones_lookup" %in% needs)
-    refs$zones_lookup <- zones_lookup %||% cc.data:::cmhc_zone_lookup()
+    refs$zones_lookup <- zones_lookup %or% cc.data:::cmhc_zone_lookup()
   if ("nbhd_matching" %in% needs)
-    refs$nbhd_matching <- nbhd_matching %||% cc.data::cmhc_nbhd_matching
+    refs$nbhd_matching <- nbhd_matching %or% cc.data::cmhc_nbhd_matching
   refs
 }
 
@@ -685,10 +766,10 @@ cmhc_plan <- function(con, scale, uids = NULL,
                    else n_uid * length(window$years)
       rows[[length(rows) + 1L]] <- data.frame(
         scale = scale, variable_id = spec$variable_id, freq = freq,
-        db_latest = db_latest %||% NA_character_,
-        remote_latest = remote_latest %||% NA_character_,
+        db_latest = db_latest %or% NA_character_,
+        remote_latest = remote_latest %or% NA_character_,
         to_fetch = window$to_fetch,
-        window = paste0(window$start %||% "-", "..", window$end %||% "-"),
+        window = paste0(window$start %or% "-", "..", window$end %or% "-"),
         est_calls = as.integer(est_calls),
         stringsAsFactors = FALSE
       )
@@ -734,9 +815,9 @@ cmhc_refresh <- function(con, scale, uids = NULL,
 
   if (is.null(refs)) {
     refs <- .cmhc_build_refs(
-      level$needs %||% character(0),
-      zone_qsm_path = level$qsm_path %||% cmhc_zone_qsm_path(),
-      nbhd_qsm_path = level$qsm_path %||% cmhc_nbhd_qsm_path())
+      level$needs %or% character(0),
+      zone_qsm_path = level$qsm_path %or% cmhc_zone_qsm_path(),
+      nbhd_qsm_path = level$qsm_path %or% cmhc_nbhd_qsm_path())
   }
 
   by_var <- stats::setNames(registry, vapply(registry, `[[`, character(1), "variable_id"))
@@ -772,13 +853,43 @@ cmhc_refresh <- function(con, scale, uids = NULL,
 #' @export
 cmhc_all_scales <- function() c("cma", "csd", "ct", "zone", "nbhd")
 
+#' Resolve a connection argument that may be a factory
+#'
+#' `con` may be a live DBI connection or a zero-argument function returning one.
+#' The factory form exists because a full refresh outlives its connection: CSD
+#' alone takes ~95 minutes, which is longer than the SSM port-forward behind
+#' `cc.pipe::prod_connect()` survives, and every scale queries the database when
+#' it starts planning. A single connection opened up front therefore dies partway
+#' through and every subsequent scale fails with a bare "Connection refused".
+#'
+#' @param con A DBI connection or a zero-argument function returning one.
+#' @return A list with `con` and `owned` (TRUE when the caller must disconnect).
+#' @noRd
+.cmhc_resolve_con <- function(con) {
+  if (is.function(con)) return(list(con = con(), owned = TRUE))
+  list(con = con, owned = FALSE)
+}
+
+#' Does this error look like a dropped tunnel / dead connection?
+#' @param msg Character. An error message.
+#' @return `TRUE` when the message matches a lost-connection signature.
+#' @noRd
+.cmhc_is_conn_error <- function(msg) {
+  grepl("Connection refused|could not connect|server closed the connection|no connection to the server|connection to server at|SSL connection has been closed|Is the server running",
+        msg, ignore.case = TRUE)
+}
+
 #' Run the incremental refresh across all (or some) scales — fetch only
 #'
 #' Refreshes each requested scale in turn, building the shared references once
 #' and reusing them across scales (`cma_to_met` by ZONE+NBHD, `zones_lookup` by
 #' ZONE, `nbhd_matching` by NBHD). Performs no upload.
 #'
-#' @param con A live DBI connection.
+#' @param con A live DBI connection, or — recommended for a full refresh — a
+#'   zero-argument function returning one (e.g. `cc.pipe::prod_connect`). A full
+#'   run takes hours and the database is only touched briefly while each scale
+#'   plans, so passing the factory makes every scale open and close its own
+#'   short-lived connection instead of sharing one that expires mid-run.
 #' @param scales Scales to run. Defaults to [cmhc_all_scales()].
 #' @param dry_run If `TRUE`, only build each scale's plan.
 #' @param zone_qsm_path,nbhd_qsm_path Optional explicit `.qsm` paths.
@@ -803,7 +914,7 @@ cmhc_refresh_all <- function(con,
                         nbhd_qsm_path = nbhd_qsm_path)
 
   needs <- unique(unlist(lapply(scales,
-                                function(s) levels[[s]]$needs %||% character(0))))
+                                function(s) levels[[s]]$needs %or% character(0))))
   refs <- if (dry_run) NULL else .cmhc_build_refs(
     needs, zone_qsm_path, nbhd_qsm_path,
     cma_to_met = cma_to_met, zones_lookup = zones_lookup,
@@ -813,12 +924,25 @@ cmhc_refresh_all <- function(con,
 
   for (scale in scales) {
     message(sprintf("\n========== SCALE: %s ==========", toupper(scale)))
-    res <- tryCatch(
-      cmhc_refresh(con, scale, registry = cmhc_registry(),
+    res <- tryCatch({
+      # One short-lived connection per scale when a factory was supplied: the
+      # DB is only read while planning, but a shared connection would have to
+      # survive the whole multi-hour fetch and does not.
+      cc <- .cmhc_resolve_con(con)
+      if (cc$owned) on.exit(try(DBI::dbDisconnect(cc$con), silent = TRUE), add = TRUE)
+      cmhc_refresh(cc$con, scale, registry = cmhc_registry(),
                    levels = levels, refs = refs, cache_dir = cache_dir,
-                   dry_run = dry_run),
+                   dry_run = dry_run)
+    },
       error = function(e) {
         msg <- conditionMessage(e)
+        if (.cmhc_is_conn_error(msg) && !is.function(con)) {
+          msg <- paste0(
+            msg,
+            "\n  The database connection died mid-run (a full refresh outlives the ",
+            "SSM port-forward). Pass a connection FACTORY instead of a connection ",
+            "so each scale opens its own, e.g. cmhc_refresh_all(cc.pipe::prod_connect).")
+        }
         warning(sprintf("[%s] FAILED: %s", scale, msg), call. = FALSE)
         structure(list(error = msg), class = "cmhc_scale_error")
       }

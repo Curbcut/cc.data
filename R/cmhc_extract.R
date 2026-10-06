@@ -647,6 +647,13 @@ cmhc_fetch_ct_data <- function(
         breakdown = "Census Tracts",
         geo_uid = geo_uid,
         year = year,
+        # frequency MUST be explicit. Omitting it does not mean "annual": the
+        # cmhc package defaults to Monthly and returns a single month
+        # (December) with no error - roughly a twelfth of the year. The original
+        # CT import predates that default and was correct, so the stored annual
+        # values are right; any re-run without this argument silently produces
+        # December-only data that still looks structurally valid.
+        frequency = if (is.null(month)) "Annual" else "Monthly",
         month = if (!is.null(month)) {
           sprintf("%02d", as.integer(month))
         } else {
@@ -910,16 +917,91 @@ cmhc_get_monthly_ct <- function(requests, ct_uids, output_dir = NULL) {
 #'   .qs files. Each file is named `{cma_uid}_{year}.qs`.
 #'
 #' @details
-#' **geo_vintage mapping:** The census geography used by CMHC depends on
-#' the data year:
-#' \itemize{
-#'   \item Years 2011--2015: geo_vintage = "2011" (2011 census boundaries)
-#'   \item Years 2016--2020: geo_vintage = "2016" (2016 census boundaries)
-#'   \item Years 2021+: geo_vintage = "2021" (2021 census boundaries)
-#' }
+#' **geo_vintage mapping:** see [cmhc_ct_vintage()]. CMHC switches tract
+#' boundaries when Statistics Canada *publishes* the new census geography, which
+#' lags the census reference year — not in the census year itself.
 #'
 #' @return A named list `CT` containing reshaped data frames for each variable.
 #' @export
+#' @name cmhc_get_ct_by_cma
+NULL
+
+#' Census tract vintage CMHC used for a given data year
+#'
+#' CMHC publishes CT-level data on the census tract boundaries Statistics Canada
+#' had *released* at the time, which lags the census reference year. The switch
+#' happened the year after the census for 2011 and 2016, and two years after for
+#' 2021 (the 2021 tract geography was not published until 2022).
+#'
+#' Verified empirically against the CMHC API (Calgary and Toronto, 2010--2024):
+#' the returned tract ID set matches the vintage below with Jaccard 1.00 in every
+#' year, and 0.45--0.96 against every other vintage.
+#'
+#' \tabular{ll}{
+#'   data years   \tab tract boundaries \cr
+#'   2010--2011   \tab 2006 \cr
+#'   2012--2016   \tab 2011 \cr
+#'   2017--2022   \tab 2016 \cr
+#'   2023+        \tab 2021 \cr
+#' }
+#'
+#' The previous mapping assumed the switch happened in the census year itself
+#' (2011->2011, 2016->2016, 2021->2021). That mislabelled four data years —
+#' 2011, 2016, 2021 and 2022 — with a vintage CMHC had not adopted yet. The
+#' damage was silent and severe: tracts newly created by that census (splits of
+#' fast-growing tracts) had no row at all, and the retired parent tracts CMHC
+#' *did* report were dropped by the geography filter in [cmhc_read_variable()]
+#' because their IDs do not exist in the labelled vintage. CT coverage fell to
+#' 71-81% of the CMA-level total in those years against 95-99% everywhere else,
+#' and 100% of tracts new in 2021 were missing. Every stored ID was still valid
+#' for its labelled vintage, so no integrity check caught it.
+#'
+#' @param year Data year (numeric or character).
+#' @return The census vintage as a character scalar.
+#' @export
+cmhc_ct_vintage <- function(year) {
+  yr <- as.integer(year)
+  if (is.na(yr)) stop("cmhc_ct_vintage(): year must be coercible to an integer.")
+  if (yr >= 2023) "2021"
+  else if (yr >= 2017) "2016"
+  else if (yr >= 2012) "2011"
+  else if (yr >= 2007) "2006"
+  else if (yr >= 2002) "2001"
+  else "1996"
+}
+
+#' Check a CT response matches the vintage it is about to be labelled with
+#'
+#' Guards the failure mode documented in [cmhc_ct_vintage()]: when CMHC adopts a
+#' new tract geography the mapping must move with it, and getting that wrong
+#' raises no error — it only produces missing tracts. Pass the IDs CMHC actually
+#' returned; a mismatch is reported loudly instead of passing silently.
+#'
+#' @param ids Character vector of tract IDs returned by CMHC.
+#' @param vintage The vintage about to be assigned.
+#' @param geo_ids Tract IDs valid for `vintage` (from `geography.ct`). When
+#'   `NULL` or empty the check is skipped.
+#' @param year Data year, used in the message.
+#' @param threshold Minimum share of returned IDs that must exist in `geo_ids`.
+#' @return Invisibly, the share matched.
+#' @export
+cmhc_check_ct_vintage <- function(ids, vintage, geo_ids, year = NA,
+                                  threshold = 0.95) {
+  if (is.null(geo_ids) || !length(geo_ids) || !length(ids)) {
+    return(invisible(NA_real_))
+  }
+  share <- mean(unique(as.character(ids)) %in% as.character(geo_ids))
+  if (share < threshold) {
+    warning(sprintf(
+      paste0("CMHC CT response for year %s does not look like %s boundaries: ",
+             "only %.0f%% of returned tract IDs exist in that vintage. CMHC may ",
+             "have switched geography - check cmhc_ct_vintage() before importing, ",
+             "or tracts new to the current census will be silently missing."),
+      year, vintage, 100 * share), call. = FALSE)
+  }
+  invisible(share)
+}
+
 cmhc_get_ct_by_cma <- function(requests, cma_uids, output_dir = NULL) {
   tasks <- cmhc_build_tasks(cma_uids, requests, expand_years = TRUE)
 
@@ -948,23 +1030,7 @@ cmhc_get_ct_by_cma <- function(requests, cma_uids, output_dir = NULL) {
       return(NULL)
     }
 
-    # Derive geo_vintage from year: CMHC uses the census geography that was
-    # current at the time of the survey.  Minimum vintage is "1996" — for
-    # pre-1996 years we also assign "1996".
-    yr <- as.integer(year)
-    geo_vintage <- if (yr >= 2021) {
-      "2021"
-    } else if (yr >= 2016) {
-      "2016"
-    } else if (yr >= 2011) {
-      "2011"
-    } else if (yr >= 2006) {
-      "2006"
-    } else if (yr >= 2001) {
-      "2001"
-    } else {
-      "1996"
-    }
+    geo_vintage <- cmhc_ct_vintage(year)
 
     lapply(reshaped, \(df) {
       df$geo_vintage <- geo_vintage
@@ -975,6 +1041,11 @@ cmhc_get_ct_by_cma <- function(requests, cma_uids, output_dir = NULL) {
   collected <- cmhc_run_and_collect(
     tasks,
     .worker,
+    # Everything the worker touches must be listed here: cmhc_make_par_env()
+    # re-binds each shipped function to an env parented at globalenv(), so on a
+    # mirai daemon the cc.data namespace is NOT reachable. `%||%` is used by
+    # cmhc_fetch_ct_data() and cmhc_ct_vintage() by the worker itself; omitting
+    # either fails every task with `could not find function`.
     par_env_objs = list(
       requests = requests,
       cmhc_with_retry = cmhc_with_retry,
@@ -982,7 +1053,11 @@ cmhc_get_ct_by_cma <- function(requests, cma_uids, output_dir = NULL) {
       cmhc_clean_results = cmhc_clean_results,
       cmhc_reshape_results = cmhc_reshape_results,
       cmhc_clean_names = cmhc_clean_names,
-      CMHC_PCT_SERIES = CMHC_PCT_SERIES
+      cmhc_ct_vintage = cmhc_ct_vintage,
+      CMHC_PCT_SERIES = CMHC_PCT_SERIES,
+      `%||%` = function(a, b) {
+        if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+      }
     ),
     output_dir = output_dir,
     label = "cmhc_get_ct_by_cma"
@@ -1042,21 +1117,7 @@ cmhc_get_monthly_ct_by_cma <- function(requests, cma_uids, output_dir = NULL) {
       return(NULL)
     }
 
-    # Derive geo_vintage from year
-    yr <- as.integer(year)
-    geo_vintage <- if (yr >= 2021) {
-      "2021"
-    } else if (yr >= 2016) {
-      "2016"
-    } else if (yr >= 2011) {
-      "2011"
-    } else if (yr >= 2006) {
-      "2006"
-    } else if (yr >= 2001) {
-      "2001"
-    } else {
-      "1996"
-    }
+    geo_vintage <- cmhc_ct_vintage(year)
 
     lapply(reshaped, \(df) {
       df$geo_vintage <- geo_vintage
@@ -1068,6 +1129,12 @@ cmhc_get_monthly_ct_by_cma <- function(requests, cma_uids, output_dir = NULL) {
     tasks,
     .worker,
     par_env_objs = list(
+      # Shipped explicitly: cmhc_make_par_env() re-parents shipped functions
+      # to globalenv(), so the cc.data namespace is unreachable on a daemon.
+      `%||%` = function(a, b) {
+        if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+      },
+      cmhc_ct_vintage = cmhc_ct_vintage,
       requests = requests,
       cmhc_with_retry = cmhc_with_retry,
       cmhc_fetch_ct_data = cmhc_fetch_ct_data,
@@ -2660,6 +2727,9 @@ cmhc_fetch_nbhd_data <- function(survey, series, dimension, geo_uid,
         breakdown = "Neighbourhoods",
         geo_uid   = geo_uid,
         year      = year,
+        # frequency MUST be explicit - omitting it defaults to Monthly
+        # (single month), not annual. See cmhc_fetch_ct_data().
+        frequency = if (is.null(month)) "Annual" else "Monthly",
         month     = if (!is.null(month)) sprintf("%02d", as.integer(month)) else NULL
       )
     },
@@ -2872,6 +2942,11 @@ cmhc_get_annual_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
   collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
+      # Shipped explicitly: cmhc_make_par_env() re-parents shipped functions
+      # to globalenv(), so the cc.data namespace is unreachable on a daemon.
+      `%||%` = function(a, b) {
+        if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+      },
       requests = requests,
       cma_to_met = cma_to_met,
       qsm_path = qsm_path,
@@ -2959,6 +3034,11 @@ cmhc_get_monthly_nbhd <- function(requests, cma_uids = NULL, cma_to_met = NULL,
   collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
+      # Shipped explicitly: cmhc_make_par_env() re-parents shipped functions
+      # to globalenv(), so the cc.data namespace is unreachable on a daemon.
+      `%||%` = function(a, b) {
+        if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+      },
       requests = requests,
       cma_to_met = cma_to_met,
       qsm_path = qsm_path,
@@ -3055,6 +3135,9 @@ cmhc_fetch_zone_data <- function(survey, series, dimension, geo_uid,
         breakdown = "Survey Zones",
         geo_uid   = geo_uid,
         year      = year,
+        # frequency MUST be explicit - omitting it defaults to Monthly
+        # (single month), not annual. See cmhc_fetch_ct_data().
+        frequency = if (is.null(month)) "Annual" else "Monthly",
         month     = if (!is.null(month)) sprintf("%02d", as.integer(month)) else NULL
       )
     },
@@ -3391,6 +3474,11 @@ cmhc_get_annual_zone <- function(requests, cma_uids = NULL,
   collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
+      # Shipped explicitly: cmhc_make_par_env() re-parents shipped functions
+      # to globalenv(), so the cc.data namespace is unreachable on a daemon.
+      `%||%` = function(a, b) {
+        if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+      },
       requests = requests,
       cma_to_met = cma_to_met,
       zones_lookup = zones_lookup,
@@ -3483,6 +3571,11 @@ cmhc_get_monthly_zone <- function(requests, cma_uids = NULL,
   collected <- cmhc_run_and_collect(
     tasks, .worker,
     par_env_objs = list(
+      # Shipped explicitly: cmhc_make_par_env() re-parents shipped functions
+      # to globalenv(), so the cc.data namespace is unreachable on a daemon.
+      `%||%` = function(a, b) {
+        if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+      },
       requests = requests,
       cma_to_met = cma_to_met,
       zones_lookup = zones_lookup,
