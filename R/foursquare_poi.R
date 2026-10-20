@@ -263,70 +263,30 @@ foursquare_connect <- function(passcode = NULL, warehouse = "COMPUTE_WH") {
 }
 
 
-#' Foursquare → Curbcut category SQL expression
+#' Foursquare → Curbcut category SQL expression (one category per place)
 #'
-#' Returns the SQL `CASE` expression that assigns each Foursquare POI to
-#' exactly one Curbcut destination category, based on its
-#' `fsq_category_labels` array. The expression is intended to be embedded
-#' inside a `SELECT` statement (see [foursquare_get_canada()]).
+#' Returns a SQL `CASE` expression that assigns each Foursquare place to ONE
+#' Curbcut destination type, for the per-category point counts of
+#' [poi_data()]. It uses the same category IDs as the destination types
+#' ([foursquare_destination_map()]); when a place belongs to several types,
+#' the first type in the map wins. Destination uploads do not use it: there a
+#' place belongs to every type it matches ([foursquare_prepare_destinations()]).
 #'
-#' Categories, in priority order (first match wins):
-#' \enumerate{
-#'   \item dentist
-#'   \item pharmacy
-#'   \item gas_station
-#'   \item cinema
-#'   \item bank
-#'   \item cafe
-#'   \item bakery
-#'   \item bar
-#'   \item restaurant
-#'   \item gym
-#'   \item clinic
-#'   \item grocery_store
-#' }
-#'
-#' POIs that do not match any of these patterns get `NULL`.
-#'
+#' @inheritParams foursquare_destinations_sql
 #' @return A character string (one SQL CASE expression).
 #' @export
-foursquare_categorize_sql <- function() {
-  "CASE
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Dentist%'
-      THEN 'dentist'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Pharmacy%'
-      OR ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Drugstore%'
-      THEN 'pharmacy'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Fuel Station%'
-      THEN 'gas_station'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Movie Theater%'
-      THEN 'cinema'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%Banking and Finance > Bank%'
-      OR ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%Banking and Finance > Credit Union%'
-      THEN 'bank'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%Cafe, Coffee, and Tea House%'
-      THEN 'cafe'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Bakery%'
-      THEN 'bakery'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%Dining and Drinking > Bar%'
-      THEN 'bar'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Restaurant%'
-      OR ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Food Truck%'
-      THEN 'restaurant'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Gym and Studio%'
-      OR ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Martial Arts Dojo%'
-      OR ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%> Gymnastics%'
-      THEN 'gym'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%Health and Medicine%'
-      AND ARRAY_TO_STRING(fsq_category_labels, ' || ') NOT ILIKE '%> Dentist%'
-      AND ARRAY_TO_STRING(fsq_category_labels, ' || ') NOT ILIKE '%> Hospital%'
-      AND ARRAY_TO_STRING(fsq_category_labels, ' || ') NOT ILIKE '%> Veterinarian%'
-      AND ARRAY_TO_STRING(fsq_category_labels, ' || ') NOT ILIKE '%> Spa%'
-      THEN 'clinic'
-    WHEN ARRAY_TO_STRING(fsq_category_labels, ' || ') ILIKE '%Food and Beverage Retail%'
-      THEN 'grocery_store'
-    ELSE NULL
-  END"
+foursquare_categorize_sql <- function(map = foursquare_destination_map()) {
+  arr <- function(x) paste0("ARRAY_CONSTRUCT(", paste0("'", .fsq_ids(x), "'", collapse = ", "), ")")
+  whens <- vapply(names(map$types), function(t) {
+    ty <- map$types[[t]]
+    cond <- sprintf("ARRAYS_OVERLAP(fsq_category_ids, %s)", arr(ty$include))
+    if (length(ty$exclude_if_also)) {
+      keep <- if (length(ty$keep_if)) sprintf(" OR ARRAYS_OVERLAP(fsq_category_ids, %s)", arr(ty$keep_if)) else ""
+      cond <- sprintf("%s AND (NOT ARRAYS_OVERLAP(fsq_category_ids, %s)%s)", cond, arr(ty$exclude_if_also), keep)
+    }
+    sprintf("    WHEN %s\n      THEN '%s'", cond, t)
+  }, character(1))
+  paste0("CASE\n", paste(whens, collapse = "\n"), "\n    ELSE NULL\n  END")
 }
 
 
@@ -339,10 +299,12 @@ foursquare_categorize_sql <- function() {
 #'   \item \code{categorize = FALSE} (legacy mode): returns every Canadian POI
 #'         with `date_created`, `date_refreshed`, `date_closed` — suitable for
 #'         time-series counts via [poi_data()].
-#'   \item \code{categorize = TRUE} (recommended): adds a `curbcut_type` column
-#'         (one of the 12 Curbcut categories) using [foursquare_categorize_sql()],
-#'         filters to POIs assigned a category, and excludes closed POIs.
-#'         Suitable for per-category counts or static destination uploads.
+#'   \item \code{categorize = TRUE}: adds a `curbcut_type` column (one
+#'         destination type per place) using [foursquare_categorize_sql()],
+#'         filters to places assigned a type, and excludes closed places.
+#'         Suitable for per-category counts. For destination uploads use
+#'         [foursquare_get_destinations()], where a place can belong to
+#'         several types.
 #' }
 #'
 #' @param conn A `DBI` connection from [foursquare_connect()].

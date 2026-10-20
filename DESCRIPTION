@@ -27,6 +27,7 @@ Imports:
     nngeo,
     qs,
     qs2,
+    stringi,
     stringr,
     rvest,
     dplyr,
