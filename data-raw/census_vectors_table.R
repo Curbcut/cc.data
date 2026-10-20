@@ -4890,7 +4890,7 @@ census_vectors_family <-
       measurement_scale = "scalar"
     )),
     theme = "Household",
-    vec_2021 = list(c("v_CA21_502", "v_CA21_505")),
+    vec_2021 = list(c("v_CA21_502", "v_CA21_505", "v_CA21_507")),
     vec_2016 = list(c(
       "v_CA16_494",
       "v_CA16_495",
