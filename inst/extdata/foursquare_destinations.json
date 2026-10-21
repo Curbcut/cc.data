@@ -1,0 +1,1888 @@
+{
+  "taxonomy": {
+    "name": "Foursquare Places OS, Pro & Premium Categories",
+    "docs": "https://docs.foursquare.com/data-products/docs/categories",
+    "file": "https://static.observableusercontent.com/files/8bf043336b438a770178f4e9fbacfef6f52fc49c106a199295b42389b920bff193b885db1082f575be2b5853cd75119800b6ce6751961091ce659a4617e56585",
+    "last_modified": "2026-09-15",
+    "retrieved": "2026-10-20",
+    "n_categories": 1279
+  },
+  "types": {
+    "grocery_store": {
+      "type_id": "grocery_store_foursquare",
+      "include": [
+        {
+          "id": "52f2ab2ebcbc57f1066b8b1c",
+          "label": "Retail > Food and Beverage Retail > Fruit and Vegetable Store"
+        },
+        {
+          "id": "4bf58dd8d48988d118951735",
+          "label": "Retail > Food and Beverage Retail > Grocery Store"
+        },
+        {
+          "id": "52f2ab2ebcbc57f1066b8b45",
+          "label": "Retail > Food and Beverage Retail > Grocery Store > Organic Grocery"
+        },
+        {
+          "id": "5f2c41945b4c177b9a6dc7d6",
+          "label": "Retail > Food and Beverage Retail > Imported Food Store"
+        },
+        {
+          "id": "63be6904847c3692a84b9bef",
+          "label": "Retail > Food and Beverage Retail > Kosher Store"
+        },
+        {
+          "id": "52f2ab2ebcbc57f1066b8b46",
+          "label": "Retail > Food and Beverage Retail > Supermarket"
+        }
+      ],
+      "exclude_if_also": [
+        {
+          "id": "4d954b0ea243a5684a65b473",
+          "label": "Retail > Convenience Store"
+        },
+        {
+          "id": "4bf58dd8d48988d113951735",
+          "label": "Travel and Transportation > Fuel Station"
+        }
+      ],
+      "keep_if": [
+        {
+          "id": "52f2ab2ebcbc57f1066b8b46",
+          "label": "Retail > Food and Beverage Retail > Supermarket"
+        }
+      ]
+    },
+    "pharmacy": {
+      "type_id": "pharmacy_foursquare",
+      "include": [
+        {
+          "id": "5745c2e4498e11e7bccabdbd",
+          "label": "Retail > Drugstore"
+        },
+        {
+          "id": "4bf58dd8d48988d10f951735",
+          "label": "Retail > Pharmacy"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "clinic": {
+      "type_id": "clinic_foursquare",
+      "include": [
+        {
+          "id": "63be6904847c3692a84b9bbe",
+          "label": "Health and Medicine > Healthcare Clinic"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734ff",
+          "label": "Health and Medicine > Maternity Clinic"
+        },
+        {
+          "id": "4bf58dd8d48988d104941735",
+          "label": "Health and Medicine > Medical Center"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a39",
+          "label": "Health and Medicine > Mental Health Service > Mental Health Clinic"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc6",
+          "label": "Health and Medicine > Physician"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc7",
+          "label": "Health and Medicine > Physician > Anesthesiologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc8",
+          "label": "Health and Medicine > Physician > Cardiologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc9",
+          "label": "Health and Medicine > Physician > Dermatologist"
+        },
+        {
+          "id": "4bf58dd8d48988d177941735",
+          "label": "Health and Medicine > Physician > Doctor's Office"
+        },
+        {
+          "id": "63be6904847c3692a84b9bca",
+          "label": "Health and Medicine > Physician > Ear, Nose and Throat Doctor"
+        },
+        {
+          "id": "63be6904847c3692a84b9bcb",
+          "label": "Health and Medicine > Physician > Family Medicine Doctor"
+        },
+        {
+          "id": "63be6904847c3692a84b9bcc",
+          "label": "Health and Medicine > Physician > Gastroenterologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bcd",
+          "label": "Health and Medicine > Physician > General Surgeon"
+        },
+        {
+          "id": "63be6904847c3692a84b9bce",
+          "label": "Health and Medicine > Physician > Geriatric Doctor"
+        },
+        {
+          "id": "63be6904847c3692a84b9bcf",
+          "label": "Health and Medicine > Physician > Internal Medicine Doctor"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd0",
+          "label": "Health and Medicine > Physician > Neurologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd1",
+          "label": "Health and Medicine > Physician > Obstetrician Gynecologist (Ob-gyn)"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd2",
+          "label": "Health and Medicine > Physician > Oncologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd3",
+          "label": "Health and Medicine > Physician > Ophthalmologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd4",
+          "label": "Health and Medicine > Physician > Oral Surgeon"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd5",
+          "label": "Health and Medicine > Physician > Orthopedic Surgeon"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd6",
+          "label": "Health and Medicine > Physician > Pathologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd7",
+          "label": "Health and Medicine > Physician > Pediatrician"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd8",
+          "label": "Health and Medicine > Physician > Plastic Surgeon"
+        },
+        {
+          "id": "63be6904847c3692a84b9bd9",
+          "label": "Health and Medicine > Physician > Psychiatrist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bda",
+          "label": "Health and Medicine > Physician > Radiologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bdb",
+          "label": "Health and Medicine > Physician > Respiratory Doctor"
+        },
+        {
+          "id": "63be6904847c3692a84b9bdc",
+          "label": "Health and Medicine > Physician > Urologist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bde",
+          "label": "Health and Medicine > Sports Medicine Clinic"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573526",
+          "label": "Health and Medicine > Urgent Care Center"
+        },
+        {
+          "id": "63be6904847c3692a84b9bdf",
+          "label": "Health and Medicine > Women's Health Clinic"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "allied_health": {
+      "type_id": "allied_health_foursquare",
+      "include": [
+        {
+          "id": "52e81612bcbc57f1066b7a3b",
+          "label": "Health and Medicine > Acupuncture Clinic"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a3a",
+          "label": "Health and Medicine > Chiropractor"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc1",
+          "label": "Health and Medicine > Mental Health Service"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc2",
+          "label": "Health and Medicine > Mental Health Service > Psychologist"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1d0",
+          "label": "Health and Medicine > Nutritionist"
+        },
+        {
+          "id": "522e32fae4b09b556e370f19",
+          "label": "Health and Medicine > Optometrist"
+        },
+        {
+          "id": "63be6904847c3692a84b9bc5",
+          "label": "Health and Medicine > Other Healthcare Professional"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4af",
+          "label": "Health and Medicine > Physical Therapy Clinic"
+        },
+        {
+          "id": "63be6904847c3692a84b9bdd",
+          "label": "Health and Medicine > Podiatrist"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "dentist": {
+      "type_id": "dentist_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d178941735",
+          "label": "Health and Medicine > Dentist"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "gas_station": {
+      "type_id": "gas_station_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d113951735",
+          "label": "Travel and Transportation > Fuel Station"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "bank": {
+      "type_id": "bank_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d10a951735",
+          "label": "Business and Professional Services > Financial Service > Banking and Finance > Bank"
+        },
+        {
+          "id": "5032850891d4c4b30a586d62",
+          "label": "Business and Professional Services > Financial Service > Banking and Finance > Credit Union"
+        }
+      ],
+      "exclude_if_also": [
+        {
+          "id": "52f2ab2ebcbc57f1066b8b2d",
+          "label": "Business and Professional Services > Financial Service > Check Cashing Service"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4be",
+          "label": "Business and Professional Services > Financial Service > Currency Exchange"
+        }
+      ],
+      "keep_if": []
+    },
+    "cinema": {
+      "type_id": "cinema_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d17f941735",
+          "label": "Arts and Entertainment > Movie Theater"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734de",
+          "label": "Arts and Entertainment > Movie Theater > Drive-in Theater"
+        },
+        {
+          "id": "4bf58dd8d48988d17e941735",
+          "label": "Arts and Entertainment > Movie Theater > Indie Movie Theater"
+        },
+        {
+          "id": "4bf58dd8d48988d180941735",
+          "label": "Arts and Entertainment > Movie Theater > Multiplex"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "cafe": {
+      "type_id": "cafe_foursquare",
+      "include": [
+        {
+          "id": "63be6904847c3692a84b9bb6",
+          "label": "Dining and Drinking > Cafe, Coffee, and Tea House"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a0c",
+          "label": "Dining and Drinking > Cafe, Coffee, and Tea House > Bubble Tea Shop"
+        },
+        {
+          "id": "4bf58dd8d48988d16d941735",
+          "label": "Dining and Drinking > Cafe, Coffee, and Tea House > Café"
+        },
+        {
+          "id": "4bf58dd8d48988d1e0931735",
+          "label": "Dining and Drinking > Cafe, Coffee, and Tea House > Coffee Shop"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573508",
+          "label": "Dining and Drinking > Cafe, Coffee, and Tea House > Pet Café"
+        },
+        {
+          "id": "4bf58dd8d48988d1dc931735",
+          "label": "Dining and Drinking > Cafe, Coffee, and Tea House > Tea Room"
+        }
+      ],
+      "exclude_if_also": [
+        {
+          "id": "4d954b0ea243a5684a65b473",
+          "label": "Retail > Convenience Store"
+        }
+      ],
+      "keep_if": []
+    },
+    "bakery": {
+      "type_id": "bakery_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d16a941735",
+          "label": "Dining and Drinking > Bakery"
+        }
+      ],
+      "exclude_if_also": [
+        {
+          "id": "52f2ab2ebcbc57f1066b8b42",
+          "label": "Retail > Big Box Store"
+        },
+        {
+          "id": "4bf58dd8d48988d118951735",
+          "label": "Retail > Food and Beverage Retail > Grocery Store"
+        },
+        {
+          "id": "52f2ab2ebcbc57f1066b8b46",
+          "label": "Retail > Food and Beverage Retail > Supermarket"
+        }
+      ],
+      "keep_if": []
+    },
+    "bar": {
+      "type_id": "bar_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d116941735",
+          "label": "Dining and Drinking > Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d1ea941735",
+          "label": "Dining and Drinking > Bar > Apres Ski Bar"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a0d",
+          "label": "Dining and Drinking > Bar > Beach Bar"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d57356c",
+          "label": "Dining and Drinking > Bar > Beer Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d117941735",
+          "label": "Dining and Drinking > Bar > Beer Garden"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a0e",
+          "label": "Dining and Drinking > Bar > Champagne Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d11e941735",
+          "label": "Dining and Drinking > Bar > Cocktail Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d118941735",
+          "label": "Dining and Drinking > Bar > Dive Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d1d8941735",
+          "label": "Dining and Drinking > Bar > Gay Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d119941735",
+          "label": "Dining and Drinking > Bar > Hookah Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d1d5941735",
+          "label": "Dining and Drinking > Bar > Hotel Bar"
+        },
+        {
+          "id": "5f2c40f15b4c177b9a6dc684",
+          "label": "Dining and Drinking > Bar > Ice Bar"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a06",
+          "label": "Dining and Drinking > Bar > Irish Pub"
+        },
+        {
+          "id": "4bf58dd8d48988d120941735",
+          "label": "Dining and Drinking > Bar > Karaoke Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d121941735",
+          "label": "Dining and Drinking > Bar > Lounge"
+        },
+        {
+          "id": "4bf58dd8d48988d1e8931735",
+          "label": "Dining and Drinking > Bar > Piano Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d11b941735",
+          "label": "Dining and Drinking > Bar > Pub"
+        },
+        {
+          "id": "5f2c224bb6d05514c70440a3",
+          "label": "Dining and Drinking > Bar > Rooftop Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d11c941735",
+          "label": "Dining and Drinking > Bar > Sake Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d1d4941735",
+          "label": "Dining and Drinking > Bar > Speakeasy"
+        },
+        {
+          "id": "4bf58dd8d48988d11d941735",
+          "label": "Dining and Drinking > Bar > Sports Bar"
+        },
+        {
+          "id": "56aa371be4b08b9a8d57354d",
+          "label": "Dining and Drinking > Bar > Tiki Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d122941735",
+          "label": "Dining and Drinking > Bar > Whisky Bar"
+        },
+        {
+          "id": "4bf58dd8d48988d123941735",
+          "label": "Dining and Drinking > Bar > Wine Bar"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "restaurant": {
+      "type_id": "restaurant_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d1cb941735",
+          "label": "Dining and Drinking > Food Truck"
+        },
+        {
+          "id": "4d4b7105d754a06374d81259",
+          "label": "Dining and Drinking > Restaurant"
+        },
+        {
+          "id": "503288ae91d4c4b30a586d67",
+          "label": "Dining and Drinking > Restaurant > Afghan Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1c8941735",
+          "label": "Dining and Drinking > Restaurant > African Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d10a941735",
+          "label": "Dining and Drinking > Restaurant > African Restaurant > Ethiopian Restaurant"
+        },
+        {
+          "id": "5f2c344a5b4c177b9a6dc011",
+          "label": "Dining and Drinking > Restaurant > African Restaurant > Mauritian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d14e941735",
+          "label": "Dining and Drinking > Restaurant > American Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d157941735",
+          "label": "Dining and Drinking > Restaurant > American Restaurant > New American Restaurant"
+        },
+        {
+          "id": "5f2c2b7db6d05514c7044837",
+          "label": "Dining and Drinking > Restaurant > Armenian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d142941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573568",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Burmese Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a03",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Cambodian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d145941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant"
+        },
+        {
+          "id": "52af3a5e3cf9994f4e043bea",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Anhui Restaurant"
+        },
+        {
+          "id": "52af3a723cf9994f4e043bec",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Beijing Restaurant"
+        },
+        {
+          "id": "52af3a7c3cf9994f4e043bed",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Cantonese Restaurant"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1d3",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Cha Chaan Teng"
+        },
+        {
+          "id": "52af3a673cf9994f4e043beb",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Chinese Aristocrat Restaurant"
+        },
+        {
+          "id": "52af3a903cf9994f4e043bee",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Chinese Breakfast Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1f5931735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Dim Sum Restaurant"
+        },
+        {
+          "id": "52af3a9f3cf9994f4e043bef",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Dongbei Restaurant"
+        },
+        {
+          "id": "52af3aaa3cf9994f4e043bf0",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Fujian Restaurant"
+        },
+        {
+          "id": "52af3ab53cf9994f4e043bf1",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Guizhou Restaurant"
+        },
+        {
+          "id": "52af3abe3cf9994f4e043bf2",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Hainan Restaurant"
+        },
+        {
+          "id": "52af3ac83cf9994f4e043bf3",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Hakka Restaurant"
+        },
+        {
+          "id": "52af3ad23cf9994f4e043bf4",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Henan Restaurant"
+        },
+        {
+          "id": "52af3add3cf9994f4e043bf5",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Hong Kong Restaurant"
+        },
+        {
+          "id": "52af3af23cf9994f4e043bf7",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Huaiyang Restaurant"
+        },
+        {
+          "id": "52af3ae63cf9994f4e043bf6",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Hubei Restaurant"
+        },
+        {
+          "id": "52af3afc3cf9994f4e043bf8",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Hunan Restaurant"
+        },
+        {
+          "id": "52af3b053cf9994f4e043bf9",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Imperial Restaurant"
+        },
+        {
+          "id": "52af3b213cf9994f4e043bfa",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Jiangsu Restaurant"
+        },
+        {
+          "id": "52af3b293cf9994f4e043bfb",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Jiangxi Restaurant"
+        },
+        {
+          "id": "52af3b343cf9994f4e043bfc",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Macanese Restaurant"
+        },
+        {
+          "id": "52af3b3b3cf9994f4e043bfd",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Manchu Restaurant"
+        },
+        {
+          "id": "52af3b463cf9994f4e043bfe",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Peking Duck Restaurant"
+        },
+        {
+          "id": "52af3b633cf9994f4e043c01",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Shaanxi Restaurant"
+        },
+        {
+          "id": "52af3b513cf9994f4e043bff",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Shandong Restaurant"
+        },
+        {
+          "id": "52af3b593cf9994f4e043c00",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Shanghai Restaurant"
+        },
+        {
+          "id": "52af3b6e3cf9994f4e043c02",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Shanxi Restaurant"
+        },
+        {
+          "id": "52af3b773cf9994f4e043c03",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Szechuan Restaurant"
+        },
+        {
+          "id": "52af3b813cf9994f4e043c04",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Taiwanese Restaurant"
+        },
+        {
+          "id": "52af3b893cf9994f4e043c05",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Tianjin Restaurant"
+        },
+        {
+          "id": "52af3b913cf9994f4e043c06",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Xinjiang Restaurant"
+        },
+        {
+          "id": "52af3b9a3cf9994f4e043c07",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Yunnan Restaurant"
+        },
+        {
+          "id": "52af3ba23cf9994f4e043c08",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Chinese Restaurant > Zhejiang Restaurant"
+        },
+        {
+          "id": "4eb1bd1c3b7b55596b4a748f",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Filipino Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79fb",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Himalayan Restaurant"
+        },
+        {
+          "id": "52af0bd33cf9994f4e043bdd",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Hotpot Restaurant"
+        },
+        {
+          "id": "4deefc054765f83613cdba6f",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043ac9",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Acehnese Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043acb",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Balinese Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043aca",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Betawinese Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043acc",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Indonesian Meatball Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043ac7",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Javanese Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043ac8",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Manadonese Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043ac5",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Padangnese Restaurant"
+        },
+        {
+          "id": "52960eda3cf9994f4e043ac6",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Indonesian Restaurant > Sundanese Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d111941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb0c",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Donburi Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb30",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Japanese Curry Restaurant"
+        },
+        {
+          "id": "5f2c2436b6d05514c704433e",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Japanese Family Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb21",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Kaiseki Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb06",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Kushikatsu Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb1b",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Monjayaki Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb1e",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Nabe Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb18",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Okonomiyaki Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb24",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Ramen Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb15",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Shabu-Shabu Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb27",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Soba Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb12",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Sukiyaki Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1d2941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Sushi Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb2d",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Takoyaki Place"
+        },
+        {
+          "id": "5f2c239eb6d05514c70441ee",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Teishoku Restaurant"
+        },
+        {
+          "id": "55a59a31e4b013909087cb00",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Tempura Restaurant"
+        },
+        {
+          "id": "55a59af1e4b013909087cb03",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Tonkatsu Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb2a",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Udon Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb0f",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Unagi Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb33",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Wagashi Place"
+        },
+        {
+          "id": "55a59bace4b013909087cb09",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Yakitori Restaurant"
+        },
+        {
+          "id": "55a59bace4b013909087cb36",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Japanese Restaurant > Yoshoku Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d113941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734e4",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant > Bossam/Jokbal Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734f0",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant > Bunsik Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734e7",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant > Gukbap Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734ed",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant > Janguh Restaurant"
+        },
+        {
+          "id": "5f2c3f6b5b4c177b9a6dc388",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant > Korean BBQ Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734ea",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Korean Restaurant > Samgyetang Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d156941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Malay Restaurant"
+        },
+        {
+          "id": "5ae9595eb77c77002c2f9f26",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Malay Restaurant > Mamak Restaurant"
+        },
+        {
+          "id": "4eb1d5724b900d56c88a45fe",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Mongolian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1d1941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Noodle Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d57350e",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Satay Restaurant"
+        },
+        {
+          "id": "5f2c430e5b4c177b9a6dcabd",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Singaporean Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d149941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Thai Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573502",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Thai Restaurant > Som Tum Restaurant"
+        },
+        {
+          "id": "52af39fb3cf9994f4e043be9",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Tibetan Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d14a941735",
+          "label": "Dining and Drinking > Restaurant > Asian Restaurant > Vietnamese Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d169941735",
+          "label": "Dining and Drinking > Restaurant > Australian Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a01",
+          "label": "Dining and Drinking > Restaurant > Austrian Restaurant"
+        },
+        {
+          "id": "5e179ee74ae8e90006e9a746",
+          "label": "Dining and Drinking > Restaurant > Bangladeshi Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1df931735",
+          "label": "Dining and Drinking > Restaurant > BBQ Joint"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a02",
+          "label": "Dining and Drinking > Restaurant > Belgian Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79f1",
+          "label": "Dining and Drinking > Restaurant > Bistro"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79f4",
+          "label": "Dining and Drinking > Restaurant > Buffet"
+        },
+        {
+          "id": "4bf58dd8d48988d16c941735",
+          "label": "Dining and Drinking > Restaurant > Burger Joint"
+        },
+        {
+          "id": "4bf58dd8d48988d17a941735",
+          "label": "Dining and Drinking > Restaurant > Cajun and Creole Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d144941735",
+          "label": "Dining and Drinking > Restaurant > Caribbean Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d154941735",
+          "label": "Dining and Drinking > Restaurant > Caribbean Restaurant > Cuban Restaurant"
+        },
+        {
+          "id": "5f2c2abab6d05514c70446e4",
+          "label": "Dining and Drinking > Restaurant > Caribbean Restaurant > Puerto Rican Restaurant"
+        },
+        {
+          "id": "5293a7d53cf9994f4e043a45",
+          "label": "Dining and Drinking > Restaurant > Caucasian Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a00",
+          "label": "Dining and Drinking > Restaurant > Comfort Food Restaurant"
+        },
+        {
+          "id": "52f2ae52bcbc57f1066b8b81",
+          "label": "Dining and Drinking > Restaurant > Czech Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d146941735",
+          "label": "Dining and Drinking > Restaurant > Deli"
+        },
+        {
+          "id": "4bf58dd8d48988d147941735",
+          "label": "Dining and Drinking > Restaurant > Diner"
+        },
+        {
+          "id": "4bf58dd8d48988d108941735",
+          "label": "Dining and Drinking > Restaurant > Dumpling Restaurant"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4d0",
+          "label": "Dining and Drinking > Restaurant > Dutch Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d109941735",
+          "label": "Dining and Drinking > Restaurant > Eastern European Restaurant"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e97",
+          "label": "Dining and Drinking > Restaurant > Eastern European Restaurant > Belarusian Restaurant"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1ee",
+          "label": "Dining and Drinking > Restaurant > Eastern European Restaurant > Bosnian Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734f3",
+          "label": "Dining and Drinking > Restaurant > Eastern European Restaurant > Bulgarian Restaurant"
+        },
+        {
+          "id": "52960bac3cf9994f4e043ac4",
+          "label": "Dining and Drinking > Restaurant > Eastern European Restaurant > Romanian Restaurant"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e98",
+          "label": "Dining and Drinking > Restaurant > Eastern European Restaurant > Tatar Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a05",
+          "label": "Dining and Drinking > Restaurant > English Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d10b941735",
+          "label": "Dining and Drinking > Restaurant > Falafel Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d16e941735",
+          "label": "Dining and Drinking > Restaurant > Fast Food Restaurant"
+        },
+        {
+          "id": "4edd64a0c7ddd24ca188df1a",
+          "label": "Dining and Drinking > Restaurant > Fish and Chips Shop"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a09",
+          "label": "Dining and Drinking > Restaurant > Fondue Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d10c941735",
+          "label": "Dining and Drinking > Restaurant > French Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306b6",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Alsatian Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306b8",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Auvergne Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306bc",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Basque Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306b0",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Brasserie"
+        },
+        {
+          "id": "57558b36e4b065ecebd306c5",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Breton Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306c0",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Burgundian Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306cb",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Catalan Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306ce",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Ch'ti Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306d1",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Corsican Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306b4",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Estaminet"
+        },
+        {
+          "id": "57558b36e4b065ecebd306b2",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Labour Canteen"
+        },
+        {
+          "id": "57558b35e4b065ecebd306ad",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Lyonese Bouchon"
+        },
+        {
+          "id": "57558b36e4b065ecebd306d4",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Norman Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306d7",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Provençal Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306da",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Savoyard Restaurant"
+        },
+        {
+          "id": "57558b36e4b065ecebd306ba",
+          "label": "Dining and Drinking > Restaurant > French Restaurant > Southwestern French Restaurant"
+        },
+        {
+          "id": "4d4ae6fc7a7b7dea34424761",
+          "label": "Dining and Drinking > Restaurant > Fried Chicken Joint"
+        },
+        {
+          "id": "55d25775498e9f6a0816a37a",
+          "label": "Dining and Drinking > Restaurant > Friterie"
+        },
+        {
+          "id": "4bf58dd8d48988d155941735",
+          "label": "Dining and Drinking > Restaurant > Gastropub"
+        },
+        {
+          "id": "4bf58dd8d48988d10d941735",
+          "label": "Dining and Drinking > Restaurant > German Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573583",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Apple Wine Pub"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573572",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Bavarian Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d57358e",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Bratwurst Joint"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d57358b",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Currywurst Joint"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573574",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Franconian Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573592",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > German Pop-Up Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573578",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Palatine Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d57357b",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Rhenisch Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573587",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Schnitzel Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d57357f",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Silesian Restaurant"
+        },
+        {
+          "id": "56aa371ce4b08b9a8d573576",
+          "label": "Dining and Drinking > Restaurant > German Restaurant > Swabian Restaurant"
+        },
+        {
+          "id": "4c2cd86ed066bed06c3c5209",
+          "label": "Dining and Drinking > Restaurant > Gluten-Free Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d10e941735",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83e8",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Bougatsa Shop"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83e2",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Cretan Restaurant"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83d8",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Fish Taverna"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83d6",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Grilled Meat Restaurant"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83e6",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Kafenio"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83e4",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Magirio"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83da",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Meze Restaurant"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83d4",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Modern Greek Restaurant"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83dc",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Ouzeri"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83e0",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Patsa Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79f3",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Souvlaki Shop"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83d2",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Taverna"
+        },
+        {
+          "id": "53d6c1b0e4b02351e88a83de",
+          "label": "Dining and Drinking > Restaurant > Greek Restaurant > Tsipouro Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79ff",
+          "label": "Dining and Drinking > Restaurant > Halal Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79fe",
+          "label": "Dining and Drinking > Restaurant > Hawaiian Restaurant"
+        },
+        {
+          "id": "5bae9231bedf3950379f89d4",
+          "label": "Dining and Drinking > Restaurant > Hawaiian Restaurant > Poke Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d16f941735",
+          "label": "Dining and Drinking > Restaurant > Hot Dog Joint"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79fa",
+          "label": "Dining and Drinking > Restaurant > Hungarian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfdf",
+          "label": "Dining and Drinking > Restaurant > Indian Chinese Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d10f941735",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe5",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Andhra Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff3",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Awadhi Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff5",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Bengali Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe2",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Chaat Place"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff2",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Chettinad Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe1",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Dhaba"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe3",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Dosa Place"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe8",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Goan Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe9",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Gujarati Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe6",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Hyderabadi Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe4",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Indian Sweet Shop"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe7",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Irani Cafe"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfea",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Jain Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfeb",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Karnataka Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfed",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Kerala Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfee",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Maharashtrian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff4",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Mughlai Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfe0",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Multicuisine Indian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfdd",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > North Indian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff6",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Northeast Indian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfef",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Parsi Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff0",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Punjabi Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dff1",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Rajasthani Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfde",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > South Indian Restaurant"
+        },
+        {
+          "id": "54135bf5e4b08f3d2429dfec",
+          "label": "Dining and Drinking > Restaurant > Indian Restaurant > Udupi Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d110941735",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbb6",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Abruzzo Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb7c",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Agriturismo"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cba7",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Aosta Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cba1",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Basilicata Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cba4",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Calabria Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb95",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Campanian Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb89",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Emilia Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb9b",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Friuli Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb98",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Ligurian Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbbf",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Lombard Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb79",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Malga"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbb0",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Marche Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbb3",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Molise Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb74",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Piadineria"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbaa",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Piedmontese Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb83",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Puglia Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb8c",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Romagna Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb92",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Roman Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb8f",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Sardinian Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb86",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Sicilian Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbb9",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > South Tyrolean Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb7f",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Trattoria"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbbc",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Trentino Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cb9e",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Tuscan Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbc2",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Umbrian Restaurant"
+        },
+        {
+          "id": "55a5a1ebe4b013909087cbad",
+          "label": "Dining and Drinking > Restaurant > Italian Restaurant > Veneto Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79fd",
+          "label": "Dining and Drinking > Restaurant > Jewish Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79fc",
+          "label": "Dining and Drinking > Restaurant > Jewish Restaurant > Kosher Restaurant"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88d7",
+          "label": "Dining and Drinking > Restaurant > Kebab Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1be941735",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d152941735",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > Arepa Restaurant"
+        },
+        {
+          "id": "52939a8c3cf9994f4e043a35",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > Empanada Restaurant"
+        },
+        {
+          "id": "5f2c32587ff30c0d7ac09638",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > Honduran Restaurant"
+        },
+        {
+          "id": "5745c7ac498e5d0483112fdb",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > Salvadoran Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1cd941735",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d107941735",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Argentinian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d16b941735",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant"
+        },
+        {
+          "id": "5294c7523cf9994f4e043a62",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Acai House"
+        },
+        {
+          "id": "52939ae13cf9994f4e043a3b",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Baiano Restaurant"
+        },
+        {
+          "id": "52939a9e3cf9994f4e043a36",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Central Brazilian Restaurant"
+        },
+        {
+          "id": "52939a643cf9994f4e043a33",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Churrascaria"
+        },
+        {
+          "id": "5294c55c3cf9994f4e043a61",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Empada House"
+        },
+        {
+          "id": "52939af83cf9994f4e043a3d",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Goiano Restaurant"
+        },
+        {
+          "id": "52939aed3cf9994f4e043a3c",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Mineiro Restaurant"
+        },
+        {
+          "id": "52939aae3cf9994f4e043a37",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Northeastern Brazilian Restaurant"
+        },
+        {
+          "id": "52939ab93cf9994f4e043a38",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Northern Brazilian Restaurant"
+        },
+        {
+          "id": "5294cbda3cf9994f4e043a63",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Pastelaria"
+        },
+        {
+          "id": "52939ac53cf9994f4e043a39",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Southeastern Brazilian Restaurant"
+        },
+        {
+          "id": "52939ad03cf9994f4e043a3a",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Southern Brazilian Restaurant"
+        },
+        {
+          "id": "52939a7d3cf9994f4e043a34",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Brazilian Restaurant > Tapiocaria"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1f4",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Colombian Restaurant"
+        },
+        {
+          "id": "4eb1bfa43b7b52c0e1adc2e8",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Peruvian Restaurant"
+        },
+        {
+          "id": "5f2c1c31b6d05514c704334c",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Peruvian Restaurant > Peruvian Roast Chicken Joint"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573558",
+          "label": "Dining and Drinking > Restaurant > Latin American Restaurant > South American Restaurant > Venezuelan Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1bf941735",
+          "label": "Dining and Drinking > Restaurant > Mac and Cheese Joint"
+        },
+        {
+          "id": "4bf58dd8d48988d1c0941735",
+          "label": "Dining and Drinking > Restaurant > Mediterranean Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1c1941735",
+          "label": "Dining and Drinking > Restaurant > Mexican Restaurant"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1d9",
+          "label": "Dining and Drinking > Restaurant > Mexican Restaurant > Botanero"
+        },
+        {
+          "id": "4bf58dd8d48988d153941735",
+          "label": "Dining and Drinking > Restaurant > Mexican Restaurant > Burrito Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d151941735",
+          "label": "Dining and Drinking > Restaurant > Mexican Restaurant > Taco Restaurant"
+        },
+        {
+          "id": "56aa371ae4b08b9a8d5734ba",
+          "label": "Dining and Drinking > Restaurant > Mexican Restaurant > Tex-Mex Restaurant"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4d3",
+          "label": "Dining and Drinking > Restaurant > Mexican Restaurant > Yucatecan Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d115941735",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant"
+        },
+        {
+          "id": "5bae9231bedf3950379f89e1",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Egyptian Restaurant"
+        },
+        {
+          "id": "5bae9231bedf3950379f89e7",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Iraqi Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573529",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Israeli Restaurant"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4ca",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Kurdish Restaurant"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1cd",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Lebanese Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79f7",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1bc",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant > Ash and Haleem Place"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1c0",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant > Dizi Place"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1c4",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant > Gilaki Restaurant"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1c7",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant > Jegaraki"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4a6",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant > Kale Pache Place"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4a8",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Persian Restaurant > Tabbakhi"
+        },
+        {
+          "id": "5bae9231bedf3950379f89e4",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Shawarma Restaurant"
+        },
+        {
+          "id": "5bae9231bedf3950379f89da",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Syrian Restaurant"
+        },
+        {
+          "id": "5bae9231bedf3950379f89ea",
+          "label": "Dining and Drinking > Restaurant > Middle Eastern Restaurant > Yemeni Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79f9",
+          "label": "Dining and Drinking > Restaurant > Modern European Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1c2941735",
+          "label": "Dining and Drinking > Restaurant > Molecular Gastronomy Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1c3941735",
+          "label": "Dining and Drinking > Restaurant > Moroccan Restaurant"
+        },
+        {
+          "id": "52e81612bcbc57f1066b79f8",
+          "label": "Dining and Drinking > Restaurant > Pakistani Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1ca941735",
+          "label": "Dining and Drinking > Restaurant > Pizzeria"
+        },
+        {
+          "id": "52e81612bcbc57f1066b7a04",
+          "label": "Dining and Drinking > Restaurant > Polish Restaurant"
+        },
+        {
+          "id": "4def73e84765ae376e57713a",
+          "label": "Dining and Drinking > Restaurant > Portuguese Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734c7",
+          "label": "Dining and Drinking > Restaurant > Poutine Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1c4941735",
+          "label": "Dining and Drinking > Restaurant > Restaurant"
+        },
+        {
+          "id": "5293a7563cf9994f4e043a44",
+          "label": "Dining and Drinking > Restaurant > Russian Restaurant"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e9d",
+          "label": "Dining and Drinking > Restaurant > Russian Restaurant > Blini House"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e9c",
+          "label": "Dining and Drinking > Restaurant > Russian Restaurant > Pelmeni House"
+        },
+        {
+          "id": "4bf58dd8d48988d1bd941735",
+          "label": "Dining and Drinking > Restaurant > Salad Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1c5941735",
+          "label": "Dining and Drinking > Restaurant > Sandwich Spot"
+        },
+        {
+          "id": "4bf58dd8d48988d1c6941735",
+          "label": "Dining and Drinking > Restaurant > Scandinavian Restaurant"
+        },
+        {
+          "id": "5744ccdde4b0c0459246b4a3",
+          "label": "Dining and Drinking > Restaurant > Scottish Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1ce941735",
+          "label": "Dining and Drinking > Restaurant > Seafood Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d57355a",
+          "label": "Dining and Drinking > Restaurant > Slovak Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1dd931735",
+          "label": "Dining and Drinking > Restaurant > Soup Spot"
+        },
+        {
+          "id": "4bf58dd8d48988d14f941735",
+          "label": "Dining and Drinking > Restaurant > Southern Food Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d150941735",
+          "label": "Dining and Drinking > Restaurant > Spanish Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d14d941735",
+          "label": "Dining and Drinking > Restaurant > Spanish Restaurant > Paella Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1db931735",
+          "label": "Dining and Drinking > Restaurant > Spanish Restaurant > Tapas Restaurant"
+        },
+        {
+          "id": "5413605de4b0ae91d18581a9",
+          "label": "Dining and Drinking > Restaurant > Sri Lankan Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1cc941735",
+          "label": "Dining and Drinking > Restaurant > Steakhouse"
+        },
+        {
+          "id": "4bf58dd8d48988d158941735",
+          "label": "Dining and Drinking > Restaurant > Swiss Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573538",
+          "label": "Dining and Drinking > Restaurant > Theme Restaurant"
+        },
+        {
+          "id": "4f04af1f2fb6e1c99f3db0bb",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant"
+        },
+        {
+          "id": "530faca9bcbc57f1066bc2f3",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Borek Place"
+        },
+        {
+          "id": "530faca9bcbc57f1066bc2f4",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Cigkofte Place"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1e2",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Çöp Şiş Place"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88d8",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Doner Restaurant"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88d9",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Gozleme Place"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88db",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Kofte Place"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88d6",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Kokoreç Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d573535",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Kumpir Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734bd",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Kumru Restaurant"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88d5",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Manti Place"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88da",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Meyhane"
+        },
+        {
+          "id": "530faca9bcbc57f1066bc2f2",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Pide Place"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1df",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Pilavcı"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec1dc",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Söğüş Place"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734bf",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Tantuni Restaurant"
+        },
+        {
+          "id": "56aa371be4b08b9a8d5734c1",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Turkish Coffeehouse"
+        },
+        {
+          "id": "5283c7b4e4b094cb91ec88d4",
+          "label": "Dining and Drinking > Restaurant > Turkish Restaurant > Turkish Home Cooking Restaurant"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e96",
+          "label": "Dining and Drinking > Restaurant > Ukrainian Restaurant"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e9a",
+          "label": "Dining and Drinking > Restaurant > Ukrainian Restaurant > Varenyky Restaurant"
+        },
+        {
+          "id": "52e928d0bcbc57f1066b7e9b",
+          "label": "Dining and Drinking > Restaurant > Ukrainian Restaurant > West-Ukrainian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d1d3941735",
+          "label": "Dining and Drinking > Restaurant > Vegan and Vegetarian Restaurant"
+        },
+        {
+          "id": "4bf58dd8d48988d14c941735",
+          "label": "Dining and Drinking > Restaurant > Wings Joint"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    },
+    "gym": {
+      "type_id": "gym_foursquare",
+      "include": [
+        {
+          "id": "4bf58dd8d48988d175941735",
+          "label": "Sports and Recreation > Gym and Studio"
+        },
+        {
+          "id": "52f2ab2ebcbc57f1066b8b47",
+          "label": "Sports and Recreation > Gym and Studio > Boxing Gym"
+        },
+        {
+          "id": "503289d391d4c4b30a586d6a",
+          "label": "Sports and Recreation > Gym and Studio > Climbing Gym"
+        },
+        {
+          "id": "52f2ab2ebcbc57f1066b8b49",
+          "label": "Sports and Recreation > Gym and Studio > Cycle Studio"
+        },
+        {
+          "id": "4bf58dd8d48988d134941735",
+          "label": "Sports and Recreation > Gym and Studio > Dance Studio"
+        },
+        {
+          "id": "4bf58dd8d48988d176941735",
+          "label": "Sports and Recreation > Gym and Studio > Gym"
+        },
+        {
+          "id": "4bf58dd8d48988d105941735",
+          "label": "Sports and Recreation > Gym and Studio > Gym Pool"
+        },
+        {
+          "id": "58daa1558bbb0b01f18ec203",
+          "label": "Sports and Recreation > Gym and Studio > Outdoor Gym"
+        },
+        {
+          "id": "5744ccdfe4b0c0459246b4b2",
+          "label": "Sports and Recreation > Gym and Studio > Pilates Studio"
+        },
+        {
+          "id": "4bf58dd8d48988d102941735",
+          "label": "Sports and Recreation > Gym and Studio > Yoga Studio"
+        },
+        {
+          "id": "63be6904847c3692a84b9c0a",
+          "label": "Sports and Recreation > Gymnastics"
+        },
+        {
+          "id": "52f2ab2ebcbc57f1066b8b48",
+          "label": "Sports and Recreation > Gymnastics > Gymnastics Center"
+        },
+        {
+          "id": "4bf58dd8d48988d101941735",
+          "label": "Sports and Recreation > Martial Arts Dojo"
+        }
+      ],
+      "exclude_if_also": [],
+      "keep_if": []
+    }
+  }
+}

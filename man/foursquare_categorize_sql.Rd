@@ -2,35 +2,21 @@
 % Please edit documentation in R/foursquare_poi.R
 \name{foursquare_categorize_sql}
 \alias{foursquare_categorize_sql}
-\title{Foursquare → Curbcut category SQL expression}
+\title{Foursquare → Curbcut category SQL expression (one category per place)}
 \usage{
-foursquare_categorize_sql()
+foursquare_categorize_sql(map = foursquare_destination_map())
+}
+\arguments{
+\item{map}{Output of \code{\link[=foursquare_destination_map]{foursquare_destination_map()}}.}
 }
 \value{
 A character string (one SQL CASE expression).
 }
 \description{
-Returns the SQL \code{CASE} expression that assigns each Foursquare POI to
-exactly one Curbcut destination category, based on its
-\code{fsq_category_labels} array. The expression is intended to be embedded
-inside a \code{SELECT} statement (see \code{\link[=foursquare_get_canada]{foursquare_get_canada()}}).
-}
-\details{
-Categories, in priority order (first match wins):
-\enumerate{
-\item dentist
-\item pharmacy
-\item gas_station
-\item cinema
-\item bank
-\item cafe
-\item bakery
-\item bar
-\item restaurant
-\item gym
-\item clinic
-\item grocery_store
-}
-
-POIs that do not match any of these patterns get \code{NULL}.
+Returns a SQL \code{CASE} expression that assigns each Foursquare place to ONE
+Curbcut destination type, for the per-category point counts of
+\code{\link[=poi_data]{poi_data()}}. It uses the same category IDs as the destination types
+(\code{\link[=foursquare_destination_map]{foursquare_destination_map()}}); when a place belongs to several types,
+the first type in the map wins. Destination uploads do not use it: there a
+place belongs to every type it matches (\code{\link[=foursquare_prepare_destinations]{foursquare_prepare_destinations()}}).
 }
