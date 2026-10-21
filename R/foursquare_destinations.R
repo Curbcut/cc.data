@@ -356,8 +356,9 @@ foursquare_dedup <- function(geometry, name, cls, refreshed, type,
 #'   place: by default places reported closed, not existing, or to delete.
 #' @param rules Output of [foursquare_name_rules()].
 #' @return A list: `pois`, one `sf` per `type_id` (WGS 84 points with `name`,
-#'   `source_ref`, `source_categories`, `source_updated`), ready for
-#'   `cc.pipe::upload_destination_pois()`; `summary`, one row per type with
+#'   `fsq_place_id`, `fsq_category_ids`, `date_refreshed`), ready for
+#'   `cc.pipe::upload_destination_pois()`, which keeps the name and the point;
+#'   `summary`, one row per type with
 #'   the count at each step; and `dropped`, every place removed by the name
 #'   rules or as a duplicate, with the reason.
 #' @export
@@ -401,9 +402,9 @@ foursquare_prepare_destinations <- function(places, map = foursquare_destination
 
     out <- sf::st_sf(
       name              = sf_p$name,
-      source_ref        = sf_p$fsq_place_id,
-      source_categories = I(sf_p$fsq_category_ids),
-      source_updated    = sf_p$date_refreshed,
+      fsq_place_id      = sf_p$fsq_place_id,
+      fsq_category_ids  = I(sf_p$fsq_category_ids),
+      date_refreshed    = sf_p$date_refreshed,
       geometry          = sf::st_geometry(sf_p)
     )
     pois[[map$types[[t]]$type_id]] <- out

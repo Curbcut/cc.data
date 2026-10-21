@@ -29,8 +29,9 @@ place: by default places reported closed, not existing, or to delete.}
 }
 \value{
 A list: \code{pois}, one \code{sf} per \code{type_id} (WGS 84 points with \code{name},
-\code{source_ref}, \code{source_categories}, \code{source_updated}), ready for
-\code{cc.pipe::upload_destination_pois()}; \code{summary}, one row per type with
+\code{fsq_place_id}, \code{fsq_category_ids}, \code{date_refreshed}), ready for
+\code{cc.pipe::upload_destination_pois()}, which keeps the name and the point;
+\code{summary}, one row per type with
 the count at each step; and \code{dropped}, every place removed by the name
 rules or as a duplicate, with the reason.
 }
