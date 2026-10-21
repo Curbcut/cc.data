@@ -33,9 +33,11 @@ where \code{country = 'CA'}. Two modes:
 \item \code{categorize = FALSE} (legacy mode): returns every Canadian POI
 with \code{date_created}, \code{date_refreshed}, \code{date_closed} — suitable for
 time-series counts via \code{\link[=poi_data]{poi_data()}}.
-\item \code{categorize = TRUE} (recommended): adds a \code{curbcut_type} column
-(one of the 12 Curbcut categories) using \code{\link[=foursquare_categorize_sql]{foursquare_categorize_sql()}},
-filters to POIs assigned a category, and excludes closed POIs.
-Suitable for per-category counts or static destination uploads.
+\item \code{categorize = TRUE}: adds a \code{curbcut_type} column (one
+destination type per place) using \code{\link[=foursquare_categorize_sql]{foursquare_categorize_sql()}},
+filters to places assigned a type, and excludes closed places.
+Suitable for per-category counts. For destination uploads use
+\code{\link[=foursquare_get_destinations]{foursquare_get_destinations()}}, where a place can belong to
+several types.
 }
 }
