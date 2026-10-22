@@ -116,10 +116,10 @@ download_mobilitydatabase_gtfs <- function(
 
         # Build data frame
         data.frame(
-          provider = feed$provider %||% NA_character_,
-          country = location$country_code %||% NA_character_,
-          subdivision = location$subdivision_name %||% NA_character_,
-          municipality = location$municipality %||% NA_character_,
+          provider = feed$provider %or_blank% NA_character_,
+          country = location$country_code %or_blank% NA_character_,
+          subdivision = location$subdivision_name %or_blank% NA_character_,
+          municipality = location$municipality %or_blank% NA_character_,
           dataset_id = vapply(versions, `[[`, character(1), "id"),
           downloaded_at = vapply(versions, `[[`, character(1), "downloaded_at"),
           hosted_url = vapply(versions, `[[`, character(1), "hosted_url"),

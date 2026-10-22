@@ -148,7 +148,16 @@ extract_breadcrumb <- function(page_content) {
 }
 
 
-`%||%` <- function(x, y) if (is.na(x) || is.null(x) || x == "") y else x
+#' Default for a missing scraped field
+#'
+#' Returns `y` when `x` is `NULL`, empty, `NA` or `""`. Scraped breadcrumb and
+#' feed fields come back in all four forms. Deliberately not named `%||%`: a
+#' top-level `%||%` here replaced the package's NULL-or-NA one in every file
+#' sourced after it (R sources alphabetically), and errored on zero-length input.
+#' @noRd
+`%or_blank%` <- function(x, y) {
+  if (is.null(x) || !length(x) || is.na(x[1]) || identical(x[1], "")) y else x
+}
 
 # Optimized function to scrape versions for all feeds using parallel processing
 scrape_all_versions <- function(feeds) {
@@ -253,10 +262,10 @@ scrape_all_versions <- function(feeds) {
         # Fill in constant data for this feed
         page_data$provider[j] <- provider_name
         page_data$feed[j] <- feed_name
-        page_data$country[j] <- breadcrumb_info$country %||% NA_character_
-        page_data$province_state[j] <- breadcrumb_info$province_state %||%
+        page_data$country[j] <- breadcrumb_info$country %or_blank% NA_character_
+        page_data$province_state[j] <- breadcrumb_info$province_state %or_blank%
           NA_character_
-        page_data$city[j] <- breadcrumb_info$city %||% NA_character_
+        page_data$city[j] <- breadcrumb_info$city %or_blank% NA_character_
 
         # Extract version data
         if (!is.na(date_idx)) {

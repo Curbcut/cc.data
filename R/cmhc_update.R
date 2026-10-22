@@ -55,11 +55,12 @@
 #' Returns `b` when `a` is `NULL` or a length-one `NA`, otherwise `a`. Used to
 #' supply defaults throughout the updater.
 #'
-#' NOT named `%||%`: gtfs_historic_transitfeed_download.R defines a top-level
-#' `%||%` with different semantics (`is.na(x) || is.null(x) || x == ""`), and R
-#' sources files alphabetically, so that one silently won over this definition
-#' and every `NULL %||% default` here raised "missing value where TRUE/FALSE
-#' needed". Keep this operator uniquely named so the two cannot collide.
+#' Uniquely named on purpose: a top-level `%||%` once defined in
+#' gtfs_historic_transitfeed_download.R (sourced later, alphabetically) silently
+#' replaced the one here, and every zero-length `x %||% default` raised "missing
+#' value where TRUE/FALSE needed". That definition is now `%or_blank%` and the
+#' package-wide `%||%` lives in utils_operators.R, but a unique name keeps this
+#' module safe from any future collision.
 #'
 #' @param a Value to test.
 #' @param b Fallback returned when `a` is `NULL` or `NA`.
