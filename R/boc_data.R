@@ -58,14 +58,7 @@ boc_inflation_expectations <- function() {
   
   names(df_wide) <- stringr::str_replace_all(names(df_wide), "(\\d{4})Q(\\d)", "\\1q\\2")
   
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -149,14 +142,7 @@ boc_inflation_uncertainty_expectations <- function() {
   # Renommer les colonnes : uncertainty_ce_2014Q4 -> uncertainty_ce_2014q4
   names(df_wide) <- stringr::str_replace_all(names(df_wide), "(\\d{4})Q(\\d)", "\\1q\\2")
   
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -198,14 +184,7 @@ boc_inflation_components_expectations <- function(component_keys) {
   url <- "https://www.bankofcanada.ca/valet/observations/group/CES_C8_DEMOGRAPHICS/csv"
   df <- readr::read_csv(url, skip = 120, col_names = TRUE)
   
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -327,14 +306,7 @@ boc_get_interest_rate_expectations <- function() {
     dplyr::arrange(province)
   
   # Step 7: Join with GeoUIDs
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -419,14 +391,7 @@ boc_get_well_being_expectations <- function() {
     dplyr::arrange(province)
   
   # Step 7: Join with GeoUIDs
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -508,14 +473,7 @@ boc_get_access_credit_expectations <- function() {
     tidyr::pivot_wider(names_from = "var", values_from = "value") |>
     dplyr::arrange(.data$province)
 
-  provinces <- cancensus::get_census(
-    dataset   = "CA21",
-    regions   = list(C = "01"),
-    level     = "PR",
-    geo_format = NA,
-    labels    = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(dplyr::all_of(c("GeoUID", "Region Name"))) |>
     dplyr::mutate(province = dplyr::case_when(
       .data$`Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -603,14 +561,7 @@ boc_get_missing_payment_expectations <- function() {
     dplyr::arrange(province)
   
   # Step 7: Join with GeoUIDs
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -653,14 +604,7 @@ boc_income_spending_expectations <- function(component_keys) {
   url <- "https://www.bankofcanada.ca/valet/observations/group/CES_C5_DEMOGRAPHICS/csv"
   df <- readr::read_csv(url, skip = 94, col_names = TRUE)
   
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -741,14 +685,7 @@ boc_housing_market_expectations <- function(component_keys) {
   url <- "https://www.bankofcanada.ca/valet/observations/group/CES_C11_DEMOGRAPHICS/csv"
   df <- readr::read_csv(url, skip = 120, col_names = TRUE)
   
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -871,14 +808,7 @@ boc_get_house_price_expectations <- function() {
     dplyr::arrange(province)
   
   # Step 7: Join with GeoUIDs
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
@@ -964,14 +894,7 @@ boc_get_wage_expectations <- function() {
     dplyr::arrange(province)
   
   # Step 7: Join with GeoUIDs
-  provinces <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    level = "PR",
-    geo_format = NA,
-    labels = "short",
-    use_cache = TRUE
-  ) |>
+  provinces <- ca21_regions("PR") |>
     dplyr::select(GeoUID, `Region Name`) |>
     dplyr::mutate(province = dplyr::case_when(
       `Region Name` == "Alberta (Alta.)" ~ "Alberta",
