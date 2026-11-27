@@ -66,7 +66,7 @@ cansim_wages <- function() {
     df |>
       dplyr::mutate(name = stringr::str_replace_all(name, "\\s*\\(.*?\\)", "")) |>
       dplyr::rename(id = GeoUID) |>
-      dplyr::select(-name, -geometry)
+      dplyr::select(-name)
   }
   
   construction <- cansim::get_cansim_connection("18-10-0140-01") |> 
@@ -125,29 +125,19 @@ cansim_wages <- function() {
   )
   
   # List of CMAs
-  cma_all <- cancensus::list_census_regions("CA21") |>
-    dplyr::filter(level == "CMA") |>
-    dplyr::select(region, name) |>
-    {\(cma_list) cancensus::get_census(
-      dataset = "CA21",
-      regions = list(CMA = cma_list$region),
-      geo_format = "sf",
-      level = "CMA"
-    )}() |>
-    dplyr::select(name, geometry, GeoUID)
+  cma_all <- ca21_regions("CMA") |>
+    dplyr::select(name = `Region Name`, GeoUID)
   
   union_wage_index_basic$name <- dplyr::recode(union_wage_index_basic$name, !!!geo_mapping)
   union_wage_index_supp$name  <- dplyr::recode(union_wage_index_supp$name, !!!geo_mapping)
   
   union_wage_index_basic <- cma_all |>
     dplyr::inner_join(union_wage_index_basic, by = "name") |>
-    clean_cma_names() |>
-    sf::st_drop_geometry()
+    clean_cma_names()
   
   union_wage_index_supp <- cma_all |>
     dplyr::inner_join(union_wage_index_supp, by = "name") |>
-    clean_cma_names() |>
-    sf::st_drop_geometry()
+    clean_cma_names()
   
   return(list(
     union_wage_index_basic = union_wage_index_basic,
@@ -171,18 +161,8 @@ cansim_construction_price <- function () {
   constr_price <- cansim::get_cansim_connection("18-10-0289-01") |>
       cansim::collect_and_normalize()
   
-  census_regions <- cancensus::list_census_regions("CA21")
-  cma_list <- dplyr::filter(census_regions, level == "CMA") |>
-      dplyr::select(region, name)
-  
-  cma_all <- cancensus::get_census(
-      dataset = "CA21",
-      regions = list(CMA = cma_list$region),
-      geo_format = "sf",
-      level = "CMA"
-  ) |>
-      sf::st_drop_geometry() |>
-      dplyr::select(name, GeoUID)
+  cma_all <- ca21_regions("CMA") |>
+      dplyr::select(name = `Region Name`, GeoUID)
   
   # 2) Normaliser les tirets (–, —) -> "-" pour matcher le mapping manuel
   normalize_name <- function(x) {
@@ -369,8 +349,7 @@ cansim_population_by_age_groups <- function(age_groups) {
     )
   
   # Charger les CMA (sans modification)
-  cma_all <- cancensus::list_census_regions("CA21",use_cache = F) |>
-    dplyr::filter(level == "CMA") |>
+  cma_all <- ca21_regions("CMA", parts = TRUE) |>
     dplyr::select(region, name)
   
   # Fonction pour nommer les variables
@@ -463,12 +442,7 @@ cansim_net_migration<- function() {
 #' @export
 cansim_income_median <- function() {
   # Charger la table des CMA (GeoUID + nom propre)
-  cma_all <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    geo_format = NA,
-    level = "CMA"
-  ) |>
+  cma_all <- ca21_regions("CMA") |>
     dplyr::select(region_name = `Region Name`, GeoUID)
   
   # Table GEO (StatCan) -> region_name (cancensus)
@@ -549,12 +523,7 @@ cansim_income_median <- function() {
 #' @export
 cansim_income_inequity <- function() {
   # Charger la table des CMA
-  cma_all <- cancensus::get_census(
-    dataset = "CA21",
-    regions = list(C = "01"),
-    geo_format = NA,
-    level = "CMA"
-  ) |>
+  cma_all <- ca21_regions("CMA") |>
     dplyr::select(region_name = `Region Name`, GeoUID)
   
   # Table de correspondance GEO -> region_name
@@ -679,8 +648,7 @@ cansim_gdp <- function(level = c("both","pr","cma")) {
   
   # ---------- PR ----------
   get_pr <- function() {
-    pr21 <- cancensus::list_census_regions("CA21", use_cache = FALSE) |>
-      dplyr::filter(level == "PR") |>
+    pr21 <- ca21_regions("PR") |>
       dplyr::select(id = region, name)
     
     gdp_pr <- cansim::get_cansim("36-10-0402-01") |>
@@ -713,8 +681,7 @@ cansim_gdp <- function(level = c("both","pr","cma")) {
   
   # ---------- CMA (Ottawa–Gatineau séparée) ----------
   get_cma <- function() {
-    cma21 <- cancensus::list_census_regions("CA21", use_cache = FALSE) |>
-      dplyr::filter(level == "CMA") |>
+    cma21 <- ca21_regions("CMA", parts = TRUE) |>
       dplyr::select(id = region, name)
     
     # ids pour les deux parties d'Ottawa–Gatineau
